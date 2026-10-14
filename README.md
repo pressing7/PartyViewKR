@@ -15,12 +15,14 @@ https://raw.githubusercontent.com/pressing7/PartyViewKR/main/pluginmaster.json
 배포 파일은 [Releases](https://github.com/pressing7/PartyViewKR/releases)의 `PartyViewKR.zip`입니다.
 저장소 루트에 남아 있는 이전 수동 업로드 DLL/JSON은 최신 배포 파일이 아닙니다.
 
-## 0.3.3의 빈 모집 문구 처리
+## 0.3.4의 빈 모집 문구 처리
 
-모집 내용을 비웠을 때 화면의 안내 문구와 실제 빈 내용을 비교해서 본인 확인이 막히던 처리를 수정했습니다.
-모집 정보와 상세 창의 별도 문자열 버퍼가 모두 빈 값으로 읽히면, 조회·수정 창 확인·갱신 후 비교에 빈 문자열을 사용합니다.
+0.3.3은 상세 창의 별도 문자열 버퍼가 비어 있다고 가정했지만, 실제 한섭에서는 화면과 버퍼 모두 `소개말 없음`을 담고 있었습니다.
+실제 모집 내용이 빈 값으로 읽히고 두 UI 문자열이 모두 이 안내 문구와 일치하면, 조회·수정 창 확인·갱신 후 비교에 빈 문자열을 사용합니다.
+사용자가 직접 `소개말 없음`이라고 작성했다면 실제 모집 내용도 비어 있지 않으므로 그대로 유지합니다.
 내용을 읽지 못한 경우나 일반 모집 문구가 서로 다른 경우, 작성자 ID·이름이 다른 경우는 계속 차단합니다.
-진단에 `uiDescriptionBufferReadable`, `uiDescriptionBufferChars`, `emptyDescriptionPlaceholder`를 추가했습니다.
+빈 문구 안내가 확인되면 진단에 `emptyDescriptionPlaceholder=True`, `uiDescriptionChars=0`, `commentAgrees=True`가 표시됩니다.
+자동 테스트에서는 실제 보고된 두 UI 문자열과 빈 모집 내용을 사용해 본인 확인 및 한 번의 갱신 흐름을 확인합니다. 실제 게임 동작은 인게임 확인이 필요합니다.
 
 ## 0.3.2의 호환성 검사
 
@@ -53,9 +55,9 @@ PR에서는 검사와 설치 ZIP 생성까지만 실행합니다. 같은 버전�
 
 - `src/PartyViewKR.csproj`: `Version`, `AssemblyVersion`, `FileVersion`
 - `src/PartyViewKR.json`: `AssemblyVersion`
-- 예: `Version=0.3.3`, 나머지 버전은 `0.3.3.0`
+- 예: `Version=0.3.4`, 나머지 버전은 `0.3.4.0`
 
-태그는 `0.3.3`과 `v0.3.3` 모두 지원하며 실제 태그 이름으로 다운로드 URL을 만듭니다.
+태그는 `0.3.4`와 `v0.3.4` 모두 지원하며 실제 태그 이름으로 다운로드 URL을 만듭니다.
 Actions → Build and release → Run workflow에서 `publish`를 선택하면 실패한 배포를 재시도할 수도 있습니다.
 새 버전 태그를 고의로 이동하거나 공개된 ZIP을 교체하지 않습니다.
 기본 브랜치 보호 규칙이 Actions의 JSON 갱신을 막는 경우, 해당 규칙에 맞는 반영 절차가 필요합니다.

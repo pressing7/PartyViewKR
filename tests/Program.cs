@@ -164,18 +164,35 @@ Test("ownership remains conservative", () => {
     Check(ListingIdentity.Resolve(20, "다른 사람", true, 10, "나", party) == ListingOwner.Other, "other");
     Check(ListingIdentity.Resolve(10, "나", false, 10, "나", party) == ListingOwner.Unknown, "mismatch");
 });
-Test("empty comment is canonicalized only when both underlying sources confirm empty", () => {
+Test("reported Korean placeholder in both UI sources resolves to an empty comment", () => {
+    var description = ListingDescription.Resolve(true, "소개말 없음", true, "소개말 없음", true, "");
+    Check(description.Readable && description.NativeAgrees && description.EmptyPlaceholder, "reported empty comment rejected");
+    Check(description.Text == "", "Korean placeholder leaked into canonical comment");
+    Check(ListingIdentity.Resolve(10, "나", description.NativeAgrees, 10, "나", []) == ListingOwner.Self, "self listing remains unverified");
+});
+Test("literal Korean placeholder text remains a nonempty authored comment", () => {
+    var description = ListingDescription.Resolve(true, "소개말 없음", true, "소개말 없음", true, "소개말 없음");
+    Check(description.NativeAgrees && description.Text == "소개말 없음" && !description.EmptyPlaceholder, "authored comment discarded");
+    Check(!ListingDescription.Resolve(true, "소개말 없음", true, "소개말 없음", true, "실제 내용").NativeAgrees, "nonempty native mismatch ignored");
+});
+Test("Korean empty placeholder recognition requires exact agreeing UI text", () => {
+    foreach (var text in new[] { "다른말 없음", "소개말 없음!", "소개말없음" })
+        Check(!ListingDescription.Resolve(true, text, true, text, true, "").NativeAgrees, "arbitrary or partial placeholder accepted");
+    Check(!ListingDescription.Resolve(true, "소개말 없음", true, "다른 내용", true, "").NativeAgrees, "different buffer ignored");
+    Check(!ListingDescription.Resolve(true, "다른 내용", true, "소개말 없음", true, "").NativeAgrees, "different node ignored");
+});
+Test("an empty addon buffer still confirms an empty native comment", () => {
     var description = ListingDescription.Resolve(true, "게임의 빈 문구 안내", true, "", true, "");
     Check(description.Readable && description.NativeAgrees && description.EmptyPlaceholder, "empty comment rejected");
     Check(description.Text == "", "placeholder leaked into canonical comment");
 });
 Test("empty comment does not grant ownership to another character", () => {
-    var description = ListingDescription.Resolve(true, "게임의 빈 문구 안내", true, "", true, "");
+    var description = ListingDescription.Resolve(true, "소개말 없음", true, "소개말 없음", true, "");
     Check(ListingIdentity.Resolve(20, "다른 사람", description.NativeAgrees, 10, "나", []) == ListingOwner.Other, "other owner accepted");
     Check(ListingIdentity.Resolve(10, "다른 이름", description.NativeAgrees, 10, "나", []) == ListingOwner.Unknown, "name mismatch accepted");
 });
 Test("unreadable native text cannot be mistaken for an empty comment", () => {
-    var description = ListingDescription.Resolve(true, "게임의 빈 문구 안내", true, "", false, "");
+    var description = ListingDescription.Resolve(true, "소개말 없음", true, "소개말 없음", false, "");
     Check(!description.NativeAgrees && !description.EmptyPlaceholder, "failed read accepted as empty");
 });
 Test("an empty native comment alone cannot override visible content", () => {
@@ -195,13 +212,16 @@ Test("normal empty node and existing buffer fallback remain valid", () => {
     Check(!ListingDescription.Resolve(false, "", false, "", true, "").Readable, "failed UI reads treated as empty");
 });
 Test("empty listing refreshes once without copying the placeholder into the editor", () => {
-    var description = ListingDescription.Resolve(true, "게임의 빈 문구 안내", true, "", true, "");
+    var description = ListingDescription.Resolve(true, "소개말 없음", true, "소개말 없음", true, "");
     var h = new FakeHost { OwnVerified = description.NativeAgrees };
     h.Target = h.Target with { Description = description.Text };
     var flow = new ListingRefresh(h);
     flow.Request(1000); flow.Update(1000); h.FinishQuery(); flow.Update(1500);
     flow.Update(2000); flow.Update(3500);
-    h.Target = h.Target with { RemainingSeconds = 3598 }; h.FinishQuery(); flow.Update(4000);
+    var refreshed = ListingDescription.Resolve(true, "소개말 없음", true, "소개말 없음", true, "");
+    h.OwnVerified = refreshed.NativeAgrees;
+    h.Target = h.Target with { Description = refreshed.Text, RemainingSeconds = 3598 };
+    h.FinishQuery(); flow.Update(4000);
     Check(flow.Stage == RefreshStage.Completed && h.SubmitCalls == 1, "empty refresh failed");
     Check(h.SubmittedDescription == "", "placeholder submitted");
 });
