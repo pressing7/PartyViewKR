@@ -3,7 +3,7 @@
     "Author": "Local build",
     "Name": "Party View KR",
     "InternalName": "PartyViewKR",
-    "AssemblyVersion": "0.3.2.0",
+    "AssemblyVersion": "0.3.3.0",
     "Description": "한섭 파티원·모집글 조회와 내 모집글 수동 갱신. /pvkr에서 확인하고 버튼으로 현재 조건의 모집글을 한 번 재등록합니다.",
     "Punchline": "현재 파티원·모집글 조회와 내 모집글 수동 갱신",
     "ApplicableVersion": "any",
@@ -13,9 +13,9 @@
       "korean"
     ],
     "RepoUrl": "https://github.com/pressing7/PartyViewKR",
-    "LastUpdate": 1792006535,
-    "DownloadLinkInstall": "https://github.com/pressing7/PartyViewKR/releases/download/0.3.2/PartyViewKR.zip",
-    "DownloadLinkUpdate": "https://github.com/pressing7/PartyViewKR/releases/download/0.3.2/PartyViewKR.zip",
-    "DownloadLinkTesting": "https://github.com/pressing7/PartyViewKR/releases/download/0.3.2/PartyViewKR.zip"
+    "LastUpdate": 1792008239,
+    "DownloadLinkInstall": "https://github.com/pressing7/PartyViewKR/releases/download/0.3.3/PartyViewKR.zip",
+    "DownloadLinkUpdate": "https://github.com/pressing7/PartyViewKR/releases/download/0.3.3/PartyViewKR.zip",
+    "DownloadLinkTesting": "https://github.com/pressing7/PartyViewKR/releases/download/0.3.3/PartyViewKR.zip"
   }
 ]
