@@ -103,8 +103,8 @@ internal sealed class ListingReader
             description = ListingDescription.Resolve(descriptionNodeRead, descriptionNode,
                 descriptionBufferRead, descriptionBuffer, nativeCommentRead, nativeComment);
             // OwnListingId and StoredRecruitmentInfo can be stale or draft data.
-            // Require agreement with the detail UI; empty comments need an independent
-            // empty addon buffer instead of comparing a rendered placeholder to "".
+            // Require agreement with the detail UI, including the verified KR empty
+            // placeholder; unreadable or unrelated text is not an empty comment.
             var nameAgrees = leaderRead && nativeNameRead && ListingIdentity.SameText(leader, nativeName);
             var commentAgrees = description.NativeAgrees;
             var shapePlausible = detail.ListingId != 0 && detail.TotalSlots is >= 1 and <= 48 && detail.SlotsFilled <= detail.TotalSlots;
