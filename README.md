@@ -15,6 +15,13 @@ https://raw.githubusercontent.com/pressing7/PartyViewKR/main/pluginmaster.json
 배포 파일은 [Releases](https://github.com/pressing7/PartyViewKR/releases)의 `PartyViewKR.zip`입니다.
 저장소 루트에 남아 있는 이전 수동 업로드 DLL/JSON은 최신 배포 파일이 아닙니다.
 
+## 0.3.3의 빈 모집 문구 처리
+
+모집 내용을 비웠을 때 화면의 안내 문구와 실제 빈 내용을 비교해서 본인 확인이 막히던 처리를 수정했습니다.
+모집 정보와 상세 창의 별도 문자열 버퍼가 모두 빈 값으로 읽히면, 조회·수정 창 확인·갱신 후 비교에 빈 문자열을 사용합니다.
+내용을 읽지 못한 경우나 일반 모집 문구가 서로 다른 경우, 작성자 ID·이름이 다른 경우는 계속 차단합니다.
+진단에 `uiDescriptionBufferReadable`, `uiDescriptionBufferChars`, `emptyDescriptionPlaceholder`를 추가했습니다.
+
 ## 0.3.2의 호환성 검사
 
 기존에는 `FFXIVClientStructs.dll`의 빌드 식별자(MVID)가 다르면 네이티브 기능을 모두 중지했습니다.

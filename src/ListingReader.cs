@@ -85,13 +85,10 @@ internal sealed class ListingReader
             };
 
         var leaderRead = NativeReadGuard.TextNode(addon->PartyLeaderTextNode, out var leader);
-        var descriptionRead = NativeReadGuard.TextNode(addon->DescriptionTextNode, out var description);
-        var descriptionSource = "DescriptionTextNode";
-        if (!descriptionRead)
-        {
-            descriptionRead = NativeReadGuard.Text(&addon->DescriptionString, out description);
-            descriptionSource = "DescriptionString";
-        }
+        var descriptionNodeRead = NativeReadGuard.TextNode(addon->DescriptionTextNode, out var descriptionNode);
+        var descriptionBufferRead = NativeReadGuard.Text(&addon->DescriptionString, out var descriptionBuffer);
+        var description = ListingDescription.Resolve(descriptionNodeRead, descriptionNode,
+            descriptionBufferRead, descriptionBuffer, false, "");
         var dutyRead = NativeReadGuard.TextNode(addon->DutyNameTextNode, out var duty);
         var timeRead = NativeReadGuard.TextNode(addon->TimeRemainingTextNode, out var remaining);
 
@@ -103,10 +100,13 @@ internal sealed class ListingReader
             ref var detail = ref agent->LastViewedListing;
             var nativeNameRead = NativeReadGuard.FixedText(detail.Leader, out var nativeName);
             var nativeCommentRead = NativeReadGuard.FixedText(detail.Comment, out var nativeComment);
+            description = ListingDescription.Resolve(descriptionNodeRead, descriptionNode,
+                descriptionBufferRead, descriptionBuffer, nativeCommentRead, nativeComment);
             // OwnListingId and StoredRecruitmentInfo can be stale or draft data.
-            // Ownership requires the received detail to agree with visible text.
+            // Require agreement with the detail UI; empty comments need an independent
+            // empty addon buffer instead of comparing a rendered placeholder to "".
             var nameAgrees = leaderRead && nativeNameRead && ListingIdentity.SameText(leader, nativeName);
-            var commentAgrees = descriptionRead && nativeCommentRead && ListingIdentity.SameText(description, nativeComment);
+            var commentAgrees = description.NativeAgrees;
             var shapePlausible = detail.ListingId != 0 && detail.TotalSlots is >= 1 and <= 48 && detail.SlotsFilled <= detail.TotalSlots;
             owner = ListingIdentity.Resolve(detail.LeaderContentId, nativeName,
                 shapePlausible && nameAgrees && commentAgrees, Plugin.PlayerState.ContentId,
@@ -114,21 +114,25 @@ internal sealed class ListingReader
             agentDiagnostic = $"listingIdPresent={detail.ListingId != 0}; ownIdRaw={agent->OwnListingId}; " +
                 $"leaderCidIsSelf={detail.LeaderContentId == Plugin.PlayerState.ContentId}; " +
                 $"leaderNameAgrees={nameAgrees}; commentAgrees={commentAgrees}; " +
-                $"nativeCommentChars={nativeComment.Length}; nativeSlots={detail.SlotsFilled}/{detail.TotalSlots}; nativeTimeRaw={detail.TimeLeft}";
+                $"nativeCommentReadable={nativeCommentRead}; nativeCommentChars={nativeComment.Length}; " +
+                $"nativeSlots={detail.SlotsFilled}/{detail.TotalSlots}; nativeTimeRaw={detail.TimeLeft}";
         }
 
         var diagnostic = $"listingDetailVisible=true\nlistingDetailRevision={Interlocked.Read(ref detailRevision)}\n" +
             $"listingOwner={owner}\nuiLeaderReadable={leaderRead}; uiLeaderChars={leader.Length}\n" +
-            $"uiDescriptionReadable={descriptionRead}; uiDescriptionSource={descriptionSource}; uiDescriptionChars={description.Length}\n" +
+            $"uiDescriptionReadable={description.Readable}; uiDescriptionSource={description.Source}; uiDescriptionChars={description.Text.Length}\n" +
+            $"uiDescriptionNodeReadable={descriptionNodeRead}; uiDescriptionNodeChars={descriptionNode.Length}; " +
+            $"uiDescriptionBufferReadable={descriptionBufferRead}; uiDescriptionBufferChars={descriptionBuffer.Length}; " +
+            $"emptyDescriptionPlaceholder={description.EmptyPlaceholder}\n" +
             $"uiDutyReadable={dutyRead}; uiTimeReadable={timeRead}\n{agentDiagnostic}\n{requestDiagnostic}";
-        if (!descriptionRead)
+        if (!description.Readable)
             return previous with { Status = "상세 창의 모집 문구를 읽지 못함", IsLive = false,
                 Note = "진단 정보와 게임 상세 창 화면을 확인해야 합니다.", Diagnostic = diagnostic };
 
         var note = requestNote;
         if (owner == ListingOwner.Unknown)
             note = (note + " 현재 열린 상세 창의 내용입니다. 내 모집글인지 여부는 아직 확인되지 않았습니다.").Trim();
-        return new("상세 창에서 읽은 모집글", owner, leader, duty, description,
+        return new("상세 창에서 읽은 모집글", owner, leader, duty, description.Text,
             remaining, DateTime.Now, true, note, diagnostic);
     }
 

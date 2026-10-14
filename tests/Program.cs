@@ -164,6 +164,56 @@ Test("ownership remains conservative", () => {
     Check(ListingIdentity.Resolve(20, "다른 사람", true, 10, "나", party) == ListingOwner.Other, "other");
     Check(ListingIdentity.Resolve(10, "나", false, 10, "나", party) == ListingOwner.Unknown, "mismatch");
 });
+Test("empty comment is canonicalized only when both underlying sources confirm empty", () => {
+    var description = ListingDescription.Resolve(true, "게임의 빈 문구 안내", true, "", true, "");
+    Check(description.Readable && description.NativeAgrees && description.EmptyPlaceholder, "empty comment rejected");
+    Check(description.Text == "", "placeholder leaked into canonical comment");
+});
+Test("empty comment does not grant ownership to another character", () => {
+    var description = ListingDescription.Resolve(true, "게임의 빈 문구 안내", true, "", true, "");
+    Check(ListingIdentity.Resolve(20, "다른 사람", description.NativeAgrees, 10, "나", []) == ListingOwner.Other, "other owner accepted");
+    Check(ListingIdentity.Resolve(10, "다른 이름", description.NativeAgrees, 10, "나", []) == ListingOwner.Unknown, "name mismatch accepted");
+});
+Test("unreadable native text cannot be mistaken for an empty comment", () => {
+    var description = ListingDescription.Resolve(true, "게임의 빈 문구 안내", true, "", false, "");
+    Check(!description.NativeAgrees && !description.EmptyPlaceholder, "failed read accepted as empty");
+});
+Test("an empty native comment alone cannot override visible content", () => {
+    Check(!ListingDescription.Resolve(true, "실제 모집 내용", false, "", true, "").NativeAgrees, "unreadable buffer accepted");
+    Check(!ListingDescription.Resolve(true, "실제 모집 내용", true, "실제 모집 내용", true, "").NativeAgrees, "nonempty buffer accepted");
+});
+Test("nonempty comments must still agree and are never normalized to empty", () => {
+    var matching = ListingDescription.Resolve(true, "모집 내용", true, "", true, "모집 내용");
+    Check(matching.NativeAgrees && matching.Text == "모집 내용" && !matching.EmptyPlaceholder, "nonempty text discarded");
+    var mismatch = ListingDescription.Resolve(true, "다른 모집 내용", true, "모집 내용", true, "모집 내용");
+    Check(!mismatch.NativeAgrees, "nonempty mismatch bypassed through buffer");
+});
+Test("normal empty node and existing buffer fallback remain valid", () => {
+    Check(ListingDescription.Resolve(true, "", false, "", true, "").NativeAgrees, "empty node rejected");
+    var fallback = ListingDescription.Resolve(false, "", true, "내용", true, "내용");
+    Check(fallback.NativeAgrees && fallback.Text == "내용", "buffer fallback broken");
+    Check(!ListingDescription.Resolve(false, "", false, "", true, "").Readable, "failed UI reads treated as empty");
+});
+Test("empty listing refreshes once without copying the placeholder into the editor", () => {
+    var description = ListingDescription.Resolve(true, "게임의 빈 문구 안내", true, "", true, "");
+    var h = new FakeHost { OwnVerified = description.NativeAgrees };
+    h.Target = h.Target with { Description = description.Text };
+    var flow = new ListingRefresh(h);
+    flow.Request(1000); flow.Update(1000); h.FinishQuery(); flow.Update(1500);
+    flow.Update(2000); flow.Update(3500);
+    h.Target = h.Target with { RemainingSeconds = 3598 }; h.FinishQuery(); flow.Update(4000);
+    Check(flow.Stage == RefreshStage.Completed && h.SubmitCalls == 1, "empty refresh failed");
+    Check(h.SubmittedDescription == "", "placeholder submitted");
+});
+Test("adding text during an empty-comment refresh is detected", () => {
+    var h = new FakeHost(); h.Target = h.Target with { Description = "" };
+    var flow = new ListingRefresh(h);
+    flow.Request(1000); flow.Update(1000); h.FinishQuery(); flow.Update(1500);
+    flow.Update(2000); flow.Update(3500);
+    h.Target = h.Target with { Description = "추가된 문구", RemainingSeconds = 3598 };
+    h.FinishQuery(); flow.Update(4000);
+    Check(flow.Stage == RefreshStage.Unconfirmed && h.SubmitCalls == 1, "new content ignored or resubmitted");
+});
 CompatibilityTests.Run(Test, Check);
 Console.WriteLine($"All {passed} tests passed. Native game interaction still requires in-game validation.");
 
@@ -181,6 +231,7 @@ sealed class FakeHost : IListingRefreshHost
     public long EditorClosedRevision { get; set; }
     public bool OwnVerified = true, SubmitAllowed = true, KeepEditorOpen, ThrowOnSubmit;
     public int QueryCalls, EditCalls, SubmitCalls;
+    public string? SubmittedDescription;
     public RefreshTarget Target = new(10, 1, 123, "기존 모집 문구", "same", 1800, 8);
     public void QueryOwn() { QueryCalls++; QueryBusy = true; QuerySucceeded = false; }
     public void FinishQuery() { QueryBusy = false; QuerySucceeded = true; DetailRevision++; }
@@ -190,7 +241,7 @@ sealed class FakeHost : IListingRefreshHost
     { EditCalls++; EditorVisible = EditorReady = true; EditorRevision++; error = ""; return true; }
     public bool Submit(RefreshTarget target, out string error)
     {
-        SubmitCalls++; error = "조건 확인 실패";
+        SubmitCalls++; SubmittedDescription = target.Description; error = "조건 확인 실패";
         if (ThrowOnSubmit) throw new InvalidOperationException("simulated native failure");
         if (SubmitAllowed && !KeepEditorOpen) EditorVisible = EditorReady = false;
         return SubmitAllowed;
