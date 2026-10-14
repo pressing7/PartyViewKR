@@ -141,7 +141,7 @@ def merge_feed(entries, entry):
 
 
 def api(repo, path, method='GET', data=None, raw=False):
-    url = path if path.startswith('https://') else f'https://api.github.com/repos/{repo}/{path}'
+    url = path if path.startswith('https://') else f'https://api.github.com/repos/{repo}/{path}'.rstrip('/')
     if urllib.parse.urlsplit(url).hostname not in ('api.github.com', 'uploads.github.com'):
         raise ValueError('Unexpected GitHub API host')
     headers = {'Authorization': 'Bearer ' + os.environ['GH_TOKEN'], 'User-Agent': 'PartyViewKR-release',

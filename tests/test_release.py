@@ -14,6 +14,12 @@ spec.loader.exec_module(r)
 
 
 class ReleaseTests(unittest.TestCase):
+    def test_repository_api_url_has_no_trailing_slash(self):
+        with patch.dict(os.environ, {'GH_TOKEN': 'test-token'}), patch.object(r.urllib.request, 'urlopen') as opened:
+            opened.return_value.__enter__.return_value.read.return_value = b'{"default_branch":"main"}'
+            r.api('pressing7/PartyViewKR', '')
+            self.assertEqual(opened.call_args.args[0].full_url, 'https://api.github.com/repos/pressing7/PartyViewKR')
+
     def test_actual_tag_is_used_with_or_without_v(self):
         for tag in ['0.3.2', 'v0.3.2', '0.3.2.0', 'v0.3.2.0']:
             entry = r.feed_entry({'AssemblyVersion': '0.3.2.0'}, 'pressing7/PartyViewKR', tag)
