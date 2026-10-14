@@ -32,7 +32,7 @@ internal sealed unsafe class ListingRefreshHost(Plugin plugin, ListingReader rea
         get
         {
             if (!Plugin.ClientState.IsLoggedIn || SelfId == 0) return "로그인 상태가 아니어서 중단했습니다.";
-            if (PartyReader.LoadedNative != PartyReader.ExpectedNative) return "구조 DLL 버전이 달라 갱신을 중단했습니다.";
+            if (!NativeCompatibility.IsCompatible) return "구조 DLL의 호환 검사를 통과하지 못해 갱신을 중단했습니다.";
             if (Plugin.Condition[ConditionFlag.BetweenAreas] || Plugin.Condition[ConditionFlag.BetweenAreas51]) return "지역 이동 중이어서 중단했습니다.";
             if (Visible("SelectYesno")) return "게임의 확인 창을 먼저 처리한 뒤 다시 눌러 주세요.";
             return null;
