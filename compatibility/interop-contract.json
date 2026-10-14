@@ -1,0 +1,14 @@
+{
+  "Schema": 1,
+  "ApiLevel": 15,
+  "AssemblyName": "InteropGenerator.Runtime",
+  "BuildVersion": "1.0.0.0",
+  "BuildMvid": "6645d364-efbf-42df-88a0-e0f4f3125d02",
+  "Types": {
+    "InteropGenerator.Runtime.CStringPointer": []
+  },
+  "Entries": {
+    "field:InteropGenerator.Runtime.CStringPointer.Value": "Byte*;offset=0;flags=6;",
+    "type:InteropGenerator.Runtime.CStringPointer": "size=8;pack=0;layout=ExplicitLayout;"
+  }
+}

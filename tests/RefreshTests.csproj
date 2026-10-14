@@ -4,6 +4,8 @@
     <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../shared/NativeContract.cs" Link="NativeContract.cs" />
+    <None Include="../compatibility/native-contract.json" Link="native-contract.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="../src/ListingIdentity.cs" Link="ListingIdentity.cs" />
     <Compile Include="../src/ListingRefresh.cs" Link="ListingRefresh.cs" />
   </ItemGroup>

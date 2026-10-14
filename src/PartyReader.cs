@@ -15,8 +15,8 @@ internal sealed record PartySnapshot(string Status, string Source, MemberInfo[] 
 
 internal sealed class PartyReader
 {
-    internal static readonly Guid ExpectedNative = new("314c9487-898e-4bb9-a9f1-befc4f0a6090");
-    internal static readonly Guid LoadedNative = typeof(InfoProxyCrossRealm).Assembly.ManifestModule.ModuleVersionId;
+    internal static readonly Guid ExpectedNative = NativeCompatibility.BuildMvid;
+    internal static readonly Guid LoadedNative = NativeCompatibility.LoadedMvid;
     private readonly RuntimeRows rows = new();
 
     internal PartySnapshot Read(PartySnapshot previous)
@@ -29,10 +29,10 @@ internal sealed class PartyReader
         rows.BeginRead();
         var members = new List<MemberInfo>();
         var source = "일반 파티";
-        var nativeDiagnostic = "nativeRead=skipped; reason=assembly mismatch";
-        // Run only on the Dalamud framework thread. A different native build
-        // must never be read using this build's inlined struct offsets.
-        if (LoadedNative == ExpectedNative && ReadCrossRealm(members, out nativeDiagnostic))
+        var nativeDiagnostic = "nativeRead=skipped; reason=structure mismatch";
+        // Run only on the Dalamud framework thread. The loaded native build
+        // is checked against the compiled layout contract before reading native memory.
+        if (NativeCompatibility.IsCompatible && ReadCrossRealm(members, out nativeDiagnostic))
             source = "서버 초월 파티";
         else
             ReadRegular(members);
@@ -52,9 +52,9 @@ internal sealed class PartyReader
         var status = source == "본인 정보" ? "본인만 조회됨" : "현재 소속 파티";
         var diagnostic = $"plugin={typeof(Plugin).Assembly.GetName().Version}\ndalamud={typeof(Dalamud.Plugin.IDalamudPlugin).Assembly.GetName().Version}\n" +
             $"expectedNative={ExpectedNative}\nloadedNative={LoadedNative}\n" +
-            $"nativeCompatible={LoadedNative == ExpectedNative}\nregularCount={Plugin.PartyList.Length}\n" +
-            $"source={source}\ndisplayedCount={unique.Length}\n{nativeDiagnostic}\nrowLookupError={rows.Error}";
-        var warning = LoadedNative != ExpectedNative ? "한섭 구조 DLL 버전이 달라 서버 초월 파티 조회를 건너뛰었습니다." : "";
+            $"nativeCompatible={NativeCompatibility.IsCompatible}\nregularCount={Plugin.PartyList.Length}\n" +
+            $"source={source}\ndisplayedCount={unique.Length}\n{nativeDiagnostic}\n{NativeCompatibility.Diagnostic}\nrowLookupError={rows.Error}";
+        var warning = !NativeCompatibility.IsCompatible ? "한섭 구조 DLL의 호환 검사를 통과하지 못해 서버 초월 파티 조회를 건너뛰었습니다." : "";
         if (rows.Error.Length > 0) warning += " 서버·직업 이름 변환에 실패한 항목은 번호로 표시합니다.";
         return new(status, source, unique, DateTime.Now, false, warning.Trim(), diagnostic);
     }

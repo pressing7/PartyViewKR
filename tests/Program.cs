@@ -164,6 +164,7 @@ Test("ownership remains conservative", () => {
     Check(ListingIdentity.Resolve(20, "다른 사람", true, 10, "나", party) == ListingOwner.Other, "other");
     Check(ListingIdentity.Resolve(10, "나", false, 10, "나", party) == ListingOwner.Unknown, "mismatch");
 });
+CompatibilityTests.Run(Test, Check);
 Console.WriteLine($"All {passed} tests passed. Native game interaction still requires in-game validation.");
 
 sealed class FakeHost : IListingRefreshHost

@@ -45,12 +45,12 @@ internal sealed class ListingReader
             userRequested = requested;
             previous = ListingSnapshot.Empty;
         }
-        if (PartyReader.LoadedNative != PartyReader.ExpectedNative)
+        if (!NativeCompatibility.IsCompatible)
         {
             userRequested = openingMain = false;
             waitingRevision = null;
             LastOwnRequestSucceeded = false;
-            return ListingSnapshot.Empty with { Note = "구조 DLL 버전이 달라 모집글 조회를 중지했습니다.", Diagnostic = "listingRead=skipped; reason=assembly_mismatch" };
+            return ListingSnapshot.Empty with { Note = "구조 DLL의 호환 검사를 통과하지 못해 모집글 조회를 중지했습니다.", Diagnostic = "listingRead=skipped; reason=structure_mismatch" };
         }
         if (Plugin.Condition[ConditionFlag.BetweenAreas] || Plugin.Condition[ConditionFlag.BetweenAreas51])
             return previous with { Status = "이동 중 — 마지막 모집글", IsLive = false };

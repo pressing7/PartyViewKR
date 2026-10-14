@@ -1,0 +1,6 @@
+**/bin/
+**/obj/
+src/references/
+.build/
+release-output/
+__pycache__/
