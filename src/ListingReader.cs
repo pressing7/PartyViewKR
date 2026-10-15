@@ -8,12 +8,14 @@ namespace PartyViewKR;
 internal sealed record ListingSnapshot(string Status, ListingOwner Owner, string Leader, string Duty,
     string Description, string Remaining, DateTime? ReadAt, bool IsLive, string Note, string Diagnostic)
 {
+    internal ListingSlots Slots { get; init; } = ListingSlots.Unavailable("not_read");
     internal static ListingSnapshot Empty { get; } = new("아직 읽은 모집글 없음", ListingOwner.Unknown,
         "", "", "", "", null, false, "내 모집글 조회를 누르거나 게임에서 모집글 상세 창을 열어주세요.", "listingRead=not_started");
 }
 
 internal sealed class ListingReader
 {
+    private readonly RuntimeRows rows = new();
     private bool userRequested;
     private bool openingMain;
     private bool showIssued;
@@ -93,6 +95,8 @@ internal sealed class ListingReader
         var timeRead = NativeReadGuard.TextNode(addon->TimeRemainingTextNode, out var remaining);
 
         var owner = ListingOwner.Unknown;
+        var slots = ListingSlots.Unavailable("agent_unreadable");
+        rows.BeginRead();
         var agentDiagnostic = "listingAgent=unavailable";
         var agent = AgentLookingForGroup.Instance();
         if (NativeReadGuard.Readable(agent, (nuint)sizeof(AgentLookingForGroup)))
@@ -108,6 +112,9 @@ internal sealed class ListingReader
             var nameAgrees = leaderRead && nativeNameRead && ListingIdentity.SameText(leader, nativeName);
             var commentAgrees = description.NativeAgrees;
             var shapePlausible = detail.ListingId != 0 && detail.TotalSlots is >= 1 and <= 48 && detail.SlotsFilled <= detail.TotalSlots;
+            slots = ListingSlots.Read(shapePlausible && nameAgrees && commentAgrees,
+                detail.TotalSlots, detail.SlotsFilled, detail.NumberOfParties, detail.IsAlliance,
+                detail.Jobs, detail.MemberContentIds, detail.SlotFlags, rows.Job);
             owner = ListingIdentity.Resolve(detail.LeaderContentId, nativeName,
                 shapePlausible && nameAgrees && commentAgrees, Plugin.PlayerState.ContentId,
                 Plugin.PlayerState.CharacterName, party.Members.Select(m => (m.ContentId, m.Name, m.IsLeader)).ToArray());
@@ -124,7 +131,8 @@ internal sealed class ListingReader
             $"uiDescriptionNodeReadable={descriptionNodeRead}; uiDescriptionNodeChars={descriptionNode.Length}; " +
             $"uiDescriptionBufferReadable={descriptionBufferRead}; uiDescriptionBufferChars={descriptionBuffer.Length}; " +
             $"emptyDescriptionPlaceholder={description.EmptyPlaceholder}\n" +
-            $"uiDutyReadable={dutyRead}; uiTimeReadable={timeRead}\n{agentDiagnostic}\n{requestDiagnostic}";
+            $"uiDutyReadable={dutyRead}; uiTimeReadable={timeRead}\n{agentDiagnostic}\n{slots.Diagnostic}\n" +
+            $"listingJobRowLookupError={rows.Error}\n{requestDiagnostic}";
         if (!description.Readable)
             return previous with { Status = "상세 창의 모집 문구를 읽지 못함", IsLive = false,
                 Note = "진단 정보와 게임 상세 창 화면을 확인해야 합니다.", Diagnostic = diagnostic };
@@ -133,7 +141,7 @@ internal sealed class ListingReader
         if (owner == ListingOwner.Unknown)
             note = (note + " 현재 열린 상세 창의 내용입니다. 내 모집글인지 여부는 아직 확인되지 않았습니다.").Trim();
         return new("상세 창에서 읽은 모집글", owner, leader, duty, description.Text,
-            remaining, DateTime.Now, true, note, diagnostic);
+            remaining, DateTime.Now, true, note, diagnostic) { Slots = slots };
     }
 
     private unsafe void HandleRequest()

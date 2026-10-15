@@ -7,7 +7,7 @@ namespace PartyViewKR;
 internal sealed class PartyWindow : Window
 {
     private readonly Plugin plugin;
-    internal PartyWindow(Plugin plugin) : base("현재 파티 조회##PartyViewKR")
+    internal PartyWindow(Plugin plugin) : base("파티 모집 조회##PartyViewKR")
     {
         this.plugin = plugin;
         Size = new Vector2(720, 630);
@@ -16,6 +16,18 @@ internal sealed class PartyWindow : Window
     }
 
     public override void Draw()
+    {
+        DrawListing();
+        ImGui.Separator();
+        if (ImGui.Button("다시 읽기")) plugin.RequestRead();
+        ImGui.SameLine();
+        if (ImGui.Button("진단 정보 복사")) ImGui.SetClipboardText(plugin.Diagnostic);
+        ImGui.Separator();
+        if (ImGui.CollapsingHeader("현재 파티 상태 · 실시간 직업"))
+            DrawCurrentParty();
+    }
+
+    private void DrawCurrentParty()
     {
         var state = plugin.Snapshot;
         ImGui.TextUnformatted($"{state.Status}  ·  {state.Members.Length}명");
@@ -44,12 +56,6 @@ internal sealed class PartyWindow : Window
             }
             ImGui.EndTable();
         }
-        ImGui.Separator();
-        DrawListing();
-        ImGui.Separator();
-        if (ImGui.Button("다시 읽기")) plugin.RequestRead();
-        ImGui.SameLine();
-        if (ImGui.Button("진단 정보 복사")) ImGui.SetClipboardText(plugin.Diagnostic);
     }
 
     private void DrawListing()
@@ -91,12 +97,51 @@ internal sealed class PartyWindow : Window
             ImGui.PushTextWrapPos(0);
             ImGui.TextUnformatted(listing.Description.Length > 0 ? listing.Description : "(모집 문구 없음)");
             ImGui.PopTextWrapPos();
+            DrawListingSlots(listing);
         }
         if (listing.Note.Length > 0)
         {
             ImGui.PushTextWrapPos(0);
             ImGui.TextUnformatted(listing.Note);
             ImGui.PopTextWrapPos();
+        }
+    }
+
+    private static void DrawListingSlots(ListingSnapshot listing)
+    {
+        ImGui.Separator();
+        var slots = listing.Slots;
+        ImGui.TextUnformatted(listing.IsLive ? "모집창 등록 직업" : "마지막으로 읽은 모집창 등록 직업");
+        if (!slots.Readable)
+        {
+            ImGui.TextUnformatted("모집 직업 정보를 확인하지 못했습니다. 모집글을 다시 조회해 주세요.");
+            return;
+        }
+        ImGui.TextUnformatted($"모집 인원: {slots.SlotsFilled}/{slots.TotalSlots}");
+        if (slots.NumberOfParties > 1)
+            ImGui.TextUnformatted($"모집 파티 수: {slots.NumberOfParties}");
+        ImGui.TextUnformatted("모집글에서 받은 직업을 자리 순서대로 표시합니다.");
+        if (!slots.CountsAgree)
+            ImGui.TextWrapped("모집 인원수와 자리 정보가 아직 일치하지 않습니다. 다시 조회해 주세요.");
+
+        var height = Math.Min(slots.Slots.Length + 1, 10) * ImGui.GetTextLineHeightWithSpacing() + 12;
+        if (ImGui.BeginTable("listing-jobs", 3,
+            ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.ScrollY,
+            new Vector2(0, height)))
+        {
+            ImGui.TableSetupColumn("자리", ImGuiTableColumnFlags.WidthFixed, 40);
+            ImGui.TableSetupColumn("상태", ImGuiTableColumnFlags.WidthFixed, 70);
+            ImGui.TableSetupColumn("등록 직업");
+            ImGui.TableSetupScrollFreeze(0, 1);
+            ImGui.TableHeadersRow();
+            foreach (var slot in slots.Slots)
+            {
+                ImGui.TableNextRow();
+                Cell(slot.Position.ToString());
+                Cell(slot.HasMember ? "참가 중" : slots.CountsAgree ? "빈자리" : "확인 중");
+                Cell(slot.JobId != 0 ? slot.Job : slot.HasMember ? "직업 정보 없음" : "—");
+            }
+            ImGui.EndTable();
         }
     }
 

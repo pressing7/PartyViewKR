@@ -22,7 +22,7 @@ if (args[0].StartsWith("capture", StringComparison.Ordinal))
         [ui + "Info.CrossRealmGroup"] = ["get_GroupMembers"],
         [ui + "Info.CrossRealmMember"] = ["get_Name"],
         [ui + "Agent.AgentLookingForGroup"] = ["Instance", "Show", "OpenListingByContentId"],
-        [ui + "Agent.AgentLookingForGroup+Detailed"] = ["get_SlotFlags", "get_Leader", "get_Comment"],
+        [ui + "Agent.AgentLookingForGroup+Detailed"] = ["get_SlotFlags", "get_Leader", "get_Comment", "get_Jobs", "get_MemberContentIds"],
         [ui + "Agent.AgentLookingForGroup+RecruitmentSub"] = ["get_SlotFlags", "get_Comment"],
         [ui + "Agent.AgentInterface"] = ["Show"],
         [ui + "AddonLookingForGroupDetail"] = ["get_IsVisible", "get_IsReady"],

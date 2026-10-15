@@ -234,6 +234,7 @@ Test("adding text during an empty-comment refresh is detected", () => {
     h.FinishQuery(); flow.Update(4000);
     Check(flow.Stage == RefreshStage.Unconfirmed && h.SubmitCalls == 1, "new content ignored or resubmitted");
 });
+ListingSlotsTests.Run(Test, Check);
 CompatibilityTests.Run(Test, Check);
 Console.WriteLine($"All {passed} tests passed. Native game interaction still requires in-game validation.");
 

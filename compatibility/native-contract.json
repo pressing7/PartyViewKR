@@ -23,7 +23,9 @@
     "FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDetailed": [
       "get_SlotFlags",
       "get_Leader",
-      "get_Comment"
+      "get_Comment",
+      "get_Jobs",
+      "get_MemberContentIds"
     ],
     "FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BRecruitmentSub": [
       "get_SlotFlags",
@@ -731,6 +733,8 @@
     "method:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentInterface.Show()": "Void;header=32;generic=0;InteropGenerator.Runtime.Attributes.VirtualFunctionAttribute:0100030000000000",
     "method:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDetailed.get_Comment()": "System.Span\u00601\u003CByte\u003E;header=32;generic=0;",
     "method:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDetailed.get_Leader()": "System.Span\u00601\u003CByte\u003E;header=32;generic=0;",
+    "method:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDetailed.get_Jobs()": "System.Span\u00601\u003CByte\u003E;header=32;generic=0;",
+    "method:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDetailed.get_MemberContentIds()": "System.Span\u00601\u003CUInt64\u003E;header=32;generic=0;",
     "method:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDetailed.get_SlotFlags()": "System.Span\u00601\u003CUInt64\u003E;header=32;generic=0;",
     "method:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BRecruitmentSub.get_Comment()": "System.Span\u00601\u003CByte\u003E;header=32;generic=0;",
     "method:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BRecruitmentSub.get_SlotFlags()": "System.Span\u00601\u003CUInt64\u003E;header=32;generic=0;",
