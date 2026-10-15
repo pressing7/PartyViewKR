@@ -77,6 +77,7 @@ Test("one click, one submit, fresh timer confirms", () => {
     h.Target = h.Target with { RemainingSeconds = 3598 }; h.FinishQuery(); f.Update(4000); f.Update(9000);
     Check(f.Stage == RefreshStage.Completed, "not confirmed");
     Check(h.QueryCalls == 2 && h.EditCalls == 1 && h.SubmitCalls == 1, "duplicate dispatch");
+    Check(h.SubmittedDescriptionArgument == null, "ordinary refresh selected the description callback");
 });
 Test("old response without a new revision cannot open editor", () => {
     var h = new FakeHost(); var f = new ListingRefresh(h); f.Request(1000); f.Update(1000);
@@ -257,7 +258,7 @@ sealed class FakeHost : IListingRefreshHost
     public long EditorClosedRevision { get; set; }
     public bool OwnVerified = true, SubmitAllowed = true, KeepEditorOpen, ThrowOnSubmit;
     public int QueryCalls, EditCalls, SubmitCalls;
-    public string? SubmittedDescription;
+    public string? SubmittedDescription, SubmittedDescriptionArgument;
     public RefreshTarget? SubmittedTarget, EditExpected;
     public int JobEditCalls, JobEditChecks;
     public bool JobEditAllowed = true, JobEditComplete = true, JobEditFailed, ThrowOnJobEdit;
@@ -271,9 +272,10 @@ sealed class FakeHost : IListingRefreshHost
     public bool TryGetOwn(out RefreshTarget target, out string error) { target = Target; error = "작성자 확인 실패"; return OwnVerified; }
     public bool OpenEditor(RefreshTarget target, out string error)
     { EditCalls++; EditorVisible = EditorReady = true; EditorRevision++; error = ""; return true; }
-    public bool Submit(RefreshTarget target, out string error)
+    public bool Submit(RefreshTarget target, string? description, out string error)
     {
         SubmitCalls++; SubmittedTarget = target; SubmittedDescription = target.Description; error = "조건 확인 실패";
+        SubmittedDescriptionArgument = description;
         if (ThrowOnSubmit) throw new InvalidOperationException("simulated native failure");
         if (SubmitAllowed && !KeepEditorOpen) EditorVisible = EditorReady = false;
         return SubmitAllowed;

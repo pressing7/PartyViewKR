@@ -84,6 +84,7 @@ static class ListingJobEditTests
             check(h.JobEditCalls == 1 && h.SubmitCalls == 0, "unfinished edit submitted");
             h.JobEditComplete = true; f.Update(3500); f.Request(3600, edit); f.Update(4000);
             check(h.SubmitCalls == 1 && h.SubmittedTarget!.Slots.Slots[1].SlotFlags == edit.Selected, "wrong/duplicate submit");
+            check(h.SubmittedDescriptionArgument == null, "job edit selected the description callback");
             f.Update(5000); h.Target = h.SubmittedTarget! with { RemainingSeconds = 3598 }; h.FinishQuery(); f.Update(5500);
             check(f.Stage == RefreshStage.Completed && h.QueryCalls == 2 && h.EditCalls == 1 && h.JobEditCalls == 1, "edit not confirmed");
         });

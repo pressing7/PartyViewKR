@@ -32,7 +32,9 @@ internal interface IListingRefreshHost
     SlotEditProgress UpdateSlotEdit(out RefreshTarget expected, out string error);
     bool BeginDescriptionEdit(RefreshTarget target, ListingDescriptionEdit edit, out string error);
     SlotEditProgress UpdateDescriptionEdit(out RefreshTarget expected, out string error);
-    bool Submit(RefreshTarget target, out string error);
+    // null keeps the existing button route; an empty string explicitly clears
+    // the introduction and must still be carried in the final submission.
+    bool Submit(RefreshTarget target, string? description, out string error);
 }
 
 internal enum RefreshStage { Idle, Queued, ReadingOwn, OpeningEditor, EditingSlot, EditingDescription, WaitingResult, Verifying, Completed, Unconfirmed, Stopped }
@@ -51,7 +53,7 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
     internal string Diagnostic => $"refreshStage={Stage}; refreshEditCalls={editCalls}; refreshSubmitCalls={submitCalls}; " +
         $"refreshBeforeSeconds={target?.RemainingSeconds?.ToString() ?? "unknown"}; refreshAfterSeconds={afterSeconds?.ToString() ?? "unknown"}; " +
         $"refreshOwnWaitChecks={ownWaitChecks}; refreshEditorMode={editorMode}; refreshJobSlot={JobEdit?.Position ?? 0}; " +
-        $"refreshDescriptionEdit={DescriptionEdit != null}\nrefreshResult={result}";
+        $"refreshDescriptionEdit={DescriptionEdit != null}\nrefreshResult={result}\n{descriptionVerification}";
 
     private RefreshTarget? target;
     private ulong self;
@@ -60,6 +62,7 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
     private int? afterSeconds;
     private string result = "not_started";
     private string ownWaitReason = "";
+    private string descriptionVerification = "descriptionResultCheck=not_started";
     private RecruitmentEditorMode editorMode;
 
     internal void Request(long now, ListingJobEdit? edit = null, ListingDescriptionEdit? descriptionEdit = null)
@@ -70,6 +73,7 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
         target = null;
         editCalls = submitCalls = ownWaitChecks = 0;
         ownWaitReason = "";
+        descriptionVerification = "descriptionResultCheck=not_started";
         editorMode = RecruitmentEditorMode.Unknown;
         afterSeconds = null;
         if (descriptionEdit != null && (edit != null || !descriptionEdit.Valid))
@@ -195,6 +199,12 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
                 { WaitForOwn(verifyError, true); return; }
                 ownWaitReason = "";
                 afterSeconds = after.RemainingSeconds;
+                if (DescriptionEdit != null)
+                    descriptionVerification = $"descriptionResultCheck=read; " +
+                        $"descriptionResultTextAgrees={ListingIdentity.SameText(target!.Description, after.Description)}; " +
+                        $"descriptionResultExpectedChars={target.Description.Length}; descriptionResultActualChars={after.Description.Length}; " +
+                        $"descriptionResultCriteriaAgree={RefreshEvidence.SameRecruitment(target with { Description = after.Description }, after)}; " +
+                        $"descriptionResultSlotsAgree={ListingJobEdit.SameSlots(target.Slots, after.Slots)}";
                 var contentsAgree = JobEdit != null ? JobEdit.MatchesResult(target!, after) :
                     DescriptionEdit != null ? DescriptionEdit.MatchesResult(target!, after) : RefreshEvidence.SameRecruitment(target!, after);
                 if (!contentsAgree)
@@ -205,6 +215,7 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
                 SetStage(confirmed ? RefreshStage.Completed : RefreshStage.Unconfirmed, now,
                     confirmed ? (JobEdit != null ? "직업 변경 및 갱신 확인 — 내 모집글을 다시 조회했습니다." :
                         DescriptionEdit != null ? "소개말 변경 및 갱신 확인 — 내 모집글을 다시 조회했습니다." : "갱신 확인 — 재등록 후 내 모집글을 다시 조회했습니다.") :
+                    DescriptionEdit != null ? "수정한 소개말이 등록된 것을 확인했습니다. 남은 시간 초기화 여부는 게임에서 확인해 주세요." :
                     "재등록 요청 후 내 모집글을 확인했습니다. 남은 시간 초기화 여부는 게임에서 확인해 주세요.");
                 break;
         }
@@ -223,7 +234,7 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
         // Advance before native dispatch; failures never cause an automatic retry.
         submitCalls++;
         cooldownUntil = now + 5000;
-        if (!host.Submit(target!, out var error)) Stop(error, "submit_not_completed");
+        if (!host.Submit(target!, DescriptionEdit?.Value, out var error)) Stop(error, "submit_not_completed");
     }
 
     private void BeginQuery(long now, bool verify)

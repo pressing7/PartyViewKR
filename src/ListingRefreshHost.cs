@@ -98,20 +98,37 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
         return true;
     }
 
-    public bool Submit(RefreshTarget target, out string error)
+    public bool Submit(RefreshTarget target, string? description, out string error)
     {
         if (!ValidateEditor(target, out var addon, out var agent, out error)) return false;
         if (Visible("LookingForGroupSelectRole"))
         { check = "role_editor_still_open"; error = "직업 선택 창이 열려 있어 갱신을 중단했습니다."; return false; }
         if (slotEdit != null && (!slotEdit.Completed || !ValidateSlotGuard(agent, slotEdit, true, out error))) return false;
-        if (descriptionSession != null && (!descriptionSession.Completed ||
-            !ValidateDescriptionGuard(addon, agent, descriptionSession, true, out error))) return false;
+        if ((description != null) != (descriptionSession != null) || descriptionSession != null &&
+            (!descriptionSession.Completed || descriptionSession.SubmitCallbackCalls != 0 ||
+                description != descriptionSession.Edit.Value || description != target.Description))
+        { check = "description_submit_binding_mismatch"; error = "갱신 요청에 포함할 소개말을 확인하지 못했습니다."; return false; }
+        if (descriptionSession != null && !ValidateDescriptionGuard(addon, agent, descriptionSession, true, out error)) return false;
 
         // Recheck immediately before dispatch, including the localized label.
         if (!ReadEditorAction() || buttonMode != RecruitmentEditorMode.Refresh)
         { check = "refresh_button_changed_before_submit"; error = "게임의 갱신 버튼 상태가 바뀌어 중단했습니다."; return false; }
-        check = "submit_existing_criteria_once";
         editingTarget = null;
+        if (descriptionSession is { } session)
+        {
+            // PFRemote 1.0.0.12 CreatePf b__1 (method 459) carries the comment
+            // again in command 0. Command 15 only prepares the draft. A bare
+            // button event can submit the previous comment in the KR client.
+            // This path is bound to an existing own listing and Refresh mode;
+            // it must never be used in a new-party/Create editor.
+            check = "submit_description_callback_once";
+            session.Phase = "submitting";
+            session.SubmitCallbackCalls++;
+            session.SubmitCallbackReturned = FireDescriptionCallback((AtkUnitBase*)addon, 0, description!);
+            session.Phase = "submitted";
+            return true;
+        }
+        check = "submit_existing_criteria_once";
         return ClickZero((AtkUnitBase*)addon, out error);
     }
 

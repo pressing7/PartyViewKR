@@ -15,6 +15,8 @@ internal sealed unsafe partial class ListingRefreshHost
     private string DescriptionEditDiagnostic => $"descriptionEditCheck={descriptionCheck}; " +
         $"descriptionEditPhase={descriptionSession?.Phase ?? "none"}; descriptionInputCalls={descriptionSession?.InputCalls ?? 0}; " +
         $"descriptionCallbackCalls={descriptionSession?.CallbackCalls ?? 0}; " +
+        $"descriptionSubmitCallbackCalls={descriptionSession?.SubmitCallbackCalls ?? 0}; " +
+        $"descriptionSubmitCallbackReturned={descriptionSession?.SubmitCallbackReturned?.ToString() ?? "unknown"}; " +
         $"descriptionRequestedBytes={descriptionSession?.Edit.ByteCount ?? 0}; descriptionVisibleChars={descriptionVisibleChars}; " +
         $"descriptionStoredChars={descriptionStoredChars}; descriptionMaxByte={descriptionMaxByte}; descriptionMaxChar={descriptionMaxChar}";
 
@@ -26,7 +28,8 @@ internal sealed unsafe partial class ListingRefreshHost
         internal readonly string Invariant = invariant;
         internal readonly long Started = Environment.TickCount64;
         internal string Phase = "input";
-        internal int InputCalls, CallbackCalls;
+        internal int InputCalls, CallbackCalls, SubmitCallbackCalls;
+        internal bool? SubmitCallbackReturned;
         internal bool Completed;
     }
 
@@ -98,12 +101,13 @@ internal sealed unsafe partial class ListingRefreshHost
             session.Phase = "verifying";
             // SetText may already have notified the agent. Otherwise use the
             // original PFRemote CreatePf b__0 / FireLfgCommand(string): command
-            // 15, UTF-8 text, FireCallback(3, values, true). Never command 0 here.
+            // 15, UTF-8 text, FireCallback(3, values, true). Command 0 with the
+            // same comment is sent later by Submit, after every final guard.
             if (!ListingIdentity.SameText(stored, session.Edit.Value))
             {
                 session.CallbackCalls++;
                 descriptionCheck = "notifying_comment_once";
-                FireDescriptionCallback((AtkUnitBase*)addon, session.Edit.Value);
+                FireDescriptionCallback((AtkUnitBase*)addon, 15, session.Edit.Value);
                 return SlotEditProgress.Waiting;
             }
         }
@@ -111,7 +115,7 @@ internal sealed unsafe partial class ListingRefreshHost
             return SlotEditProgress.Waiting;
         editingTarget = session.Expected;
         if (!ValidateEditor(session.Expected, out _, out _, out error)) return SlotEditProgress.Failed;
-        session.Completed = true; session.Phase = "complete"; descriptionCheck = "description_verified";
+        session.Completed = true; session.Phase = "complete"; descriptionCheck = "draft_description_verified";
         expected = session.Expected;
         return SlotEditProgress.Complete;
     }
@@ -138,17 +142,17 @@ internal sealed unsafe partial class ListingRefreshHost
     private static string DescriptionInvariant(AgentLookingForGroup* agent) => DraftInvariant(agent, false) + "/" +
         Convert.ToHexString(MemoryMarshal.AsBytes(agent->StoredRecruitmentInfo.SlotFlags));
 
-    private static void FireDescriptionCallback(AtkUnitBase* addon, string text)
+    private static bool FireDescriptionCallback(AtkUnitBase* addon, int command, string text)
     {
         var bytes = Encoding.UTF8.GetBytes(text + '\0');
         var values = stackalloc AtkValue[3];
         new Span<AtkValue>(values, 3).Clear();
-        values[0].Type = AtkValueType.Int; values[0].Int = 15;
+        values[0].Type = AtkValueType.Int; values[0].Int = command;
         fixed (byte* pointer = bytes)
         {
             // Borrow the pinned string only for this synchronous callback.
             values[1].Type = AtkValueType.String; values[1].String.Value = pointer;
-            addon->FireCallback(3, values, true);
+            return addon->FireCallback(3, values, true);
         }
     }
 }

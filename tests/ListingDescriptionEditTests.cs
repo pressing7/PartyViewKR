@@ -48,6 +48,7 @@ static class ListingDescriptionEditTests
                 check(h.DescriptionEditCalls == 1 && h.SubmitCalls == 0, "pending input submitted/repeated");
                 h.DescriptionEditComplete = true; f.Update(3500); f.Update(4000);
                 check(h.SubmitCalls == 1 && h.SubmittedDescription == edit.Value, "wrong/duplicate description submit");
+                check(h.SubmittedDescriptionArgument == edit.Value, "final submit omitted the edited comment argument");
                 check(h.SubmittedTarget!.Criteria == h.Target.Criteria && ListingJobEdit.SameSlots(h.Target.Slots, h.SubmittedTarget.Slots), "slot/settings changed");
                 f.Update(5000); h.Target = h.SubmittedTarget with { RemainingSeconds = 3598 }; h.FinishQuery(); f.Update(5500);
                 check(f.Stage == RefreshStage.Completed && h.DescriptionEditCalls == 1 && h.SubmitCalls == 1, "description result unconfirmed/repeated");
@@ -57,6 +58,45 @@ static class ListingDescriptionEditTests
             var h = new FakeHost { Target = Target(text: "") }; var f = new ListingRefresh(h);
             f.Request(1000, descriptionEdit: new(h.Target, "새 소개말")); f.Update(1000); h.FinishQuery(); f.Update(1500); f.Update(2000); f.Update(2500);
             check(h.SubmitCalls == 1 && h.SubmittedDescription == "새 소개말", "empty original rejected");
+            check(h.SubmittedDescriptionArgument == "새 소개말", "final submit omitted added text");
+        });
+        test("final submission carries changed, empty and Korean text independently of the draft", () => {
+            foreach (var text in new[] { "12345", "", "한글 소개말", "첫 줄\n둘째 줄" })
+            {
+                var (h, f, edit) = Start(text);
+                // The editor snapshot alone is not the outgoing payload. In the
+                // reported KR behavior, a button-only submit kept the old text.
+                f.Update(2500);
+                var postedText = h.SubmittedDescriptionArgument ?? h.Target.Description;
+                check(h.SubmittedDescriptionArgument != null && postedText == edit.Value, "new comment absent from submit payload");
+                check(h.SubmitCalls == 1 && h.Target.Description == "기존 소개말", "duplicate submit or original overwritten");
+            }
+        });
+        test("reported three-character old text after a five-byte edit remains unconfirmed with diagnostic detail", () => {
+            var h = new FakeHost { Target = Target(text: "old") with { RemainingSeconds = 3600 } };
+            var f = new ListingRefresh(h);
+            f.Request(1000, descriptionEdit: new(h.Target, "12345")); f.Update(1000); h.FinishQuery(); f.Update(1500);
+            f.Update(2000); f.Update(2500); f.Update(4000); h.FinishQuery(); f.Update(4500); f.Update(20000);
+            check(f.Stage == RefreshStage.Unconfirmed && h.SubmitCalls == 1, "old text accepted or resubmitted");
+            check(f.Diagnostic.Contains("descriptionResultTextAgrees=False") &&
+                f.Diagnostic.Contains("descriptionResultExpectedChars=5; descriptionResultActualChars=3") &&
+                f.Diagnostic.Contains("descriptionResultCriteriaAgree=True") && f.Diagnostic.Contains("descriptionResultSlotsAgree=True"), "missing mismatch evidence");
+            check(!f.Diagnostic.Contains("12345") && !f.Diagnostic.Contains("old"), "comment content leaked into diagnostics");
+        });
+        test("verified text at the same displayed timer is reported separately from timer confirmation", () => {
+            var (h, f, _) = Start("등록된 새 소개말");
+            f.Update(2500); f.Update(4000); h.Target = h.SubmittedTarget!; h.FinishQuery(); f.Update(4500);
+            check(f.Stage == RefreshStage.Unconfirmed && f.Status.Contains("수정한 소개말이 등록된 것을 확인"), "verified text hidden by timer ambiguity");
+            check(f.Diagnostic.Contains("descriptionResultTextAgrees=True"), "missing registered text confirmation");
+        });
+        test("failed or thrown description submissions never fall back to a button or retry", () => {
+            foreach (var throws in new[] { false, true })
+            {
+                var (h, f, _) = Start("제출할 소개말"); h.SubmitAllowed = false; h.ThrowOnSubmit = throws;
+                try { f.Update(2500); } catch (InvalidOperationException ex) { f.Fail(ex.Message); }
+                f.Update(3000); f.Update(20000);
+                check(!f.Busy && h.SubmitCalls == 1 && h.SubmittedDescriptionArgument == "제출할 소개말", "failed submission retried or lost text");
+            }
         });
         test("changed description or alliance participants block stale drafts before opening", () => {
             var original = Target(48); var changedSlots = original.Slots.Slots.ToArray();
