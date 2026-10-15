@@ -5,6 +5,7 @@ static class ListingObjectiveEditTests
 {
     internal static void Run(Action<string, Action> test, Action<bool, string> check)
     {
+        ListingObjectiveUiTests.Run(test, check);
         RefreshTarget Target(int count = 8, byte objective = 1)
         {
             var flags = Enumerable.Repeat(0xFFFFFFFFFFFFFFFEul, count).ToArray();
@@ -44,9 +45,6 @@ static class ListingObjectiveEditTests
             check(after.Description == t.Description && after.Slots == t.Slots && after.ExtraCriteria == t.ExtraCriteria, "unrelated fields changed");
             var beforeFields = t.Criteria.Split('/'); var afterFields = after.Criteria.Split('/');
             check(beforeFields.Where((_, i) => i != 2).SequenceEqual(afterFields.Where((_, i) => i != 2)), "beginner or other conditions changed");
-        });
-        test("unverified automatic purpose editing is unavailable", () => {
-            check(!ListingObjectives.AutomaticEditingAvailable, "unverified automation exposed");
         });
         test("manual trace keeps nested before/after order and stops without losing evidence", () => {
             var log = new ObjectiveTraceBuffer();

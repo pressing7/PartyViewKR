@@ -86,6 +86,8 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
         editingTarget = null;
         slotEdit = null;
         descriptionSession = null;
+        objectiveSession = null;
+        objectiveCheck = "not_started";
         if (!TryGetOwn(out var current, out error)) return false;
         if (current.ListingId != target.ListingId || !RefreshEvidence.SameRecruitment(target, current) ||
             (plugin.Refresh.JobEdit != null || plugin.Refresh.DescriptionEdit != null || plugin.Refresh.ObjectiveEdit != null) &&
@@ -102,8 +104,6 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
 
     public bool Submit(RefreshTarget target, string? description, out string error)
     {
-        if (plugin.Refresh.ObjectiveEdit != null)
-        { error = ObjectiveTraceRequired; return false; }
         if (!ValidateEditor(target, out var addon, out var agent, out error)) return false;
         if (Visible("LookingForGroupSelectRole"))
         { check = "role_editor_still_open"; error = "직업 선택 창이 열려 있어 갱신을 중단했습니다."; return false; }
@@ -113,6 +113,9 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
                 description != descriptionSession.Edit.Value || description != target.Description))
         { check = "description_submit_binding_mismatch"; error = "갱신 요청에 포함할 소개말을 확인하지 못했습니다."; return false; }
         if (descriptionSession != null && !ValidateDescriptionGuard(addon, agent, descriptionSession, true, out error)) return false;
+        if ((plugin.Refresh.ObjectiveEdit != null) != (objectiveSession != null))
+        { error = "목적 수정 요청과 게임 수정창의 연결이 달라 중단했습니다."; return false; }
+        if (objectiveSession != null && (!objectiveSession.Completed || !ValidateObjectiveGuard(addon, agent, objectiveSession, true, out error))) return false;
 
         // Recheck immediately before dispatch, including the localized label.
         if (!ReadEditorAction() || buttonMode != RecruitmentEditorMode.Refresh)

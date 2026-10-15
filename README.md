@@ -1,6 +1,6 @@
 # PartyViewKR
 
-한섭 파티원·모집글 조회, **내 모집글 수동 갱신 및 소개말·빈자리 허용 직업 수정** 플러그인입니다. `/pvkr`로 엽니다.
+한섭 파티원·모집글 조회, **내 모집글 수동 갱신 및 목적·소개말·빈자리 허용 직업 수정** 플러그인입니다. `/pvkr`로 엽니다.
 콘텐츠·파티 유형 등 전체 조건의 편집과 새 모집 시작은 이후 단계입니다.
 
 ## 설치와 업데이트
@@ -15,9 +15,34 @@ https://raw.githubusercontent.com/pressing7/PartyViewKR/main/pluginmaster.json
 배포 파일은 [Releases](https://github.com/pressing7/PartyViewKR/releases)의 `PartyViewKR.zip`입니다.
 저장소 루트에 남아 있는 이전 수동 업로드 DLL/JSON은 최신 배포 파일이 아닙니다.
 
+## 0.3.18의 게임 드롭다운을 통한 목적 수정
+
+0.3.17에서 받은 한섭 수동 선택 기록으로 목적 드롭다운의 이벤트 경로를 확인했습니다. **내 모집글 조회 → 목적 수정 → 항목 선택 → 변경 적용 및 갱신**을 다시 사용할 수 있습니다.
+
+| 단계 | 기록에서 확인한 이벤트 | 수신 대상 |
+| --- | --- | --- |
+| 드롭다운 열기 | 체크 상태가 켜진 뒤 ButtonClick(25), Param 2 | 목적 드롭다운 |
+| 항목 클릭 및 목록 닫기 | ListItemClick(35), Param 1, 선택 번호 0–3 | 목적 드롭다운 |
+| 목록 선택 변경 | ListItemHighlight(37), Param 1 | 목적 드롭다운 |
+| 목적 반영 | ListItemHighlight(37), Param 20 | 모집 수정창 |
+
+기록에서 마지막 단계의 게임 내부 콜백 인자는 화면 순번 0/1/2/3에 대해 각각 `Int 20 / UInt 1·2·3·4 / UInt 0`이었고 저장값은 1/2/4/8로 바뀌었습니다. `callbackReturned=False`는 네 경우 모두 나타났으므로 실패 판정으로 사용하지 않습니다. 0.3.16의 매핑은 이 기록으로 확인됐지만, **이번 구현은 게임 UI의 선택 경로를 사용하며 목적 콜백을 직접 만들지 않습니다.**
+
+- 확인된 노드 16(드롭다운), 내부 노드 2(체크박스), 내부 노드 3(목록)과 실제 등록 이벤트의 대상·수신자·Param을 확인합니다.
+- 게임 버튼의 `SetChecked(true)`로 수동 클릭 직후와 같은 UI 상태를 만들고 등록된 열기 이벤트를 한 번 전달합니다. 목록이 실제로 열리고 전환이 끝난 것을 확인한 뒤 진행합니다.
+- 게임 목록의 `DispatchItemEvent(index, ListItemClick)`으로 항목 클릭을 전달하고, 수동 기록대로 목록이 닫혔으나 기존 선택값이 남아 있는지 확인합니다. 같은 업데이트 안에서 `SelectItem(index, true)`를 한 번 호출해 화면 선택과 선택 이벤트를 함께 처리합니다. 이후 목적 콜백은 게임이 생성합니다.
+- **화면 순번·목록 순번·저장된 목적값이 모두 요청과 일치하고 목록 전환이 끝난 뒤** 갱신합니다. 기존처럼 다른 조건·새싹 설정·소개말·전체 48자리와 참가자를 보존하는 검사와 갱신 후 재조회 검증을 유지합니다.
+- 열림 실패, 예상과 다른 클릭 결과, 다른 목적값, 화면만 바뀐 상태, 창 변경 등에서는 중단합니다. 다른 방식으로 재시도하거나 모집 목적 메모리에 직접 쓰지 않습니다.
+
+진단에는 `objectiveEditPhase`, `objectiveOpenCalls`, `objectiveItemClickCalls`, `objectiveSelectCalls`, `objectiveUiIndex`, `objectiveListIndex`, `objectiveStoredValue`, `objectiveDropdownOpen/Pending`가 들어갑니다. `objectiveDirectCallbackCalls=0`은 PVKR이 목적 콜백을 직접 호출하지 않는다는 뜻입니다. 선택 이후의 게임 내부 호출과 구별합니다.
+
+상태 전환 테스트는 수동 기록의 네 변경(1→2→4→8→1), 목록 열림 실패, 화면/저장값 한쪽만 바뀐 경우, 전환 중인 목록, 다른 목적, 동작 재시도 방지를 확인합니다. [FFXIVClientStructs의 목록 API](https://github.com/aers/FFXIVClientStructs/blob/main/FFXIVClientStructs/FFXIV/Component/GUI/AtkComponentList.cs)와 제공된 한섭 DLL에서 새로 사용하는 함수와 가상 함수 슬롯을 확인하고 호환 검사에 추가했습니다.
+
+**수동 이벤트 경로는 인게임 기록으로 확인했으며, 이를 연결한 자동 동작은 이번 빌드로 인게임 확인이 필요합니다. Actions 빌드·배포는 사용자가 직접 실행합니다.**
+
 ## 0.3.17의 목적 선택 진단
 
-목적은 게임 드롭다운을 열고 항목을 선택하는 경로로 구현할 예정입니다. 그 경로를 확인하기 위해 이번 버전은 **수동 조작 기록**을 제공합니다. 0.3.15/16의 `FireCallback(20, 선택값, 0)` 호출과 추정한 `+1` 변환은 제거했습니다. 목적 자동 수정 버튼은 기록 분석이 끝날 때까지 비활성화합니다. 기존 모집 갱신·소개말·직업 수정은 유지합니다.
+목적은 게임 드롭다운을 열고 항목을 선택하는 경로로 구현할 예정입니다. 그 경로를 확인하기 위해 0.3.17에서는 **수동 조작 기록**을 추가했습니다. 기록 기능은 0.3.18에도 유지합니다. 0.3.15/16의 `FireCallback(20, 선택값, 0)` 호출과 추정한 `+1` 변환은 제거했습니다. 0.3.17에서는 목적 자동 수정 버튼을 잠시 비활성화했으며, 0.3.18에서는 기록에 따라 UI 경로로 다시 연결했습니다. 기존 모집 갱신·소개말·직업 수정은 유지합니다.
 
 1. 게임에서 **현재 모집의 수정창**을 직접 엽니다. 목적 드롭다운은 닫힌 상태로 둡니다.
 2. `/pvkr` 하단의 **목적 선택 진단 → 목적 기록 시작**을 누릅니다.
@@ -30,7 +55,7 @@ https://raw.githubusercontent.com/pressing7/PartyViewKR/main/pluginmaster.json
 
 [Dalamud의 훅 안내](https://dalamud.dev/plugin-development/interaction/expanding-game-events/) 및 [FFXIVClientStructs의 이벤트 정의](https://github.com/aers/FFXIVClientStructs/blob/main/FFXIVClientStructs/FFXIV/Component/GUI/AtkEvent.cs)를 참고했습니다. 사용자가 제공한 구조 DLL에서 드롭다운·이벤트 데이터·네이티브 델리게이트 정의를 확인하고 호환 검사에 포함했습니다.
 
-**로컬 빌드와 관리 코드 테스트는 게임의 이벤트 경로를 증명하지 않습니다. 이번 버전은 경로 확인용이며, 자동 선택 구현은 실제 기록을 받은 뒤 진행합니다. Actions 빌드·배포는 사용자가 직접 실행합니다.**
+**로컬 빌드와 관리 코드 테스트는 게임의 이벤트 경로를 증명하지 않습니다. 0.3.17은 경로 확인용 버전이었으며, 받은 기록에 따른 자동 선택은 위 0.3.18에 연결했습니다. Actions 빌드·배포는 사용자가 직접 실행합니다.**
 
 ## 0.3.15/16의 목적 수정 시도와 확인된 범위
 

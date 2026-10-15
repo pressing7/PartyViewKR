@@ -313,7 +313,7 @@ sealed class FakeHost : IListingRefreshHost
         ObjectiveEditCalls++; error = "목적 선택 실패";
         if (ThrowOnObjectiveEdit) throw new InvalidOperationException("simulated objective failure");
         // This fake tests flow/result validation only. It does not model or
-        // establish a native dropdown/callback contract. Native editing is paused.
+        // establish a native dropdown/callback contract. UI phases have separate tests.
         ObjectiveExpected = edit.Expected(target);
         return ObjectiveEditAllowed;
     }

@@ -226,11 +226,10 @@ internal sealed class PartyWindow : Window
         ImGui.TextUnformatted($"모집 목적: {ListingObjectives.Label(listing.Objective)}");
         if (listing.Owner != ListingOwner.Self) return;
         ImGui.SameLine();
-        ImGui.BeginDisabled(!ListingObjectives.AutomaticEditingAvailable || !listing.IsLive || !listing.Objective.HasValue || plugin.Refresh.Busy || plugin.ListingBusy ||
+        ImGui.BeginDisabled(!ListingObjectives.AutomaticEditingAvailable || plugin.ObjectiveTrace.Busy || !listing.IsLive || !listing.Objective.HasValue || plugin.Refresh.Busy || plugin.ListingBusy ||
             plugin.JobDraft != null || plugin.DescriptionDraft != null || ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
         if (ImGui.SmallButton("목적 수정")) plugin.RequestObjectiveEdit();
         ImGui.EndDisabled();
-        if (!ListingObjectives.AutomaticEditingAvailable) ImGui.TextDisabled("목적 자동 수정은 수동 선택 기록 확인 후 연결합니다.");
     }
 
     private void DrawObjectiveTrace()

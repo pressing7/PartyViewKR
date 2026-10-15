@@ -6,7 +6,7 @@ internal static class ListingObjectives
 {
     // KR dropdown order confirmed from the user's LookingForGroupCondition UI.
     // UI indices are 0..3; AgentLookingForGroup.Objective stores 1,2,4,8.
-    internal static bool AutomaticEditingAvailable => false;
+    internal static bool AutomaticEditingAvailable => true;
     internal static readonly string[] Names = ["설정 안 함", "완료 목적", "연습", "반복 공략"];
     internal static byte? Value(int index) => index is >= 0 and <= 3 ? (byte)(1 << index) : null;
     internal static int Index(byte? value) => value switch { 1 => 0, 2 => 1, 4 => 2, 8 => 3, _ => -1 };
