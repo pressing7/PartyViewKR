@@ -34,10 +34,13 @@ public sealed class Plugin : IDalamudPlugin
     private string lastListingError = "";
     private int? requestedSlot;
     private bool requestedDescription;
+    private bool requestedObjective;
     internal ListingJobDraft? JobDraft { get; private set; }
     internal string JobDraftStatus { get; private set; } = "";
     internal ListingDescriptionDraft? DescriptionDraft { get; private set; }
     internal string DescriptionDraftStatus { get; private set; } = "";
+    internal ListingObjectiveDraft? ObjectiveDraft { get; private set; }
+    internal string ObjectiveDraftStatus { get; private set; } = "";
     internal PartySnapshot Snapshot { get; private set; } = PartySnapshot.Empty;
     internal ListingSnapshot Listing { get; private set; } = ListingSnapshot.Empty;
     internal ListingRefresh Refresh { get; }
@@ -71,13 +74,15 @@ public sealed class Plugin : IDalamudPlugin
     internal void QueryOwnListing() { if (!Refresh.Busy) listingReader.RequestOwn(); RequestRead(); }
     internal void RefreshOwnListing() { Refresh.Request(Environment.TickCount64); RequestRead(); }
     internal void CancelRefresh() { Refresh.Cancel(); RequestRead(); }
-    internal void RequestSlotEdit(int position) { if (!Refresh.Busy && DescriptionDraft == null) { requestedSlot = position; RequestRead(); } }
-    internal void RequestDescriptionEdit() { if (!Refresh.Busy && JobDraft == null) { requestedDescription = true; RequestRead(); } }
+    internal void RequestSlotEdit(int position) { if (!Refresh.Busy && DescriptionDraft == null && ObjectiveDraft == null) { requestedSlot = position; RequestRead(); } }
+    internal void RequestDescriptionEdit() { if (!Refresh.Busy && JobDraft == null && ObjectiveDraft == null) { requestedDescription = true; RequestRead(); } }
+    internal void RequestObjectiveEdit() { if (!Refresh.Busy && JobDraft == null && DescriptionDraft == null) { requestedObjective = true; RequestRead(); } }
     internal void CloseDescriptionDraft() => DescriptionDraft = null;
     internal void CloseJobDraft() => JobDraft = null;
+    internal void CloseObjectiveDraft() => ObjectiveDraft = null;
     internal bool ApplyJobDraft()
     {
-        if (JobDraft == null || DescriptionDraft != null || !JobDraft.Request.Valid || Refresh.Busy || ListingBusy || Refresh.CoolingDown(Environment.TickCount64)) return false;
+        if (JobDraft == null || DescriptionDraft != null || ObjectiveDraft != null || !JobDraft.Request.Valid || Refresh.Busy || ListingBusy || Refresh.CoolingDown(Environment.TickCount64)) return false;
         Refresh.Request(Environment.TickCount64, JobDraft.Request);
         JobDraft = null; JobDraftStatus = "";
         RequestRead();
@@ -85,9 +90,18 @@ public sealed class Plugin : IDalamudPlugin
     }
     internal bool ApplyDescriptionDraft()
     {
-        if (DescriptionDraft == null || JobDraft != null || !DescriptionDraft.Request.Valid || Refresh.Busy || ListingBusy || Refresh.CoolingDown(Environment.TickCount64)) return false;
+        if (DescriptionDraft == null || JobDraft != null || ObjectiveDraft != null || !DescriptionDraft.Request.Valid || Refresh.Busy || ListingBusy || Refresh.CoolingDown(Environment.TickCount64)) return false;
         Refresh.Request(Environment.TickCount64, descriptionEdit: DescriptionDraft.Request);
         DescriptionDraft = null; DescriptionDraftStatus = "";
+        RequestRead();
+        return true;
+    }
+    internal bool ApplyObjectiveDraft()
+    {
+        if (ObjectiveDraft == null || JobDraft != null || DescriptionDraft != null || !ObjectiveDraft.Request.Valid ||
+            Refresh.Busy || ListingBusy || Refresh.CoolingDown(Environment.TickCount64)) return false;
+        Refresh.Request(Environment.TickCount64, objectiveEdit: ObjectiveDraft.Request);
+        ObjectiveDraft = null; ObjectiveDraftStatus = "";
         RequestRead();
         return true;
     }
@@ -103,7 +117,7 @@ public sealed class Plugin : IDalamudPlugin
             JobDraft = null;
         if (requestedSlot is not { } position) return;
         requestedSlot = null;
-        if (Refresh.Busy || ListingBusy || DescriptionDraft != null) return;
+        if (Refresh.Busy || ListingBusy || DescriptionDraft != null || ObjectiveDraft != null) return;
         if (refreshHost.BlockReason is { } reason) { JobDraftStatus = reason; return; }
         if (!refreshHost.TryGetOwn(out var target, out var error)) { JobDraftStatus = error; return; }
         if (!ListingJobEdit.Supports(target))
@@ -120,13 +134,28 @@ public sealed class Plugin : IDalamudPlugin
             DescriptionDraft = null;
         if (!requestedDescription) return;
         requestedDescription = false;
-        if (Refresh.Busy || ListingBusy || JobDraft != null) return;
+        if (Refresh.Busy || ListingBusy || JobDraft != null || ObjectiveDraft != null) return;
         if (refreshHost.BlockReason is { } reason) { DescriptionDraftStatus = reason; return; }
         if (!refreshHost.TryGetOwn(out var target, out var error)) { DescriptionDraftStatus = error; return; }
         if (!ListingJobEdit.Supports(target))
         { DescriptionDraftStatus = "일반 4·8인 및 연합 24·48인 모집 정보를 확인한 뒤 소개말을 수정할 수 있습니다."; return; }
         DescriptionDraft = new(target);
         DescriptionDraftStatus = "";
+    }
+
+    private void PrepareObjectiveDraft()
+    {
+        if (!ClientState.IsLoggedIn || !PlayerState.IsLoaded || ObjectiveDraft != null && ObjectiveDraft.Original.SelfId != PlayerState.ContentId)
+            ObjectiveDraft = null;
+        if (!requestedObjective) return;
+        requestedObjective = false;
+        if (Refresh.Busy || ListingBusy || JobDraft != null || DescriptionDraft != null) return;
+        if (refreshHost.BlockReason is { } reason) { ObjectiveDraftStatus = reason; return; }
+        if (!refreshHost.TryGetOwn(out var target, out var error)) { ObjectiveDraftStatus = error; return; }
+        if (!ListingObjectiveEdit.Supports(target))
+        { ObjectiveDraftStatus = "일반 4·8인 및 연합 24·48인 모집의 목적과 파티 구성을 확인한 뒤 수정할 수 있습니다."; return; }
+        ObjectiveDraft = new(target);
+        ObjectiveDraftStatus = "";
     }
 
     private void OnUpdate(IFramework framework)
@@ -163,7 +192,7 @@ public sealed class Plugin : IDalamudPlugin
             if (message != lastListingError) Log.Error(ex, "PartyViewKR: listing read failed");
             lastListingError = message;
         }
-        try { PrepareJobDraft(); PrepareDescriptionDraft(); Refresh.Update(now); }
+        try { PrepareJobDraft(); PrepareDescriptionDraft(); PrepareObjectiveDraft(); Refresh.Update(now); }
         catch (Exception ex)
         {
             Refresh.Fail(ex.GetBaseException().Message);

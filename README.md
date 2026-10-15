@@ -1,6 +1,6 @@
 # PartyViewKR
 
-한섭 파티원·모집글 조회, **내 모집글 수동 갱신 및 소개말·빈자리 허용 직업 수정** 플러그인입니다. `/pvkr`로 엽니다.
+한섭 파티원·모집글 조회, **내 모집글 수동 갱신 및 목적·소개말·빈자리 허용 직업 수정** 플러그인입니다. `/pvkr`로 엽니다.
 콘텐츠·파티 유형 등 전체 조건의 편집과 새 모집 시작은 이후 단계입니다.
 
 ## 설치와 업데이트
@@ -15,6 +15,27 @@ https://raw.githubusercontent.com/pressing7/PartyViewKR/main/pluginmaster.json
 배포 파일은 [Releases](https://github.com/pressing7/PartyViewKR/releases)의 `PartyViewKR.zip`입니다.
 저장소 루트에 남아 있는 이전 수동 업로드 DLL/JSON은 최신 배포 파일이 아닙니다.
 
+## 0.3.15의 모집 목적 수정
+
+모집글을 조회하면 현재 목적을 표시합니다. **목적 수정 → 항목 선택 → 변경 적용 및 갱신** 순서로 사용합니다. 기존 목적을 미리 선택하며 같은 항목은 다시 적용하지 않습니다. X로 닫으면 게임에 적용하지 않습니다.
+
+사용자가 제공한 한섭 수정창의 `ObjectiveDropDown`(노드 16)에서 항목 이름과 순서를 확인했습니다.
+
+| 표시 항목 | 선택 순서 (콜백 값) | 저장되는 목적 값 |
+| --- | --- | --- |
+| 설정 안 함 | 0 | 1 |
+| 완료 목적 | 1 | 2 |
+| 연습 | 2 | 4 |
+| 반복 공략 | 3 | 8 |
+
+제공된 PFRemote 1.0.0.12의 `CreatePf b__0`와 `FireLfgCommand(uint, uint)`에서 확인한 `FireCallback(3, values, true)`의 `Int 20 / UInt 선택 순서 / UInt 0`을 한 번 전달합니다. 기존 목적을 지우는 경우에는 선택 순서 0도 전달합니다. 원본은 새 모집의 기본값일 때 이 명령을 생략하지만, 기존 모집 수정에는 명시적인 변경이 필요합니다.
+
+일반 4·8인 및 연합 24·48인 모집의 본인 글에서 지원합니다. 게임의 목적 선택이 비활성화되어 있으면 중단합니다. 최신 모집글과 참가자를 다시 확인하고, 목적을 제외한 소개말·새싹 설정·기타 모집 조건과 전체 자리 정보가 유지되는지 확인한 뒤 갱신합니다. 콜백 반환값이나 화면 표시만으로 성공을 판단하지 않고 저장된 목적과 갱신 후 새로 조회한 모집글을 확인합니다. 드롭다운 표시가 이전 선택을 유지하는 경우에는 진단에 남기고 추가 선택 이벤트를 보내지 않습니다.
+
+진단에 `listingObjectiveRaw`, `refreshObjectiveEdit`, `objectiveEditCheck`, `objectiveCallbackCalls`, `objectiveRequestedIndex`, `objectiveStoredValue`, `objectiveUiIndex`, `objectiveResultExpected/Actual`을 추가했습니다. 새로 사용하는 드롭다운 구조·함수와 목적 열거형도 구조 DLL 호환 검사에 포함했습니다.
+
+**목적 변경과 ‘설정 안 함’으로 되돌리기는 인게임 확인이 필요합니다. Actions 빌드·배포는 사용자가 직접 실행합니다.**
+
 ## 0.3.14의 소개말 최종 전달 수정
 
 0.3.13 인게임 보고에서 수정창의 표시와 임시 저장값은 요청한 5글자였지만, 갱신 후 조회한 소개말은 3글자로 남았습니다. 사용자가 갱신 버튼을 직접 눌러도 같은 현상이 있었습니다. 따라서 수정창의 값이 일치하는 것만으로 최종 등록 요청에도 같은 문자열이 전달된다고 볼 수 없습니다.
@@ -27,7 +48,7 @@ https://raw.githubusercontent.com/pressing7/PartyViewKR/main/pluginmaster.json
 - 진단에 `descriptionSubmitCallbackCalls`, `descriptionSubmitCallbackReturned`와 재조회한 소개말의 일치 여부·기대/실제 글자 수·다른 조건과 자리의 일치 여부를 추가했습니다. 콜백 반환값만으로 성공을 판단하지 않고 재조회 결과를 확인합니다.
 - 소개말 반영은 확인했지만 전후 표시 시간이 같을 때에는 소개말 확인과 남은 시간 초기화 확인을 구분하여 안내합니다.
 
-**새 최종 전달 경로의 실제 한섭 동작은 인게임 확인이 필요합니다. Actions 빌드·배포는 사용자가 직접 실행합니다.**
+**사용자가 0.3.14에서 소개말 변경을 인게임 확인했습니다. 빈 소개말로 되돌리기는 별도 확인이 필요합니다. Actions 빌드·배포는 사용자가 직접 실행합니다.**
 
 ## 0.3.13의 소개말 편집
 
@@ -43,7 +64,7 @@ https://raw.githubusercontent.com/pressing7/PartyViewKR/main/pluginmaster.json
 
 일반 4·8인 및 연합 24·48인을 지원합니다. 편집 중 참가자나 모집 조건이 달라지면 적용을 중단하며, 다른 자리의 직업 제한과 파티 구성은 그대로 비교합니다. 진단의 `descriptionEditCheck`, `descriptionInputCalls`, `descriptionCallbackCalls`, `descriptionMaxByte`, `descriptionMaxChar`로 반영 단계를 확인할 수 있습니다. 진단에 소개말 원문은 기록하지 않습니다.
 
-기존 직업 수정은 0.3.12에서 일반·연합 모집 모두 사용자의 인게임 확인을 받았습니다. **새 소개말 입력과 비우기는 인게임 확인이 필요합니다. Actions 빌드·배포는 사용자가 직접 실행합니다.**
+기존 직업 수정은 0.3.12에서 일반·연합 모집 모두 사용자의 인게임 확인을 받았습니다. 소개말 변경은 후속 0.3.14에서 확인했으며, 비우기는 별도 인게임 확인이 필요합니다. **Actions 빌드·배포는 사용자가 직접 실행합니다.**
 
 ## 0.3.12의 48인 파티 선택 중단 수정
 

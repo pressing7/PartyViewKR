@@ -9,6 +9,7 @@ internal sealed record ListingSnapshot(string Status, ListingOwner Owner, string
     string Description, string Remaining, DateTime? ReadAt, bool IsLive, string Note, string Diagnostic)
 {
     internal ListingSlots Slots { get; init; } = ListingSlots.Unavailable("not_read");
+    internal byte? Objective { get; init; }
     internal static ListingSnapshot Empty { get; } = new("아직 읽은 모집글 없음", ListingOwner.Unknown,
         "", "", "", "", null, false, "내 모집글 조회를 누르거나 게임에서 모집글 상세 창을 열어주세요.", "listingRead=not_started");
 }
@@ -95,6 +96,7 @@ internal sealed class ListingReader
         var timeRead = NativeReadGuard.TextNode(addon->TimeRemainingTextNode, out var remaining);
 
         var owner = ListingOwner.Unknown;
+        byte? objective = null;
         var slots = ListingSlots.Unavailable("agent_unreadable");
         rows.BeginRead();
         var agentDiagnostic = "listingAgent=unavailable";
@@ -112,6 +114,8 @@ internal sealed class ListingReader
             var nameAgrees = leaderRead && nativeNameRead && ListingIdentity.SameText(leader, nativeName);
             var commentAgrees = description.NativeAgrees;
             var shapePlausible = detail.ListingId != 0 && detail.TotalSlots is >= 1 and <= 48 && detail.SlotsFilled <= detail.TotalSlots;
+            if (shapePlausible && nameAgrees && commentAgrees && ListingObjectives.Index((byte)detail.Objective) >= 0)
+                objective = (byte)detail.Objective;
             slots = ListingSlots.Read(shapePlausible && nameAgrees && commentAgrees,
                 detail.TotalSlots, detail.SlotsFilled, detail.NumberOfParties, detail.IsAlliance,
                 detail.Jobs, detail.MemberContentIds, detail.SlotFlags, rows.Job, rows.RecruitmentJobs());
@@ -122,7 +126,8 @@ internal sealed class ListingReader
                 $"leaderCidIsSelf={detail.LeaderContentId == Plugin.PlayerState.ContentId}; " +
                 $"leaderNameAgrees={nameAgrees}; commentAgrees={commentAgrees}; " +
                 $"nativeCommentReadable={nativeCommentRead}; nativeCommentChars={nativeComment.Length}; " +
-                $"nativeSlots={detail.SlotsFilled}/{detail.TotalSlots}; nativeTimeRaw={detail.TimeLeft}";
+                $"nativeSlots={detail.SlotsFilled}/{detail.TotalSlots}; nativeTimeRaw={detail.TimeLeft}; " +
+                $"listingObjectiveRaw={(byte)detail.Objective}; listingObjectiveReadable={objective.HasValue}";
         }
 
         var diagnostic = $"listingDetailVisible=true\nlistingDetailRevision={Interlocked.Read(ref detailRevision)}\n" +
@@ -141,7 +146,7 @@ internal sealed class ListingReader
         if (owner == ListingOwner.Unknown)
             note = (note + " 현재 열린 상세 창의 내용입니다. 내 모집글인지 여부는 아직 확인되지 않았습니다.").Trim();
         return new("상세 창에서 읽은 모집글", owner, leader, duty, description.Text,
-            remaining, DateTime.Now, true, note, diagnostic) { Slots = slots };
+            remaining, DateTime.Now, true, note, diagnostic) { Slots = slots, Objective = objective };
     }
 
     private unsafe void HandleRequest()

@@ -17,7 +17,7 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
     private string check = "not_started";
     internal string Diagnostic => $"refreshNativeCheck={check}; refreshEditorRevision={EditorRevision}; refreshEditorClosedRevision={EditorClosedRevision}\n" +
         $"refreshButtonMode={buttonMode}; refreshButtonTextReadable={buttonTextReadable}; refreshButtonEnabled={buttonEnabled}; refreshButtonTextChars={buttonTextChars}\n" +
-        SlotEditDiagnostic + "\n" + DescriptionEditDiagnostic;
+        SlotEditDiagnostic + "\n" + DescriptionEditDiagnostic + "\n" + ObjectiveEditDiagnostic;
     public ulong SelfId => Plugin.PlayerState.IsLoaded ? Plugin.PlayerState.ContentId : 0;
     public bool QueryBusy => reader.Busy;
     public bool QuerySucceeded => reader.LastOwnRequestSucceeded;
@@ -85,9 +85,12 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
         editingTarget = null;
         slotEdit = null;
         descriptionSession = null;
+        objectiveSession = null;
+        objectiveCheck = "not_started"; objectiveUiIndex = -1; objectiveStored = null;
         if (!TryGetOwn(out var current, out error)) return false;
         if (current.ListingId != target.ListingId || !RefreshEvidence.SameRecruitment(target, current) ||
-            (plugin.Refresh.JobEdit != null || plugin.Refresh.DescriptionEdit != null) && !ListingJobEdit.SameSlots(target.Slots, current.Slots))
+            (plugin.Refresh.JobEdit != null || plugin.Refresh.DescriptionEdit != null || plugin.Refresh.ObjectiveEdit != null) &&
+                !ListingJobEdit.SameSlots(target.Slots, current.Slots))
         { check = "detail_changed_before_edit"; error = "조회한 모집글이 변경되어 중단했습니다."; return false; }
         var detail = Plugin.GameGui.GetAddonByName<AtkUnitBase>("LookingForGroupDetail", 1);
         editingFromRevision = EditorRevision;
@@ -109,6 +112,7 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
                 description != descriptionSession.Edit.Value || description != target.Description))
         { check = "description_submit_binding_mismatch"; error = "갱신 요청에 포함할 소개말을 확인하지 못했습니다."; return false; }
         if (descriptionSession != null && !ValidateDescriptionGuard(addon, agent, descriptionSession, true, out error)) return false;
+        if (objectiveSession != null && (!objectiveSession.Completed || !ValidateObjectiveGuard(addon, agent, objectiveSession, true, out error))) return false;
 
         // Recheck immediately before dispatch, including the localized label.
         if (!ReadEditorAction() || buttonMode != RecruitmentEditorMode.Refresh)

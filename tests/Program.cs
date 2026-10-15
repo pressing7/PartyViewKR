@@ -241,6 +241,7 @@ ListingRoleButtonsTests.Run(Test, Check);
 ListingJobEditTests.Run(Test, Check);
 ListingSlotRouteTests.Run(Test, Check);
 ListingDescriptionEditTests.Run(Test, Check);
+ListingObjectiveEditTests.Run(Test, Check);
 CompatibilityTests.Run(Test, Check);
 Console.WriteLine($"All {passed} tests passed. Native game interaction still requires in-game validation.");
 
@@ -265,6 +266,9 @@ sealed class FakeHost : IListingRefreshHost
     public int DescriptionEditCalls, DescriptionEditChecks;
     public bool DescriptionEditAllowed = true, DescriptionEditComplete = true, DescriptionEditFailed, ThrowOnDescriptionEdit;
     public RefreshTarget? DescriptionExpected;
+    public int ObjectiveEditCalls;
+    public bool ObjectiveEditAllowed = true, ObjectiveEditComplete = true, ObjectiveEditFailed, ThrowOnObjectiveEdit;
+    public RefreshTarget? ObjectiveExpected;
     public RefreshTarget Target = new(10, 1, 123, "기존 모집 문구", "same", 1800, 8);
     public void QueryOwn() { QueryCalls++; QueryBusy = true; QuerySucceeded = false; }
     public void FinishQuery() { QueryBusy = false; QuerySucceeded = true; DetailRevision++; }
@@ -303,5 +307,17 @@ sealed class FakeHost : IListingRefreshHost
     {
         DescriptionEditChecks++; expected = DescriptionExpected!; error = "소개말 반영 확인 실패";
         return DescriptionEditFailed ? SlotEditProgress.Failed : DescriptionEditComplete ? SlotEditProgress.Complete : SlotEditProgress.Waiting;
+    }
+    public bool BeginObjectiveEdit(RefreshTarget target, ListingObjectiveEdit edit, out string error)
+    {
+        ObjectiveEditCalls++; error = "목적 선택 실패";
+        if (ThrowOnObjectiveEdit) throw new InvalidOperationException("simulated objective failure");
+        ObjectiveExpected = edit.Expected(target);
+        return ObjectiveEditAllowed;
+    }
+    public SlotEditProgress UpdateObjectiveEdit(out RefreshTarget expected, out string error)
+    {
+        expected = ObjectiveExpected!; error = "목적 반영 확인 실패";
+        return ObjectiveEditFailed ? SlotEditProgress.Failed : ObjectiveEditComplete ? SlotEditProgress.Complete : SlotEditProgress.Waiting;
     }
 }

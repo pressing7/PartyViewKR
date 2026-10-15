@@ -234,11 +234,11 @@ internal sealed unsafe partial class ListingRefreshHost
         return true;
     }
 
-    private static string DraftInvariant(AgentLookingForGroup* agent, bool includeComment = true)
+    private static string DraftInvariant(AgentLookingForGroup* agent, bool includeComment = true, bool includeObjective = true)
     {
         ref var draft = ref agent->StoredRecruitmentInfo;
         if (!NativeReadGuard.FixedText(draft.Comment, out var comment)) throw new InvalidDataException("draft_comment_unreadable");
-        return Criteria((uint)draft.SelectedCategory, draft.SelectedDutyId, (byte)draft.Objective, draft.BeginnerFriendly,
+        return Criteria((uint)draft.SelectedCategory, draft.SelectedDutyId, includeObjective ? (byte)draft.Objective : (byte)0, draft.BeginnerFriendly,
             (byte)draft.CompletionStatus, (byte)draft.DutyFinderSettingFlags, (byte)draft.LootRule, (byte)draft.LanguageFlags, []) +
             $"/{draft.Password}/{draft.NumberOfSlotsInMainParty}/{draft.NumberOfGroups}/{draft.LimitRecruitingToWorld}/" +
             $"{draft.OnePlayerPerJob}/{agent->AvgItemLv}/{agent->AvgItemLvEnabled}/" +

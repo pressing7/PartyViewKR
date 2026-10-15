@@ -9,6 +9,7 @@ internal sealed class PartyWindow : Window
     private readonly Plugin plugin;
     private ListingJobDraft? shownDraft;
     private ListingDescriptionDraft? shownDescriptionDraft;
+    private ListingObjectiveDraft? shownObjectiveDraft;
     internal PartyWindow(Plugin plugin) : base("파티 모집 조회##PartyViewKR")
     {
         this.plugin = plugin;
@@ -22,6 +23,7 @@ internal sealed class PartyWindow : Window
         DrawListing();
         DrawJobEditor();
         DrawDescriptionEditor();
+        DrawObjectiveEditor();
         ImGui.Separator();
         if (ImGui.Button("다시 읽기")) plugin.RequestRead();
         ImGui.SameLine();
@@ -85,6 +87,7 @@ internal sealed class PartyWindow : Window
         ImGui.PopTextWrapPos();
         if (plugin.JobDraftStatus.Length > 0) ImGui.TextWrapped(plugin.JobDraftStatus);
         if (plugin.DescriptionDraftStatus.Length > 0) ImGui.TextWrapped(plugin.DescriptionDraftStatus);
+        if (plugin.ObjectiveDraftStatus.Length > 0) ImGui.TextWrapped(plugin.ObjectiveDraftStatus);
         ImGui.TextUnformatted(listing.Status);
         if (listing.ReadAt is { } at)
         {
@@ -100,6 +103,7 @@ internal sealed class PartyWindow : Window
             if (listing.Remaining.Length > 0)
                 ImGui.TextUnformatted($"{(listing.IsLive ? "게임에 표시된 남은 시간" : "마지막으로 확인한 남은 시간")}: {listing.Remaining}");
             ImGui.TextUnformatted($"내용을 읽은 시각: {at:HH:mm:ss}");
+            DrawObjective(listing);
             DrawDescription(listing);
             DrawListingSlots(listing);
         }
@@ -118,7 +122,7 @@ internal sealed class PartyWindow : Window
         if (listing.Owner == ListingOwner.Self)
         {
             ImGui.SameLine();
-            ImGui.BeginDisabled(!listing.IsLive || plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null ||
+            ImGui.BeginDisabled(!listing.IsLive || plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.ObjectiveDraft != null ||
                 ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
             if (ImGui.SmallButton("소개말 수정")) plugin.RequestDescriptionEdit();
             ImGui.EndDisabled();
@@ -213,6 +217,60 @@ internal sealed class PartyWindow : Window
             }
             ImGui.EndTable();
         }
+    }
+
+    private void DrawObjective(ListingSnapshot listing)
+    {
+        ImGui.Separator();
+        ImGui.TextUnformatted($"모집 목적: {ListingObjectives.Label(listing.Objective)}");
+        if (listing.Owner != ListingOwner.Self) return;
+        ImGui.SameLine();
+        ImGui.BeginDisabled(!listing.IsLive || !listing.Objective.HasValue || plugin.Refresh.Busy || plugin.ListingBusy ||
+            plugin.JobDraft != null || plugin.DescriptionDraft != null || ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
+        if (ImGui.SmallButton("목적 수정")) plugin.RequestObjectiveEdit();
+        ImGui.EndDisabled();
+    }
+
+    private void DrawObjectiveEditor()
+    {
+        const string popup = "모집 목적 수정##PartyViewKR-objective-editor";
+        var draft = plugin.ObjectiveDraft;
+        if (draft == null)
+        {
+            if (shownObjectiveDraft != null)
+            {
+                var closing = true;
+                if (ImGui.BeginPopupModal(popup, ref closing)) { ImGui.CloseCurrentPopup(); ImGui.EndPopup(); }
+            }
+            shownObjectiveDraft = null;
+            return;
+        }
+        if (!ReferenceEquals(draft, shownObjectiveDraft)) { shownObjectiveDraft = draft; ImGui.OpenPopup(popup); }
+        var open = true;
+        if (ImGui.BeginPopupModal(popup, ref open, ImGuiWindowFlags.AlwaysAutoResize))
+        {
+            ImGui.TextUnformatted($"현재 목적: {ListingObjectives.Label(ListingObjectives.Read(draft.Original.Criteria))}");
+            ImGui.SetNextItemWidth(340);
+            if (ImGui.BeginCombo("##objective-choice", ListingObjectives.Label(ListingObjectives.Value(draft.SelectedIndex))))
+            {
+                for (var i = 0; i < ListingObjectives.Names.Length; i++)
+                {
+                    var selected = draft.SelectedIndex == i;
+                    if (ImGui.Selectable(ListingObjectives.Names[i], selected)) draft.SelectedIndex = i;
+                    if (selected) ImGui.SetItemDefaultFocus();
+                }
+                ImGui.EndCombo();
+            }
+            var edit = draft.Request;
+            if (!edit.Changed) ImGui.TextDisabled("다른 목적을 선택하면 적용할 수 있습니다.");
+            ImGui.Separator();
+            ImGui.TextUnformatted("적용하면 선택한 목적으로 모집을 갱신합니다.");
+            ImGui.BeginDisabled(!edit.Valid || plugin.Refresh.Busy || plugin.ListingBusy || plugin.Refresh.CoolingDown(Environment.TickCount64));
+            if (ImGui.Button("변경 적용 및 갱신", new Vector2(340, 0)) && plugin.ApplyObjectiveDraft()) ImGui.CloseCurrentPopup();
+            ImGui.EndDisabled();
+            ImGui.EndPopup();
+        }
+        if (!open) plugin.CloseObjectiveDraft();
     }
 
     private void DrawListingSlotJob(ListingSlot slot, ListingSnapshot listing)
