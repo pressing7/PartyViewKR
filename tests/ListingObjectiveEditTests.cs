@@ -45,24 +45,32 @@ static class ListingObjectiveEditTests
             var beforeFields = t.Criteria.Split('/'); var afterFields = after.Criteria.Split('/');
             check(beforeFields.Where((_, i) => i != 2).SequenceEqual(afterFields.Where((_, i) => i != 2)), "beginner or other conditions changed");
         });
-        test("reported UI index 3 sends command selection 4 and stores Loot, not Practice", () => {
-            var (h, f, edit) = Start(selected: 3, original: 2);
-            check(edit.SelectedIndex == 3 && h.ObjectiveCallbackSelection == 4, "zero-based UI index sent as callback selection");
-            check(ListingObjectives.Read(h.ObjectiveExpected!.Criteria) == 8, "callback selects Practice instead of Loot");
-            f.Update(2500); f.Update(4000); h.Target = h.SubmittedTarget! with { RemainingSeconds = 3598 }; h.FinishQuery(); f.Update(4500);
-            check(f.Stage == RefreshStage.Completed && h.ObjectiveEditCalls == 1 && h.SubmitCalls == 1, "corrected command did not complete once");
+        test("unverified automatic purpose editing is unavailable", () => {
+            check(!ListingObjectives.AutomaticEditingAvailable, "unverified automation exposed");
         });
-        test("all menu choices use one-based command selections including explicit None", () => {
-            uint[] commandSelections = [1, 2, 3, 4];
-            byte[] storedValues = [1, 2, 4, 8];
-            for (var index = 0; index < 4; index++)
-            {
-                var (h, f, _) = Start(index, original: index == 0 ? (byte)8 : (byte)1);
-                check(h.ObjectiveCallbackSelection == commandSelections[index], "wrong outgoing command selection");
-                check(ListingObjectives.Read(h.ObjectiveExpected!.Criteria) == storedValues[index], "wrong stored objective");
-                f.Update(2500);
-                check(h.SubmitCalls == 1, "valid purpose not submitted");
-            }
+        test("manual trace keeps nested before/after order and stops without losing evidence", () => {
+            var log = new ObjectiveTraceBuffer();
+            log.Start(1000); log.Add(1010, "pre#1"); log.Add(1011, "pre#2");
+            log.Add(1012, "post#2"); log.Add(1013, "post#1"); log.Stop("user_stopped");
+            var saved = log.Snapshot(); log.Add(1014, "unexpected"); log.Stop("editor_closed");
+            check(!log.Active && log.Reason == "user_stopped" && log.Snapshot() == saved, "stop lost/changed evidence");
+            check(saved.IndexOf("pre#1") < saved.IndexOf("pre#2") && saved.IndexOf("post#2") < saved.IndexOf("post#1"), "nested order lost");
+        });
+        test("manual trace times out even when the user sends no more events", () => {
+            var log = new ObjectiveTraceBuffer(); log.Start(1000); log.Add(1001, "first");
+            log.Tick(1000 + ObjectiveTraceBuffer.DurationMs - 1); check(log.Active, "early timeout");
+            log.Tick(1000 + ObjectiveTraceBuffer.DurationMs);
+            check(!log.Active && log.Reason == "timeout" && log.Count == 1, "idle capture did not stop");
+            log.Start(200000); log.Add(200000 + ObjectiveTraceBuffer.DurationMs, "late");
+            check(!log.Active && log.Count == 0 && log.Reason == "timeout", "event beyond deadline accepted");
+        });
+        test("manual trace bounds a flood without evicting initial routing evidence", () => {
+            var log = new ObjectiveTraceBuffer(); log.Start(1000);
+            for (var i = 0; i <= ObjectiveTraceBuffer.MaxEntries; i++) log.Add(1010, "entry=" + i);
+            check(!log.Active && log.Count == ObjectiveTraceBuffer.MaxEntries && log.Reason == "entry_limit", "unbounded trace");
+            check(log.Snapshot().Contains("entry=0\n"), "first evidence evicted");
+            log.Start(2000); log.Add(2001, "new_capture");
+            check(log.Active && log.Count == 1 && !log.Snapshot().Contains("entry=0"), "restart mixed sessions");
         });
         test("the reported Practice value after a Loot request still blocks submission", () => {
             var (h, f, _) = Start(selected: 3, original: 2);
@@ -129,7 +137,7 @@ static class ListingObjectiveEditTests
                 check(!f.Busy && h.ObjectiveEditCalls == 1 && h.SubmitCalls == 0, "failed operation continued");
             }
         });
-        test("failed or thrown purpose callbacks are not retried", () => {
+        test("failed or thrown purpose operations are not retried", () => {
             foreach (var throws in new[] { false, true })
             {
                 var h = new FakeHost { Target = Target(), ObjectiveEditAllowed = false, ThrowOnObjectiveEdit = throws }; var f = new ListingRefresh(h);

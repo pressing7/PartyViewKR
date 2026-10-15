@@ -21,6 +21,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
     [PluginService] internal static IGameGui GameGui { get; private set; } = null!;
     [PluginService] internal static IAddonLifecycle AddonLifecycle { get; private set; } = null!;
+    [PluginService] internal static IGameInteropProvider GameInterop { get; private set; } = null!;
 
     private readonly WindowSystem windows = new("PartyViewKR");
     private readonly PartyReader reader = new();
@@ -44,11 +45,13 @@ public sealed class Plugin : IDalamudPlugin
     internal PartySnapshot Snapshot { get; private set; } = PartySnapshot.Empty;
     internal ListingSnapshot Listing { get; private set; } = ListingSnapshot.Empty;
     internal ListingRefresh Refresh { get; }
+    internal ListingObjectiveTrace ObjectiveTrace { get; }
     internal bool ListingBusy => listingReader.Busy;
-    internal string Diagnostic => Snapshot.Diagnostic + "\n" + Listing.Diagnostic + "\n" + Refresh.Diagnostic + "\n" + refreshHost.Diagnostic;
+    internal string Diagnostic => Snapshot.Diagnostic + "\n" + Listing.Diagnostic + "\n" + Refresh.Diagnostic + "\n" + refreshHost.Diagnostic + "\n" + ObjectiveTrace.Diagnostic;
 
     public Plugin()
     {
+        ObjectiveTrace = new ListingObjectiveTrace(this);
         refreshHost = new ListingRefreshHost(this, listingReader);
         Refresh = new ListingRefresh(refreshHost);
         window = new PartyWindow(this);
@@ -71,17 +74,18 @@ public sealed class Plugin : IDalamudPlugin
     private void OnCommand(string command, string arguments) => Open();
     private void Open() { window.IsOpen = true; window.BringToFront(); RequestRead(); }
     internal void RequestRead() => readRequested = true;
-    internal void QueryOwnListing() { if (!Refresh.Busy) listingReader.RequestOwn(); RequestRead(); }
-    internal void RefreshOwnListing() { Refresh.Request(Environment.TickCount64); RequestRead(); }
+    internal void QueryOwnListing() { if (!Refresh.Busy && !ObjectiveTrace.Busy) listingReader.RequestOwn(); RequestRead(); }
+    internal void RefreshOwnListing() { if (!ObjectiveTrace.Busy) Refresh.Request(Environment.TickCount64); RequestRead(); }
     internal void CancelRefresh() { Refresh.Cancel(); RequestRead(); }
-    internal void RequestSlotEdit(int position) { if (!Refresh.Busy && DescriptionDraft == null && ObjectiveDraft == null) { requestedSlot = position; RequestRead(); } }
-    internal void RequestDescriptionEdit() { if (!Refresh.Busy && JobDraft == null && ObjectiveDraft == null) { requestedDescription = true; RequestRead(); } }
-    internal void RequestObjectiveEdit() { if (!Refresh.Busy && JobDraft == null && DescriptionDraft == null) { requestedObjective = true; RequestRead(); } }
+    internal void RequestSlotEdit(int position) { if (!ObjectiveTrace.Busy && !Refresh.Busy && DescriptionDraft == null && ObjectiveDraft == null) { requestedSlot = position; RequestRead(); } }
+    internal void RequestDescriptionEdit() { if (!ObjectiveTrace.Busy && !Refresh.Busy && JobDraft == null && ObjectiveDraft == null) { requestedDescription = true; RequestRead(); } }
+    internal void RequestObjectiveEdit() { if (ListingObjectives.AutomaticEditingAvailable && !ObjectiveTrace.Busy && !Refresh.Busy && JobDraft == null && DescriptionDraft == null) { requestedObjective = true; RequestRead(); } }
     internal void CloseDescriptionDraft() => DescriptionDraft = null;
     internal void CloseJobDraft() => JobDraft = null;
     internal void CloseObjectiveDraft() => ObjectiveDraft = null;
     internal bool ApplyJobDraft()
     {
+        if (ObjectiveTrace.Busy) return false;
         if (JobDraft == null || DescriptionDraft != null || ObjectiveDraft != null || !JobDraft.Request.Valid || Refresh.Busy || ListingBusy || Refresh.CoolingDown(Environment.TickCount64)) return false;
         Refresh.Request(Environment.TickCount64, JobDraft.Request);
         JobDraft = null; JobDraftStatus = "";
@@ -90,6 +94,7 @@ public sealed class Plugin : IDalamudPlugin
     }
     internal bool ApplyDescriptionDraft()
     {
+        if (ObjectiveTrace.Busy) return false;
         if (DescriptionDraft == null || JobDraft != null || ObjectiveDraft != null || !DescriptionDraft.Request.Valid || Refresh.Busy || ListingBusy || Refresh.CoolingDown(Environment.TickCount64)) return false;
         Refresh.Request(Environment.TickCount64, descriptionEdit: DescriptionDraft.Request);
         DescriptionDraft = null; DescriptionDraftStatus = "";
@@ -98,6 +103,7 @@ public sealed class Plugin : IDalamudPlugin
     }
     internal bool ApplyObjectiveDraft()
     {
+        if (!ListingObjectives.AutomaticEditingAvailable || ObjectiveTrace.Busy) return false;
         if (ObjectiveDraft == null || JobDraft != null || DescriptionDraft != null || !ObjectiveDraft.Request.Valid ||
             Refresh.Busy || ListingBusy || Refresh.CoolingDown(Environment.TickCount64)) return false;
         Refresh.Request(Environment.TickCount64, objectiveEdit: ObjectiveDraft.Request);
@@ -107,7 +113,7 @@ public sealed class Plugin : IDalamudPlugin
     }
     private void OnDetailUpdated(AddonEvent addonEvent, AddonArgs args) { listingReader.DetailUpdated(); RequestRead(); }
     private void OnEditorUpdated(AddonEvent addonEvent, AddonArgs args) { refreshHost.EditorUpdated(); RequestRead(); }
-    private void OnEditorClosed(AddonEvent addonEvent, AddonArgs args) { refreshHost.EditorClosed(); RequestRead(); }
+    private void OnEditorClosed(AddonEvent addonEvent, AddonArgs args) { ObjectiveTrace.EditorClosed(); refreshHost.EditorClosed(); RequestRead(); }
     private void OnRoleOpened(AddonEvent addonEvent, AddonArgs args) { refreshHost.RoleOpened(); RequestRead(); }
     private void OnRoleClosed(AddonEvent addonEvent, AddonArgs args) { refreshHost.RoleClosed(); RequestRead(); }
 
@@ -161,6 +167,7 @@ public sealed class Plugin : IDalamudPlugin
     private void OnUpdate(IFramework framework)
     {
         if (disposed) return;
+        ObjectiveTrace.Update();
         var now = Environment.TickCount64;
         if (!readRequested && now - lastRead < 500) return;
         readRequested = false;
@@ -203,6 +210,7 @@ public sealed class Plugin : IDalamudPlugin
     public void Dispose()
     {
         disposed = true;
+        ObjectiveTrace.Dispose();
         Refresh.Cancel();
         AddonLifecycle.UnregisterListener(AddonEvent.PostSetup, "LookingForGroupDetail", OnDetailUpdated);
         AddonLifecycle.UnregisterListener(AddonEvent.PostRefresh, "LookingForGroupDetail", OnDetailUpdated);

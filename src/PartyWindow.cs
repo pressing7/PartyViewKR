@@ -28,6 +28,7 @@ internal sealed class PartyWindow : Window
         if (ImGui.Button("다시 읽기")) plugin.RequestRead();
         ImGui.SameLine();
         if (ImGui.Button("진단 정보 복사")) ImGui.SetClipboardText(plugin.Diagnostic);
+        DrawObjectiveTrace();
         ImGui.Separator();
         if (ImGui.CollapsingHeader("현재 파티 상태 · 실시간 직업"))
             DrawCurrentParty();
@@ -69,11 +70,11 @@ internal sealed class PartyWindow : Window
         var listing = plugin.Listing;
         ImGui.TextUnformatted("모집글 조회");
         ImGui.SameLine();
-        ImGui.BeginDisabled(plugin.ListingBusy || plugin.Refresh.Busy || !Plugin.ClientState.IsLoggedIn || !Plugin.PlayerState.IsLoaded);
+        ImGui.BeginDisabled(plugin.ObjectiveTrace.Busy || plugin.ListingBusy || plugin.Refresh.Busy || !Plugin.ClientState.IsLoggedIn || !Plugin.PlayerState.IsLoaded);
         if (ImGui.Button("내 모집글 조회")) plugin.QueryOwnListing();
         ImGui.EndDisabled();
         ImGui.SameLine();
-        ImGui.BeginDisabled(plugin.ListingBusy || plugin.Refresh.Busy || plugin.Refresh.CoolingDown(Environment.TickCount64) ||
+        ImGui.BeginDisabled(plugin.ObjectiveTrace.Busy || plugin.ListingBusy || plugin.Refresh.Busy || plugin.Refresh.CoolingDown(Environment.TickCount64) ||
             !Plugin.ClientState.IsLoggedIn || !Plugin.PlayerState.IsLoaded);
         if (ImGui.Button("내 모집글 갱신")) plugin.RefreshOwnListing();
         ImGui.EndDisabled();
@@ -122,7 +123,7 @@ internal sealed class PartyWindow : Window
         if (listing.Owner == ListingOwner.Self)
         {
             ImGui.SameLine();
-            ImGui.BeginDisabled(!listing.IsLive || plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.ObjectiveDraft != null ||
+            ImGui.BeginDisabled(plugin.ObjectiveTrace.Busy || !listing.IsLive || plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.ObjectiveDraft != null ||
                 ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
             if (ImGui.SmallButton("소개말 수정")) plugin.RequestDescriptionEdit();
             ImGui.EndDisabled();
@@ -225,10 +226,30 @@ internal sealed class PartyWindow : Window
         ImGui.TextUnformatted($"모집 목적: {ListingObjectives.Label(listing.Objective)}");
         if (listing.Owner != ListingOwner.Self) return;
         ImGui.SameLine();
-        ImGui.BeginDisabled(!listing.IsLive || !listing.Objective.HasValue || plugin.Refresh.Busy || plugin.ListingBusy ||
+        ImGui.BeginDisabled(!ListingObjectives.AutomaticEditingAvailable || !listing.IsLive || !listing.Objective.HasValue || plugin.Refresh.Busy || plugin.ListingBusy ||
             plugin.JobDraft != null || plugin.DescriptionDraft != null || ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
         if (ImGui.SmallButton("목적 수정")) plugin.RequestObjectiveEdit();
         ImGui.EndDisabled();
+        if (!ListingObjectives.AutomaticEditingAvailable) ImGui.TextDisabled("목적 자동 수정은 수동 선택 기록 확인 후 연결합니다.");
+    }
+
+    private void DrawObjectiveTrace()
+    {
+        if (!ImGui.CollapsingHeader("목적 선택 진단")) return;
+        ImGui.TextWrapped("게임의 모집 수정창을 직접 열고 기록을 시작한 뒤, 목적 드롭다운에서 아래 순서로 선택해 주세요.");
+        ImGui.TextWrapped("설정 안 함 → 완료 목적 → 연습 → 반복 공략 → 설정 안 함");
+        ImGui.TextWrapped("각 항목에서 잠깐 기다린 뒤 다음 항목을 선택하고, 기록 종료 후 복사해 주세요. 갱신 버튼을 누를 필요는 없습니다.");
+        ImGui.TextWrapped(plugin.ObjectiveTrace.Status);
+        ImGui.BeginDisabled(plugin.ObjectiveTrace.Busy || plugin.Refresh.Busy || plugin.ListingBusy ||
+            plugin.JobDraft != null || plugin.DescriptionDraft != null || plugin.ObjectiveDraft != null);
+        if (ImGui.Button("목적 기록 시작")) plugin.ObjectiveTrace.RequestStart();
+        ImGui.EndDisabled();
+        ImGui.SameLine();
+        ImGui.BeginDisabled(!plugin.ObjectiveTrace.Busy);
+        if (ImGui.Button("기록 종료")) plugin.ObjectiveTrace.RequestStop();
+        ImGui.EndDisabled();
+        ImGui.SameLine();
+        if (ImGui.Button("목적 기록 복사")) ImGui.SetClipboardText(plugin.Diagnostic);
     }
 
     private void DrawObjectiveEditor()
@@ -265,7 +286,7 @@ internal sealed class PartyWindow : Window
             if (!edit.Changed) ImGui.TextDisabled("다른 목적을 선택하면 적용할 수 있습니다.");
             ImGui.Separator();
             ImGui.TextUnformatted("적용하면 선택한 목적으로 모집을 갱신합니다.");
-            ImGui.BeginDisabled(!edit.Valid || plugin.Refresh.Busy || plugin.ListingBusy || plugin.Refresh.CoolingDown(Environment.TickCount64));
+            ImGui.BeginDisabled(!ListingObjectives.AutomaticEditingAvailable || !edit.Valid || plugin.Refresh.Busy || plugin.ListingBusy || plugin.Refresh.CoolingDown(Environment.TickCount64));
             if (ImGui.Button("변경 적용 및 갱신", new Vector2(340, 0)) && plugin.ApplyObjectiveDraft()) ImGui.CloseCurrentPopup();
             ImGui.EndDisabled();
             ImGui.EndPopup();
@@ -291,7 +312,7 @@ internal sealed class PartyWindow : Window
             ListingSlotRoute.Classify(listing.Slots) != RecruitmentSlotLayout.Unknown;
         if (editable)
         {
-            ImGui.BeginDisabled(plugin.Refresh.Busy || plugin.ListingBusy);
+            ImGui.BeginDisabled(plugin.ObjectiveTrace.Busy || plugin.Refresh.Busy || plugin.ListingBusy);
             if (ImGui.SmallButton($"{label}##slot-{slot.Position}")) plugin.RequestSlotEdit(slot.Position);
             ImGui.EndDisabled();
         }
