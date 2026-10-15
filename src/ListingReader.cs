@@ -114,7 +114,7 @@ internal sealed class ListingReader
             var shapePlausible = detail.ListingId != 0 && detail.TotalSlots is >= 1 and <= 48 && detail.SlotsFilled <= detail.TotalSlots;
             slots = ListingSlots.Read(shapePlausible && nameAgrees && commentAgrees,
                 detail.TotalSlots, detail.SlotsFilled, detail.NumberOfParties, detail.IsAlliance,
-                detail.Jobs, detail.MemberContentIds, detail.SlotFlags, rows.Job);
+                detail.Jobs, detail.MemberContentIds, detail.SlotFlags, rows.Job, rows.RecruitmentJobs());
             owner = ListingIdentity.Resolve(detail.LeaderContentId, nativeName,
                 shapePlausible && nameAgrees && commentAgrees, Plugin.PlayerState.ContentId,
                 Plugin.PlayerState.CharacterName, party.Members.Select(m => (m.ContentId, m.Name, m.IsLeader)).ToArray());

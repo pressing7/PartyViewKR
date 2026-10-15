@@ -6,6 +6,7 @@ internal sealed record ListingSlot(int Position, ulong MemberContentId, byte Job
     string Job, ulong SlotFlags)
 {
     internal bool HasMember => MemberContentId != 0 || JobId != 0;
+    internal ListingAllowedJobs AllowedJobs { get; init; } = ListingAllowedJobs.Unavailable;
 }
 
 internal sealed record ListingSlots(bool Readable, int TotalSlots, int SlotsFilled,
@@ -19,7 +20,8 @@ internal sealed record ListingSlots(bool Readable, int TotalSlots, int SlotsFill
 
     internal static ListingSlots Read(bool detailAgrees, int totalSlots, int slotsFilled,
         int numberOfParties, bool isAlliance, ReadOnlySpan<byte> jobs,
-        ReadOnlySpan<ulong> memberContentIds, ReadOnlySpan<ulong> slotFlags, Func<uint, string> jobName)
+        ReadOnlySpan<ulong> memberContentIds, ReadOnlySpan<ulong> slotFlags, Func<uint, string> jobName,
+        ListingJobRules? jobRules = null)
     {
         if (!detailAgrees) return Unavailable("detail_ui_mismatch");
         if (totalSlots is < 1 or > 48 || slotsFilled < 0 || slotsFilled > totalSlots)
@@ -27,6 +29,7 @@ internal sealed record ListingSlots(bool Readable, int TotalSlots, int SlotsFill
         if (jobs.Length < totalSlots || memberContentIds.Length < totalSlots || slotFlags.Length < totalSlots)
             return Unavailable("incomplete_arrays");
 
+        jobRules ??= ListingJobRules.Unavailable;
         var slots = new ListingSlot[totalSlots];
         for (var i = 0; i < totalSlots; i++)
         {
@@ -34,7 +37,11 @@ internal sealed record ListingSlots(bool Readable, int TotalSlots, int SlotsFill
             // Do not filter empty slots, sort by live party order, or replace
             // missing job IDs with current jobs. Preserve the listing's positions.
             slots[i] = new(i + 1, memberContentIds[i], job,
-                job == 0 ? "" : jobName(job), slotFlags[i]);
+                job == 0 ? "" : jobName(job), slotFlags[i])
+            {
+                AllowedJobs = memberContentIds[i] == 0 && job == 0
+                    ? jobRules.Describe(slotFlags[i]) : ListingAllowedJobs.Unavailable,
+            };
         }
         var observed = slots.Count(s => s.HasMember);
         var diagnostic = $"listingSlotsReadable=True; listingSlotCount={totalSlots}; listingSlotsFilled={slotsFilled}; " +
@@ -42,7 +49,9 @@ internal sealed record ListingSlots(bool Readable, int TotalSlots, int SlotsFill
             $"listingObservedMembers={observed}; listingSlotCountsAgree={observed == slotsFilled}\n" +
             $"listingJobIds={string.Join(",", slots.Select(s => s.JobId))}\n" +
             $"listingMemberPresent={string.Join(",", slots.Select(s => s.MemberContentId != 0 ? 1 : 0))}\n" +
-            $"listingSlotFlags={string.Join(",", slots.Select(s => s.SlotFlags.ToString("X16")))}";
+            $"listingSlotFlags={string.Join(",", slots.Select(s => s.SlotFlags.ToString("X16")))}\n" +
+            $"listingJobRulesComplete={jobRules.Complete}; listingRecruitmentJobCount={jobRules.Count}; " +
+            $"listingAllJobsMask={jobRules.AllFlags:X16}";
         return new(true, totalSlots, slotsFilled, numberOfParties, isAlliance, slots, diagnostic);
     }
 }

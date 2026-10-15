@@ -121,6 +121,7 @@ internal sealed class PartyWindow : Window
         if (slots.NumberOfParties > 1)
             ImGui.TextUnformatted($"모집 파티 수: {slots.NumberOfParties}");
         ImGui.TextUnformatted("모집글에서 받은 직업을 자리 순서대로 표시합니다.");
+        ImGui.TextWrapped("빈자리의 직업 제한에 마우스를 올리면 허용 직업을 볼 수 있습니다.");
         if (!slots.CountsAgree)
             ImGui.TextWrapped("모집 인원수와 자리 정보가 아직 일치하지 않습니다. 다시 조회해 주세요.");
 
@@ -131,7 +132,7 @@ internal sealed class PartyWindow : Window
         {
             ImGui.TableSetupColumn("자리", ImGuiTableColumnFlags.WidthFixed, 40);
             ImGui.TableSetupColumn("상태", ImGuiTableColumnFlags.WidthFixed, 70);
-            ImGui.TableSetupColumn("등록 직업");
+            ImGui.TableSetupColumn("등록 직업 / 모집 조건");
             ImGui.TableSetupScrollFreeze(0, 1);
             ImGui.TableHeadersRow();
             foreach (var slot in slots.Slots)
@@ -139,10 +140,36 @@ internal sealed class PartyWindow : Window
                 ImGui.TableNextRow();
                 Cell(slot.Position.ToString());
                 Cell(slot.HasMember ? "참가 중" : slots.CountsAgree ? "빈자리" : "확인 중");
-                Cell(slot.JobId != 0 ? slot.Job : slot.HasMember ? "직업 정보 없음" : "—");
+                DrawListingSlotJob(slot, slots.CountsAgree);
             }
             ImGui.EndTable();
         }
+    }
+
+    private static void DrawListingSlotJob(ListingSlot slot, bool countsAgree)
+    {
+        if (slot.HasMember)
+        {
+            Cell(slot.JobId != 0 ? slot.Job : "직업 정보 없음");
+            return;
+        }
+        if (!countsAgree) { Cell("확인 중"); return; }
+
+        var allowed = slot.AllowedJobs;
+        Cell(!allowed.Complete ? "직업 조건 확인 불가" : allowed.Anyone ? "누구나 가능" : "직업 제한");
+        if (!ImGui.IsItemHovered()) return;
+        ImGui.BeginTooltip();
+        ImGui.PushTextWrapPos(ImGui.GetFontSize() * 26);
+        ImGui.TextUnformatted("허용 직업");
+        ImGui.Separator();
+        if (allowed.Names.Length > 0)
+            ImGui.TextUnformatted(string.Join(", ", allowed.Names));
+        else if (allowed.Complete)
+            ImGui.TextUnformatted("허용된 직업이 없습니다.");
+        if (!allowed.Complete)
+            ImGui.TextUnformatted("허용 직업을 모두 확인하지 못했습니다. 모집글을 다시 조회해 주세요.");
+        ImGui.PopTextWrapPos();
+        ImGui.EndTooltip();
     }
 
     private static void Cell(string text) { ImGui.TableNextColumn(); ImGui.TextUnformatted(text); }
