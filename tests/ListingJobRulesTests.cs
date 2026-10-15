@@ -39,11 +39,17 @@ static class ListingJobRulesTests
             var rules = ListingJobRules.Read([
                 new(40, "현자"), new(24, "백마도사"), new(28, "학자"), new(33, "점성술사"), new(19, "나이트")]);
             var allowed = rules.Describe(0x2000ul | 0x20000ul | 0x400000ul | 0x20000000ul);
-            check(!allowed.Anyone && allowed.Names.SequenceEqual(new[] { "백마도사", "학자", "점성술사", "현자" }),
+            check(!allowed.Anyone && allowed.Names.SequenceEqual(new[] { "백마도사", "점성술사", "학자", "현자" }),
                 "jobs omitted, grouped or in unstable order");
             check(!rules.Describe(0).Anyone && rules.Describe(0).Names.Length == 0, "zero mask became unrestricted");
             check(!rules.Describe(1ul << 63).Anyone && rules.Describe(1ul << 63).Names.Length == 0,
                 "unknown bit invented a job");
+        });
+        test("tooltips and editor choices share the complete requested job order", () => {
+            uint[] order = [19,21,32,37,24,33,28,40,20,22,30,34,39,41,43,23,31,38,25,27,35,42,36,1,3,6,2,4,29,5,7,26];
+            var rules = ListingJobRules.Read(Jobs(true).Reverse());
+            check(rules.Choices.Select(j => j.Id).SequenceEqual(order), "editor order differs");
+            check(rules.Describe(ulong.MaxValue).Names.SequenceEqual(order.Select(id => $"직업 #{id}")), "tooltip order differs");
         });
         test("empty or unmapped runtime catalogs cannot claim anyone", () => {
             foreach (var rules in new[] { ListingJobRules.Unavailable, ListingJobRules.Read([]),

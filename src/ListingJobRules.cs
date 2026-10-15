@@ -1,6 +1,7 @@
 namespace PartyViewKR;
 
 internal sealed record RecruitmentJob(uint Id, string Name);
+internal sealed record RecruitmentJobOption(uint Id, string Name, ulong Flag);
 
 internal sealed record ListingAllowedJobs(bool Anyone, string[] Names, bool Complete)
 {
@@ -17,22 +18,28 @@ internal sealed class ListingJobRules
         [0, 1, 2, 3, 4, 5, 6, 7, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
          29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43];
 
-    private readonly (ulong Flag, string Name)[] jobs;
+    // Shared by the tooltip and editor; keep the user's order, including classes.
+    private static readonly uint[] DisplayOrder =
+        [19, 21, 32, 37, 24, 33, 28, 40, 20, 22, 30, 34, 39, 41, 43, 23,
+         31, 38, 25, 27, 35, 42, 36, 1, 3, 6, 2, 4, 29, 5, 7, 26];
+    private readonly RecruitmentJobOption[] jobs;
+    internal IReadOnlyList<RecruitmentJobOption> Choices { get; }
     internal bool Complete { get; }
     internal ulong AllFlags { get; }
     internal int Count => jobs.Length;
     internal static readonly ListingJobRules Unavailable = new([], false);
 
-    private ListingJobRules((ulong Flag, string Name)[] jobs, bool complete)
+    private ListingJobRules(RecruitmentJobOption[] jobs, bool complete)
     {
         this.jobs = jobs;
+        Choices = Array.AsReadOnly(jobs);
         Complete = complete;
         AllFlags = jobs.Aggregate(0ul, (mask, job) => mask | job.Flag);
     }
 
     internal static ListingJobRules Read(IEnumerable<RecruitmentJob> battleJobs)
     {
-        var jobs = new List<(ulong Flag, string Name)>();
+        var jobs = new List<RecruitmentJobOption>();
         var seen = new HashSet<uint>();
         var complete = true;
         foreach (var job in battleJobs)
@@ -43,9 +50,9 @@ internal sealed class ListingJobRules
                 complete = false;
                 continue;
             }
-            jobs.Add((1ul << bit, job.Name));
+            jobs.Add(new(job.Id, job.Name, 1ul << bit));
         }
-        return new(jobs.OrderBy(j => j.Flag).ToArray(), complete && jobs.Count > 0);
+        return new(jobs.OrderBy(j => Array.IndexOf(DisplayOrder, j.Id)).ToArray(), complete && jobs.Count > 0);
     }
 
     internal ListingAllowedJobs Describe(ulong flags) => new(

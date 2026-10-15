@@ -12,6 +12,7 @@ internal sealed record ListingSlot(int Position, ulong MemberContentId, byte Job
 internal sealed record ListingSlots(bool Readable, int TotalSlots, int SlotsFilled,
     int NumberOfParties, bool IsAlliance, ListingSlot[] Slots, string Diagnostic)
 {
+    internal ListingJobRules JobRules { get; init; } = ListingJobRules.Unavailable;
     internal int ObservedMembers => Slots.Count(s => s.HasMember);
     internal bool CountsAgree => Readable && ObservedMembers == SlotsFilled;
 
@@ -52,6 +53,6 @@ internal sealed record ListingSlots(bool Readable, int TotalSlots, int SlotsFill
             $"listingSlotFlags={string.Join(",", slots.Select(s => s.SlotFlags.ToString("X16")))}\n" +
             $"listingJobRulesComplete={jobRules.Complete}; listingRecruitmentJobCount={jobRules.Count}; " +
             $"listingAllJobsMask={jobRules.AllFlags:X16}";
-        return new(true, totalSlots, slotsFilled, numberOfParties, isAlliance, slots, diagnostic);
+        return new(true, totalSlots, slotsFilled, numberOfParties, isAlliance, slots, diagnostic) { JobRules = jobRules };
     }
 }

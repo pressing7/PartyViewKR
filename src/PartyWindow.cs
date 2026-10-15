@@ -7,6 +7,7 @@ namespace PartyViewKR;
 internal sealed class PartyWindow : Window
 {
     private readonly Plugin plugin;
+    private ListingJobDraft? shownDraft;
     internal PartyWindow(Plugin plugin) : base("파티 모집 조회##PartyViewKR")
     {
         this.plugin = plugin;
@@ -18,6 +19,7 @@ internal sealed class PartyWindow : Window
     public override void Draw()
     {
         DrawListing();
+        DrawJobEditor();
         ImGui.Separator();
         if (ImGui.Button("다시 읽기")) plugin.RequestRead();
         ImGui.SameLine();
@@ -79,6 +81,7 @@ internal sealed class PartyWindow : Window
         ImGui.PushTextWrapPos(0);
         ImGui.TextUnformatted(plugin.Refresh.Status);
         ImGui.PopTextWrapPos();
+        if (plugin.JobDraftStatus.Length > 0) ImGui.TextWrapped(plugin.JobDraftStatus);
         ImGui.TextUnformatted(listing.Status);
         if (listing.ReadAt is { } at)
         {
@@ -107,7 +110,7 @@ internal sealed class PartyWindow : Window
         }
     }
 
-    private static void DrawListingSlots(ListingSnapshot listing)
+    private void DrawListingSlots(ListingSnapshot listing)
     {
         ImGui.Separator();
         var slots = listing.Slots;
@@ -122,6 +125,8 @@ internal sealed class PartyWindow : Window
             ImGui.TextUnformatted($"모집 파티 수: {slots.NumberOfParties}");
         ImGui.TextUnformatted("모집글에서 받은 직업을 자리 순서대로 표시합니다.");
         ImGui.TextWrapped("빈자리의 직업 제한에 마우스를 올리면 허용 직업을 볼 수 있습니다.");
+        if (listing.Owner == ListingOwner.Self)
+            ImGui.TextWrapped("빈자리를 클릭해 허용 직업 수정 · 현재 일반 4·8인 모집에서 한 자리씩 지원");
         if (!slots.CountsAgree)
             ImGui.TextWrapped("모집 인원수와 자리 정보가 아직 일치하지 않습니다. 다시 조회해 주세요.");
 
@@ -140,23 +145,35 @@ internal sealed class PartyWindow : Window
                 ImGui.TableNextRow();
                 Cell(slot.Position.ToString());
                 Cell(slot.HasMember ? "참가 중" : slots.CountsAgree ? "빈자리" : "확인 중");
-                DrawListingSlotJob(slot, slots.CountsAgree);
+                DrawListingSlotJob(slot, listing);
             }
             ImGui.EndTable();
         }
     }
 
-    private static void DrawListingSlotJob(ListingSlot slot, bool countsAgree)
+    private void DrawListingSlotJob(ListingSlot slot, ListingSnapshot listing)
     {
         if (slot.HasMember)
         {
             Cell(slot.JobId != 0 ? slot.Job : "직업 정보 없음");
             return;
         }
-        if (!countsAgree) { Cell("확인 중"); return; }
+        if (!listing.Slots.CountsAgree) { Cell("확인 중"); return; }
 
         var allowed = slot.AllowedJobs;
-        Cell(!allowed.Complete ? "직업 조건 확인 불가" : allowed.Anyone ? "누구나 가능" : "직업 제한");
+        var label = !allowed.Complete ? "직업 조건 확인 불가" : allowed.Anyone ? "누구나 가능" : "직업 제한";
+        if (plugin.JobDraft is { Changed: true } draft && draft.Position == slot.Position)
+            label += " · 변경 예정";
+        ImGui.TableNextColumn();
+        var editable = listing.IsLive && listing.Owner == ListingOwner.Self && allowed.Complete &&
+            listing.Slots.TotalSlots <= 8 && !listing.Slots.IsAlliance && listing.Slots.NumberOfParties <= 1;
+        if (editable)
+        {
+            ImGui.BeginDisabled(plugin.Refresh.Busy || plugin.ListingBusy);
+            if (ImGui.SmallButton($"{label}##slot-{slot.Position}")) plugin.RequestSlotEdit(slot.Position);
+            ImGui.EndDisabled();
+        }
+        else ImGui.TextUnformatted(label);
         if (!ImGui.IsItemHovered()) return;
         ImGui.BeginTooltip();
         ImGui.PushTextWrapPos(ImGui.GetFontSize() * 26);
@@ -170,6 +187,55 @@ internal sealed class PartyWindow : Window
             ImGui.TextUnformatted("허용 직업을 모두 확인하지 못했습니다. 모집글을 다시 조회해 주세요.");
         ImGui.PopTextWrapPos();
         ImGui.EndTooltip();
+    }
+
+    private void DrawJobEditor()
+    {
+        const string popup = "빈자리 허용 직업##PartyViewKR-job-editor";
+        var draft = plugin.JobDraft;
+        if (draft == null)
+        {
+            // Logout/character changes can discard a draft while its modal is open.
+            if (shownDraft != null)
+            {
+                var closing = true;
+                if (ImGui.BeginPopupModal(popup, ref closing)) { ImGui.CloseCurrentPopup(); ImGui.EndPopup(); }
+            }
+            shownDraft = null;
+            return;
+        }
+        if (!ReferenceEquals(draft, shownDraft)) { shownDraft = draft; ImGui.OpenPopup(popup); }
+        var open = true;
+        ImGui.SetNextWindowSize(new Vector2(640, 0), ImGuiCond.Appearing);
+        if (ImGui.BeginPopupModal(popup, ref open, ImGuiWindowFlags.AlwaysAutoResize))
+        {
+            ImGui.TextUnformatted($"{draft.Position}번 빈자리 · {(draft.Changed ? "변경 예정" : "현재 허용 직업")}");
+            ImGui.TextUnformatted("적용 버튼을 누르면 모집글을 다시 조회한 뒤 변경하고 갱신합니다.");
+            if (ImGui.Button("전체 선택")) draft.Selected = draft.Rules.AllFlags;
+            ImGui.SameLine();
+            if (ImGui.Button("전체 해제")) draft.Selected = 0;
+            ImGui.Separator();
+            if (ImGui.BeginTable("job-choices", 4, ImGuiTableFlags.SizingStretchSame))
+            {
+                for (var i = 0; i < draft.Rules.Choices.Count; i++)
+                {
+                    if (i % 4 == 0) ImGui.TableNextRow();
+                    ImGui.TableNextColumn();
+                    var job = draft.Rules.Choices[i];
+                    var selected = (draft.Selected & job.Flag) != 0;
+                    if (ImGui.Checkbox($"{job.Name}##job-{job.Id}", ref selected))
+                        draft.Selected = selected ? draft.Selected | job.Flag : draft.Selected & ~job.Flag;
+                }
+                ImGui.EndTable();
+            }
+            ImGui.Separator();
+            if (draft.Selected == 0) ImGui.TextUnformatted("직업을 하나 이상 선택해 주세요.");
+            ImGui.BeginDisabled(!draft.Request.Valid || plugin.Refresh.Busy || plugin.ListingBusy || plugin.Refresh.CoolingDown(Environment.TickCount64));
+            if (ImGui.Button("변경 적용 및 갱신") && plugin.ApplyJobDraft()) ImGui.CloseCurrentPopup();
+            ImGui.EndDisabled();
+            ImGui.EndPopup();
+        }
+        if (!open) plugin.CloseJobDraft();
     }
 
     private static void Cell(string text) { ImGui.TableNextColumn(); ImGui.TextUnformatted(text); }

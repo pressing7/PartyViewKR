@@ -29,8 +29,10 @@
     ],
     "FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BRecruitmentSub": [
       "get_SlotFlags",
-      "get_Comment"
+      "get_Comment",
+      "get_MemberContentIds"
     ],
+    "FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDutyCategory": [],
     "FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentInterface": [
       "Show"
     ],
@@ -45,7 +47,8 @@
     "FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase": [
       "get_IsVisible",
       "get_IsReady",
-      "ReceiveEvent"
+      "ReceiveEvent",
+      "GetNodeById"
     ],
     "FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase\u002BAtkUnitBaseVirtualTable": [],
     "FFXIVClientStructs.FFXIV.Component.GUI.AtkEventListener": [
@@ -53,14 +56,18 @@
     ],
     "FFXIVClientStructs.FFXIV.Component.GUI.AtkEventListener\u002BAtkEventListenerVirtualTable": [],
     "FFXIVClientStructs.FFXIV.Component.GUI.AtkResNode": [
-      "IsVisible"
+      "IsVisible",
+      "GetAsAtkComponentNode"
     ],
     "FFXIVClientStructs.FFXIV.Component.GUI.AtkComponentNode": [
       "IsVisible"
     ],
-    "FFXIVClientStructs.FFXIV.Component.GUI.AtkComponentBase": [],
+    "FFXIVClientStructs.FFXIV.Component.GUI.AtkComponentBase": [
+      "GetComponentType"
+    ],
     "FFXIVClientStructs.FFXIV.Component.GUI.AtkComponentButton": [
-      "get_IsEnabled"
+      "get_IsEnabled",
+      "get_IsChecked"
     ],
     "FFXIVClientStructs.FFXIV.Component.GUI.AtkComponentTextInput": [],
     "FFXIVClientStructs.FFXIV.Component.GUI.AtkTextNode": [],
@@ -68,6 +75,7 @@
     "FFXIVClientStructs.FFXIV.Component.GUI.AtkEventData": [],
     "FFXIVClientStructs.FFXIV.Component.GUI.AtkEventType": [],
     "FFXIVClientStructs.FFXIV.Component.GUI.NodeType": [],
+    "FFXIVClientStructs.FFXIV.Component.GUI.ComponentType": [],
     "FFXIVClientStructs.FFXIV.Client.System.String.Utf8String": [],
     "FFXIVClientStructs.Interop.Generated.FixedSizeArray6\u00601": [],
     "FFXIVClientStructs.Interop.Generated.FixedSizeArray8\u00601": [],
@@ -285,6 +293,8 @@
     "field:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDetailed._leader": "FFXIVClientStructs.Interop.Generated.FixedSizeArray32\u00601\u003CByte\u003E;offset=912;flags=3;",
     "field:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDetailed._memberContentIds": "FFXIVClientStructs.Interop.Generated.FixedSizeArray48\u00601\u003CUInt64\u003E;offset=96;flags=3;",
     "field:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDetailed._slotFlags": "FFXIVClientStructs.Interop.Generated.FixedSizeArray48\u00601\u003CUInt64\u003E;offset=480;flags=3;",
+    "field:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDutyCategory.PvP": "FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDutyCategory;offset=-1;flags=32854;constant=UInt32:80000000;",
+    "field:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDutyCategory.value__": "UInt32;offset=-1;flags=1542;",
     "field:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BRecruitmentSub.BeginnerFriendly": "Byte;offset=25;flags=6;",
     "field:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BRecruitmentSub.CompletionStatus": "FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BCompletionStatus;offset=26;flags=6;",
     "field:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BRecruitmentSub.DutyFinderSettingFlags": "FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDutyFinderSetting;offset=27;flags=6;",
@@ -495,6 +505,8 @@
     "field:FFXIVClientStructs.FFXIV.Component.GUI.AtkEventListener.StructSize": "Int32;offset=-1;flags=32854;constant=Int32:08000000;",
     "field:FFXIVClientStructs.FFXIV.Component.GUI.AtkEventListener.VirtualTable": "FFXIVClientStructs.FFXIV.Component.GUI.AtkEventListener\u002BAtkEventListenerVirtualTable*;offset=0;flags=6;",
     "field:FFXIVClientStructs.FFXIV.Component.GUI.AtkEventType.ButtonClick": "FFXIVClientStructs.FFXIV.Component.GUI.AtkEventType;offset=-1;flags=32854;constant=Byte:19;",
+    "field:FFXIVClientStructs.FFXIV.Component.GUI.AtkEventType.MouseOut": "FFXIVClientStructs.FFXIV.Component.GUI.AtkEventType;offset=-1;flags=32854;constant=Byte:07;",
+    "field:FFXIVClientStructs.FFXIV.Component.GUI.AtkEventType.MouseOver": "FFXIVClientStructs.FFXIV.Component.GUI.AtkEventType;offset=-1;flags=32854;constant=Byte:06;",
     "field:FFXIVClientStructs.FFXIV.Component.GUI.AtkEventType.value__": "Byte;offset=-1;flags=1542;",
     "field:FFXIVClientStructs.FFXIV.Component.GUI.AtkResNode.AddBlue": "Int16;offset=144;flags=6;",
     "field:FFXIVClientStructs.FFXIV.Component.GUI.AtkResNode.AddBlue_2": "Int16;offset=150;flags=6;",
@@ -712,6 +724,9 @@
     "field:FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase._additionalMoveableNodes": "FFXIVClientStructs.Interop.Generated.FixedSizeArray2\u00601\u003CFFXIVClientStructs.Interop.Pointer\u00601\u003CFFXIVClientStructs.FFXIV.Component.GUI.AtkResNode\u003E\u003E;offset=224;flags=3;",
     "field:FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase._name": "FFXIVClientStructs.Interop.Generated.FixedSizeArray32\u00601\u003CByte\u003E;offset=8;flags=3;",
     "field:FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase._operationGuides": "FFXIVClientStructs.Interop.Generated.FixedSizeArray5\u00601\u003CFFXIVClientStructs.FFXIV.Component.GUI.OperationGuide\u003E;offset=508;flags=3;",
+    "field:FFXIVClientStructs.FFXIV.Component.GUI.ComponentType.Button": "FFXIVClientStructs.FFXIV.Component.GUI.ComponentType;offset=-1;flags=32854;constant=Byte:01;",
+    "field:FFXIVClientStructs.FFXIV.Component.GUI.ComponentType.CheckBox": "FFXIVClientStructs.FFXIV.Component.GUI.ComponentType;offset=-1;flags=32854;constant=Byte:03;",
+    "field:FFXIVClientStructs.FFXIV.Component.GUI.ComponentType.value__": "Byte;offset=-1;flags=1542;",
     "field:FFXIVClientStructs.FFXIV.Component.GUI.NodeType.Text": "FFXIVClientStructs.FFXIV.Component.GUI.NodeType;offset=-1;flags=32854;constant=UInt16:0300;",
     "field:FFXIVClientStructs.FFXIV.Component.GUI.NodeType.value__": "UInt16;offset=-1;flags=1542;",
     "field:FFXIVClientStructs.Interop.Generated.FixedSizeArray192\u00601._element0": "!0;offset=-1;flags=1;",
@@ -732,11 +747,12 @@
     "method:FFXIVClientStructs.FFXIV.Client.UI.AddonLookingForGroupDetail.get_IsVisible()": "Boolean;header=32;generic=0;",
     "method:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentInterface.Show()": "Void;header=32;generic=0;InteropGenerator.Runtime.Attributes.VirtualFunctionAttribute:0100030000000000",
     "method:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDetailed.get_Comment()": "System.Span\u00601\u003CByte\u003E;header=32;generic=0;",
-    "method:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDetailed.get_Leader()": "System.Span\u00601\u003CByte\u003E;header=32;generic=0;",
     "method:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDetailed.get_Jobs()": "System.Span\u00601\u003CByte\u003E;header=32;generic=0;",
+    "method:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDetailed.get_Leader()": "System.Span\u00601\u003CByte\u003E;header=32;generic=0;",
     "method:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDetailed.get_MemberContentIds()": "System.Span\u00601\u003CUInt64\u003E;header=32;generic=0;",
     "method:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDetailed.get_SlotFlags()": "System.Span\u00601\u003CUInt64\u003E;header=32;generic=0;",
     "method:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BRecruitmentSub.get_Comment()": "System.Span\u00601\u003CByte\u003E;header=32;generic=0;",
+    "method:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BRecruitmentSub.get_MemberContentIds()": "System.Span\u00601\u003CUInt64\u003E;header=32;generic=0;",
     "method:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BRecruitmentSub.get_SlotFlags()": "System.Span\u00601\u003CUInt64\u003E;header=32;generic=0;",
     "method:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup.Instance()": "FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup*;header=0;generic=0;",
     "method:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup.OpenListingByContentId(UInt64)": "Boolean;header=32;generic=0;",
@@ -745,10 +761,14 @@
     "method:FFXIVClientStructs.FFXIV.Client.UI.Info.CrossRealmMember.get_Name()": "System.Span\u00601\u003CByte\u003E;header=32;generic=0;",
     "method:FFXIVClientStructs.FFXIV.Client.UI.Info.InfoProxyCrossRealm.Instance()": "FFXIVClientStructs.FFXIV.Client.UI.Info.InfoProxyCrossRealm*;header=0;generic=0;",
     "method:FFXIVClientStructs.FFXIV.Client.UI.Info.InfoProxyCrossRealm.get_CrossRealmGroups()": "System.Span\u00601\u003CFFXIVClientStructs.FFXIV.Client.UI.Info.CrossRealmGroup\u003E;header=32;generic=0;",
+    "method:FFXIVClientStructs.FFXIV.Component.GUI.AtkComponentBase.GetComponentType()": "FFXIVClientStructs.FFXIV.Component.GUI.ComponentType;header=32;generic=0;",
+    "method:FFXIVClientStructs.FFXIV.Component.GUI.AtkComponentButton.get_IsChecked()": "Boolean;header=32;generic=0;",
     "method:FFXIVClientStructs.FFXIV.Component.GUI.AtkComponentButton.get_IsEnabled()": "Boolean;header=32;generic=0;",
     "method:FFXIVClientStructs.FFXIV.Component.GUI.AtkComponentNode.IsVisible()": "Boolean;header=32;generic=0;",
     "method:FFXIVClientStructs.FFXIV.Component.GUI.AtkEventListener.ReceiveEvent(FFXIVClientStructs.FFXIV.Component.GUI.AtkEventType,Int32,FFXIVClientStructs.FFXIV.Component.GUI.AtkEvent*,FFXIVClientStructs.FFXIV.Component.GUI.AtkEventData*)": "Void;header=32;generic=0;InteropGenerator.Runtime.Attributes.VirtualFunctionAttribute:0100020000000000",
+    "method:FFXIVClientStructs.FFXIV.Component.GUI.AtkResNode.GetAsAtkComponentNode()": "FFXIVClientStructs.FFXIV.Component.GUI.AtkComponentNode*;header=32;generic=0;",
     "method:FFXIVClientStructs.FFXIV.Component.GUI.AtkResNode.IsVisible()": "Boolean;header=32;generic=0;",
+    "method:FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.GetNodeById(UInt32)": "FFXIVClientStructs.FFXIV.Component.GUI.AtkResNode*;header=32;generic=0;",
     "method:FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent(FFXIVClientStructs.FFXIV.Component.GUI.AtkEventType,Int32,FFXIVClientStructs.FFXIV.Component.GUI.AtkEvent*,FFXIVClientStructs.FFXIV.Component.GUI.AtkEventData*)": "Void;header=32;generic=0;",
     "method:FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.get_IsReady()": "Boolean;header=32;generic=0;",
     "method:FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.get_IsVisible()": "Boolean;header=32;generic=0;",
@@ -758,6 +778,7 @@
     "type:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentInterface": "size=40;pack=0;layout=ExplicitLayout;InteropGenerator.Runtime.Attributes.InheritsAttribute\u00601\u003CFFXIVClientStructs.FFXIV.Component.GUI.AtkModuleInterface\u002BAtkEventInterface\u003E:0100000000000000",
     "type:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup": "size=14040;pack=0;layout=ExplicitLayout;InteropGenerator.Runtime.Attributes.InheritsAttribute\u00601\u003CFFXIVClientStructs.FFXIV.Client.UI.Agent.AgentInterface\u003E:0100000000000000;InteropGenerator.Runtime.Attributes.InheritsAttribute\u00601\u003CFFXIVClientStructs.FFXIV.Component.Text.TextChecker\u002BExecNonMacroFunc\u003E:0100000000000000",
     "type:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDetailed": "size=1144;pack=0;layout=ExplicitLayout;",
+    "type:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDutyCategory": "size=0;pack=0;layout=NotPublic;",
     "type:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BRecruitmentSub": "size=1144;pack=0;layout=ExplicitLayout;",
     "type:FFXIVClientStructs.FFXIV.Client.UI.Info.CrossRealmGroup": "size=840;pack=0;layout=ExplicitLayout;",
     "type:FFXIVClientStructs.FFXIV.Client.UI.Info.CrossRealmMember": "size=104;pack=0;layout=ExplicitLayout;",
@@ -775,6 +796,7 @@
     "type:FFXIVClientStructs.FFXIV.Component.GUI.AtkTextNode": "size=384;pack=0;layout=ExplicitLayout;InteropGenerator.Runtime.Attributes.InheritsAttribute\u00601\u003CFFXIVClientStructs.FFXIV.Component.GUI.AtkResNode\u003E:0100000000000000",
     "type:FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase": "size=568;pack=0;layout=ExplicitLayout;InteropGenerator.Runtime.Attributes.InheritsAttribute\u00601\u003CFFXIVClientStructs.FFXIV.Component.GUI.AtkEventListener\u003E:0100000000000000",
     "type:FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase\u002BAtkUnitBaseVirtualTable": "size=592;pack=0;layout=ExplicitLayout;",
+    "type:FFXIVClientStructs.FFXIV.Component.GUI.ComponentType": "size=0;pack=0;layout=NotPublic;",
     "type:FFXIVClientStructs.FFXIV.Component.GUI.NodeType": "size=0;pack=0;layout=NotPublic;",
     "type:FFXIVClientStructs.Interop.Generated.FixedSizeArray192\u00601": "size=0;pack=1;layout=SequentialLayout;System.Runtime.CompilerServices.InlineArrayAttribute:0100C00000000000",
     "type:FFXIVClientStructs.Interop.Generated.FixedSizeArray24\u00601": "size=0;pack=1;layout=SequentialLayout;System.Runtime.CompilerServices.InlineArrayAttribute:0100180000000000",

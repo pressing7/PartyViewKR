@@ -236,6 +236,7 @@ Test("adding text during an empty-comment refresh is detected", () => {
 });
 ListingSlotsTests.Run(Test, Check);
 ListingJobRulesTests.Run(Test, Check);
+ListingJobEditTests.Run(Test, Check);
 CompatibilityTests.Run(Test, Check);
 Console.WriteLine($"All {passed} tests passed. Native game interaction still requires in-game validation.");
 
@@ -254,6 +255,9 @@ sealed class FakeHost : IListingRefreshHost
     public bool OwnVerified = true, SubmitAllowed = true, KeepEditorOpen, ThrowOnSubmit;
     public int QueryCalls, EditCalls, SubmitCalls;
     public string? SubmittedDescription;
+    public RefreshTarget? SubmittedTarget, EditExpected;
+    public int JobEditCalls, JobEditChecks;
+    public bool JobEditAllowed = true, JobEditComplete = true, JobEditFailed, ThrowOnJobEdit;
     public RefreshTarget Target = new(10, 1, 123, "기존 모집 문구", "same", 1800, 8);
     public void QueryOwn() { QueryCalls++; QueryBusy = true; QuerySucceeded = false; }
     public void FinishQuery() { QueryBusy = false; QuerySucceeded = true; DetailRevision++; }
@@ -263,9 +267,21 @@ sealed class FakeHost : IListingRefreshHost
     { EditCalls++; EditorVisible = EditorReady = true; EditorRevision++; error = ""; return true; }
     public bool Submit(RefreshTarget target, out string error)
     {
-        SubmitCalls++; SubmittedDescription = target.Description; error = "조건 확인 실패";
+        SubmitCalls++; SubmittedTarget = target; SubmittedDescription = target.Description; error = "조건 확인 실패";
         if (ThrowOnSubmit) throw new InvalidOperationException("simulated native failure");
         if (SubmitAllowed && !KeepEditorOpen) EditorVisible = EditorReady = false;
         return SubmitAllowed;
+    }
+    public bool BeginSlotEdit(RefreshTarget target, ListingJobEdit edit, out string error)
+    {
+        JobEditCalls++; error = "직업 창 확인 실패";
+        if (ThrowOnJobEdit) throw new InvalidOperationException("simulated role failure");
+        EditExpected = edit.Expected(target);
+        return JobEditAllowed;
+    }
+    public SlotEditProgress UpdateSlotEdit(out RefreshTarget expected, out string error)
+    {
+        JobEditChecks++; expected = EditExpected!; error = "직업 변경 확인 실패";
+        return JobEditFailed ? SlotEditProgress.Failed : JobEditComplete ? SlotEditProgress.Complete : SlotEditProgress.Waiting;
     }
 }

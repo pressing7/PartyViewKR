@@ -6,7 +6,7 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 
 namespace PartyViewKR;
 
-internal sealed unsafe class ListingRefreshHost(Plugin plugin, ListingReader reader) : IListingRefreshHost
+internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingReader reader) : IListingRefreshHost
 {
     private long editorRevision, editorClosedRevision;
     private RefreshTarget? editingTarget;
@@ -16,7 +16,7 @@ internal sealed unsafe class ListingRefreshHost(Plugin plugin, ListingReader rea
     private int buttonTextChars;
     private string check = "not_started";
     internal string Diagnostic => $"refreshNativeCheck={check}; refreshEditorRevision={EditorRevision}; refreshEditorClosedRevision={EditorClosedRevision}\n" +
-        $"refreshButtonMode={buttonMode}; refreshButtonTextReadable={buttonTextReadable}; refreshButtonEnabled={buttonEnabled}; refreshButtonTextChars={buttonTextChars}";
+        $"refreshButtonMode={buttonMode}; refreshButtonTextReadable={buttonTextReadable}; refreshButtonEnabled={buttonEnabled}; refreshButtonTextChars={buttonTextChars}\n" + SlotEditDiagnostic;
     public ulong SelfId => Plugin.PlayerState.IsLoaded ? Plugin.PlayerState.ContentId : 0;
     public bool QueryBusy => reader.Busy;
     public bool QuerySucceeded => reader.LastOwnRequestSucceeded;
@@ -67,7 +67,14 @@ internal sealed unsafe class ListingRefreshHost(Plugin plugin, ListingReader rea
             !NativeReadGuard.FixedText(detail.Comment, out var comment) || !ListingIdentity.SameText(comment, listing.Description))
         { check = "native_detail_mismatch"; return false; }
         target = new(SelfId, detail.ListingId, detail.DutyId, listing.Description,
-            DetailCriteria(ref detail), RefreshEvidence.ParseSeconds(listing.Remaining), detail.TotalSlots);
+            DetailCriteria(ref detail), RefreshEvidence.ParseSeconds(listing.Remaining), detail.TotalSlots)
+        {
+            Slots = ListingSlots.Read(true, detail.TotalSlots, detail.SlotsFilled, detail.NumberOfParties, detail.IsAlliance,
+                detail.Jobs, detail.MemberContentIds, detail.SlotFlags, id => id.ToString(), listing.Slots.JobRules),
+            ExtraCriteria = $"{detail.AvgItemLv}/{(byte)detail.JoinConditionFlags}/{detail.IsAlliance}/{detail.NumberOfParties}",
+            SinglePartyEditable = !detail.IsAlliance && detail.NumberOfParties <= 1 &&
+                ((uint)detail.Category & (uint)AgentLookingForGroup.DutyCategory.PvP) == 0,
+        };
         check = "own_verified";
         error = "";
         return true;
@@ -76,8 +83,10 @@ internal sealed unsafe class ListingRefreshHost(Plugin plugin, ListingReader rea
     public bool OpenEditor(RefreshTarget target, out string error)
     {
         editingTarget = null;
+        slotEdit = null;
         if (!TryGetOwn(out var current, out error)) return false;
-        if (current.ListingId != target.ListingId || !RefreshEvidence.SameRecruitment(target, current))
+        if (current.ListingId != target.ListingId || !RefreshEvidence.SameRecruitment(target, current) ||
+            plugin.Refresh.JobEdit != null && !ListingJobEdit.SameSlots(target.Slots, current.Slots))
         { check = "detail_changed_before_edit"; error = "조회한 모집글이 변경되어 중단했습니다."; return false; }
         var detail = Plugin.GameGui.GetAddonByName<AtkUnitBase>("LookingForGroupDetail", 1);
         editingFromRevision = EditorRevision;
@@ -90,6 +99,23 @@ internal sealed unsafe class ListingRefreshHost(Plugin plugin, ListingReader rea
 
     public bool Submit(RefreshTarget target, out string error)
     {
+        if (!ValidateEditor(target, out var addon, out var agent, out error)) return false;
+        if (Visible("LookingForGroupSelectRole"))
+        { check = "role_editor_still_open"; error = "직업 선택 창이 열려 있어 갱신을 중단했습니다."; return false; }
+        if (slotEdit != null && (!slotEdit.Completed || !ValidateSlotGuard(agent, slotEdit, true, out error))) return false;
+
+        // Recheck immediately before dispatch, including the localized label.
+        if (!ReadEditorAction() || buttonMode != RecruitmentEditorMode.Refresh)
+        { check = "refresh_button_changed_before_submit"; error = "게임의 갱신 버튼 상태가 바뀌어 중단했습니다."; return false; }
+        check = "submit_existing_criteria_once";
+        editingTarget = null;
+        return ClickZero((AtkUnitBase*)addon, out error);
+    }
+
+    private bool ValidateEditor(RefreshTarget target, out AddonLookingForGroupCondition* addon,
+        out AgentLookingForGroup* agent, out string error)
+    {
+        addon = null; agent = null;
         error = "기존 모집 조건을 확인하지 못해 재등록하지 않았습니다.";
         if (SelfId != target.SelfId || BlockReason != null) { check = "session_changed_before_submit"; return false; }
         if (!ReferenceEquals(editingTarget, target) || EditorRevision <= editingFromRevision ||
@@ -101,8 +127,8 @@ internal sealed unsafe class ListingRefreshHost(Plugin plugin, ListingReader rea
             error = "‘모집 내용 갱신’ 버튼을 확인하지 못해 실행하지 않았습니다.";
             return false;
         }
-        var addon = Plugin.GameGui.GetAddonByName<AddonLookingForGroupCondition>("LookingForGroupCondition", 1);
-        var agent = AgentLookingForGroup.Instance();
+        addon = Plugin.GameGui.GetAddonByName<AddonLookingForGroupCondition>("LookingForGroupCondition", 1);
+        agent = AgentLookingForGroup.Instance();
         if (!NativeReadGuard.Readable(addon, (nuint)sizeof(AddonLookingForGroupCondition)) || !addon->IsReady || !addon->IsVisible ||
             !NativeReadGuard.Readable(agent, (nuint)sizeof(AgentLookingForGroup)))
         { check = "editor_or_agent_not_ready"; return false; }
@@ -131,12 +157,8 @@ internal sealed unsafe class ListingRefreshHost(Plugin plugin, ListingReader rea
             return false;
         }
 
-        // Recheck immediately before dispatch, including the localized label.
-        if (!ReadEditorAction() || buttonMode != RecruitmentEditorMode.Refresh)
-        { check = "refresh_button_changed_before_submit"; error = "게임의 갱신 버튼 상태가 바뀌어 중단했습니다."; return false; }
-        check = "submit_existing_criteria_once";
-        editingTarget = null;
-        return ClickZero((AtkUnitBase*)addon, out error);
+        error = "";
+        return true;
     }
 
     private bool ReadEditorAction()
