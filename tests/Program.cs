@@ -239,6 +239,7 @@ ListingJobRulesTests.Run(Test, Check);
 ListingRoleButtonsTests.Run(Test, Check);
 ListingJobEditTests.Run(Test, Check);
 ListingSlotRouteTests.Run(Test, Check);
+ListingDescriptionEditTests.Run(Test, Check);
 CompatibilityTests.Run(Test, Check);
 Console.WriteLine($"All {passed} tests passed. Native game interaction still requires in-game validation.");
 
@@ -260,6 +261,9 @@ sealed class FakeHost : IListingRefreshHost
     public RefreshTarget? SubmittedTarget, EditExpected;
     public int JobEditCalls, JobEditChecks;
     public bool JobEditAllowed = true, JobEditComplete = true, JobEditFailed, ThrowOnJobEdit;
+    public int DescriptionEditCalls, DescriptionEditChecks;
+    public bool DescriptionEditAllowed = true, DescriptionEditComplete = true, DescriptionEditFailed, ThrowOnDescriptionEdit;
+    public RefreshTarget? DescriptionExpected;
     public RefreshTarget Target = new(10, 1, 123, "기존 모집 문구", "same", 1800, 8);
     public void QueryOwn() { QueryCalls++; QueryBusy = true; QuerySucceeded = false; }
     public void FinishQuery() { QueryBusy = false; QuerySucceeded = true; DetailRevision++; }
@@ -285,5 +289,17 @@ sealed class FakeHost : IListingRefreshHost
     {
         JobEditChecks++; expected = EditExpected!; error = "직업 변경 확인 실패";
         return JobEditFailed ? SlotEditProgress.Failed : JobEditComplete ? SlotEditProgress.Complete : SlotEditProgress.Waiting;
+    }
+    public bool BeginDescriptionEdit(RefreshTarget target, ListingDescriptionEdit edit, out string error)
+    {
+        DescriptionEditCalls++; error = "소개말 입력 실패";
+        if (ThrowOnDescriptionEdit) throw new InvalidOperationException("simulated description failure");
+        DescriptionExpected = edit.Expected(target);
+        return DescriptionEditAllowed;
+    }
+    public SlotEditProgress UpdateDescriptionEdit(out RefreshTarget expected, out string error)
+    {
+        DescriptionEditChecks++; expected = DescriptionExpected!; error = "소개말 반영 확인 실패";
+        return DescriptionEditFailed ? SlotEditProgress.Failed : DescriptionEditComplete ? SlotEditProgress.Complete : SlotEditProgress.Waiting;
     }
 }

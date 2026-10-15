@@ -30,10 +30,12 @@ internal interface IListingRefreshHost
     bool OpenEditor(RefreshTarget target, out string error);
     bool BeginSlotEdit(RefreshTarget target, ListingJobEdit edit, out string error);
     SlotEditProgress UpdateSlotEdit(out RefreshTarget expected, out string error);
+    bool BeginDescriptionEdit(RefreshTarget target, ListingDescriptionEdit edit, out string error);
+    SlotEditProgress UpdateDescriptionEdit(out RefreshTarget expected, out string error);
     bool Submit(RefreshTarget target, out string error);
 }
 
-internal enum RefreshStage { Idle, Queued, ReadingOwn, OpeningEditor, EditingSlot, WaitingResult, Verifying, Completed, Unconfirmed, Stopped }
+internal enum RefreshStage { Idle, Queued, ReadingOwn, OpeningEditor, EditingSlot, EditingDescription, WaitingResult, Verifying, Completed, Unconfirmed, Stopped }
 
 // No timers/tasks or automatic retries: every run comes from one button press.
 // Advancing the stage BEFORE dispatch also prevents a thrown callback being retried.
@@ -41,13 +43,15 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
 {
     internal RefreshStage Stage { get; private set; }
     internal bool Busy => Stage is RefreshStage.Queued or RefreshStage.ReadingOwn or
-        RefreshStage.OpeningEditor or RefreshStage.EditingSlot or RefreshStage.WaitingResult or RefreshStage.Verifying;
+        RefreshStage.OpeningEditor or RefreshStage.EditingSlot or RefreshStage.EditingDescription or RefreshStage.WaitingResult or RefreshStage.Verifying;
     internal ListingJobEdit? JobEdit { get; private set; }
+    internal ListingDescriptionEdit? DescriptionEdit { get; private set; }
     internal string Status { get; private set; } = "버튼을 누르면 현재 모집 조건으로 한 번 갱신합니다.";
     internal bool CoolingDown(long now) => now < cooldownUntil;
     internal string Diagnostic => $"refreshStage={Stage}; refreshEditCalls={editCalls}; refreshSubmitCalls={submitCalls}; " +
         $"refreshBeforeSeconds={target?.RemainingSeconds?.ToString() ?? "unknown"}; refreshAfterSeconds={afterSeconds?.ToString() ?? "unknown"}; " +
-        $"refreshOwnWaitChecks={ownWaitChecks}; refreshEditorMode={editorMode}; refreshJobSlot={JobEdit?.Position ?? 0}\nrefreshResult={result}";
+        $"refreshOwnWaitChecks={ownWaitChecks}; refreshEditorMode={editorMode}; refreshJobSlot={JobEdit?.Position ?? 0}; " +
+        $"refreshDescriptionEdit={DescriptionEdit != null}\nrefreshResult={result}";
 
     private RefreshTarget? target;
     private ulong self;
@@ -58,15 +62,18 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
     private string ownWaitReason = "";
     private RecruitmentEditorMode editorMode;
 
-    internal void Request(long now, ListingJobEdit? edit = null)
+    internal void Request(long now, ListingJobEdit? edit = null, ListingDescriptionEdit? descriptionEdit = null)
     {
         if (Busy || CoolingDown(now)) return;
         JobEdit = edit;
+        DescriptionEdit = descriptionEdit;
         target = null;
         editCalls = submitCalls = ownWaitChecks = 0;
         ownWaitReason = "";
         editorMode = RecruitmentEditorMode.Unknown;
         afterSeconds = null;
+        if (descriptionEdit != null && (edit != null || !descriptionEdit.Valid))
+        { Stop("모집 소개말을 다시 확인해 주세요.", "invalid_description_edit"); return; }
         if (edit != null && !edit.Valid) { Stop("허용 직업과 빈자리를 다시 확인해 주세요.", "invalid_job_edit"); return; }
         result = "pending";
         SetStage(RefreshStage.Queued, now, "갱신 준비 중");
@@ -102,6 +109,8 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
                 if (own.SelfId != self) { Stop("모집자가 변경되어 중단했습니다.", "owner_changed"); return; }
                 if (JobEdit != null && !JobEdit.MatchesOriginal(own))
                 { Stop("편집 중 참가자 또는 모집 조건이 바뀌었습니다. 새 모집글에서 다시 선택해 주세요.", "job_edit_stale"); return; }
+                if (DescriptionEdit != null && !DescriptionEdit.MatchesOriginal(own))
+                { Stop("편집 중 모집글 또는 참가자가 바뀌었습니다. 다시 조회한 뒤 소개말을 수정해 주세요.", "description_edit_stale"); return; }
                 if (host.EditorVisible) { Stop("모집 조건 창이 따로 열려 있어 중단했습니다.", "editor_opened_elsewhere"); return; }
                 target = own;
                 ownWaitReason = "";
@@ -132,6 +141,12 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
                     SetStage(RefreshStage.EditingSlot, now, "허용 직업 변경 중");
                     if (!host.BeginSlotEdit(target!, JobEdit, out var editError)) Stop(editError, "job_edit_open_failed");
                 }
+                else if (DescriptionEdit != null)
+                {
+                    SetStage(RefreshStage.EditingDescription, now, "모집 소개말 반영 중");
+                    if (!host.BeginDescriptionEdit(target!, DescriptionEdit, out var descriptionError))
+                        Stop(descriptionError, "description_edit_start_failed");
+                }
                 else Submit(now);
                 break;
 
@@ -146,6 +161,20 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
                 if (!JobEdit!.MatchesResult(target!, expected))
                 { Stop("요청한 자리의 직업 변경 결과가 다릅니다.", "job_edit_result_mismatch"); return; }
                 target = expected;
+                Submit(now);
+                break;
+
+            case RefreshStage.EditingDescription:
+                if (host.EditorClosedRevision != editorClosedRevision || !host.EditorVisible)
+                { Stop("모집 수정 창이 닫혀 소개말 수정을 중단했습니다.", "description_editor_closed"); return; }
+                if (now - stageTick > 8000)
+                { Stop("소개말이 게임 수정창에 반영됐는지 확인하지 못했습니다.", "description_edit_timeout"); return; }
+                var descriptionProgress = host.UpdateDescriptionEdit(out var descriptionExpected, out var descriptionReadError);
+                if (descriptionProgress == SlotEditProgress.Failed) { Stop(descriptionReadError, "description_edit_failed"); return; }
+                if (descriptionProgress == SlotEditProgress.Waiting) return;
+                if (!DescriptionEdit!.MatchesResult(target!, descriptionExpected))
+                { Stop("소개말 또는 다른 모집 조건이 요청한 내용과 다릅니다.", "description_edit_result_mismatch"); return; }
+                target = descriptionExpected;
                 Submit(now);
                 break;
 
@@ -166,14 +195,16 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
                 { WaitForOwn(verifyError, true); return; }
                 ownWaitReason = "";
                 afterSeconds = after.RemainingSeconds;
-                var contentsAgree = JobEdit != null ? JobEdit.MatchesResult(target!, after) : RefreshEvidence.SameRecruitment(target!, after);
+                var contentsAgree = JobEdit != null ? JobEdit.MatchesResult(target!, after) :
+                    DescriptionEdit != null ? DescriptionEdit.MatchesResult(target!, after) : RefreshEvidence.SameRecruitment(target!, after);
                 if (!contentsAgree)
                 { Stop("등록 후 모집 내용 또는 조건이 다르게 보입니다. 게임에서 확인해 주세요.", "verify_contents_changed"); return; }
                 var confirmed = after.ListingId != target!.ListingId ||
                     after.RemainingSeconds is { } seconds && target.RemainingSeconds is { } before && seconds > before;
                 result = confirmed ? "confirmed_by_new_listing_or_timer" : "own_listing_seen_timer_unconfirmed";
                 SetStage(confirmed ? RefreshStage.Completed : RefreshStage.Unconfirmed, now,
-                    confirmed ? (JobEdit != null ? "직업 변경 및 갱신 확인 — 내 모집글을 다시 조회했습니다." : "갱신 확인 — 재등록 후 내 모집글을 다시 조회했습니다.") :
+                    confirmed ? (JobEdit != null ? "직업 변경 및 갱신 확인 — 내 모집글을 다시 조회했습니다." :
+                        DescriptionEdit != null ? "소개말 변경 및 갱신 확인 — 내 모집글을 다시 조회했습니다." : "갱신 확인 — 재등록 후 내 모집글을 다시 조회했습니다.") :
                     "재등록 요청 후 내 모집글을 확인했습니다. 남은 시간 초기화 여부는 게임에서 확인해 주세요.");
                 break;
         }

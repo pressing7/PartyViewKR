@@ -16,7 +16,8 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
     private int buttonTextChars;
     private string check = "not_started";
     internal string Diagnostic => $"refreshNativeCheck={check}; refreshEditorRevision={EditorRevision}; refreshEditorClosedRevision={EditorClosedRevision}\n" +
-        $"refreshButtonMode={buttonMode}; refreshButtonTextReadable={buttonTextReadable}; refreshButtonEnabled={buttonEnabled}; refreshButtonTextChars={buttonTextChars}\n" + SlotEditDiagnostic;
+        $"refreshButtonMode={buttonMode}; refreshButtonTextReadable={buttonTextReadable}; refreshButtonEnabled={buttonEnabled}; refreshButtonTextChars={buttonTextChars}\n" +
+        SlotEditDiagnostic + "\n" + DescriptionEditDiagnostic;
     public ulong SelfId => Plugin.PlayerState.IsLoaded ? Plugin.PlayerState.ContentId : 0;
     public bool QueryBusy => reader.Busy;
     public bool QuerySucceeded => reader.LastOwnRequestSucceeded;
@@ -83,9 +84,10 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
     {
         editingTarget = null;
         slotEdit = null;
+        descriptionSession = null;
         if (!TryGetOwn(out var current, out error)) return false;
         if (current.ListingId != target.ListingId || !RefreshEvidence.SameRecruitment(target, current) ||
-            plugin.Refresh.JobEdit != null && !ListingJobEdit.SameSlots(target.Slots, current.Slots))
+            (plugin.Refresh.JobEdit != null || plugin.Refresh.DescriptionEdit != null) && !ListingJobEdit.SameSlots(target.Slots, current.Slots))
         { check = "detail_changed_before_edit"; error = "조회한 모집글이 변경되어 중단했습니다."; return false; }
         var detail = Plugin.GameGui.GetAddonByName<AtkUnitBase>("LookingForGroupDetail", 1);
         editingFromRevision = EditorRevision;
@@ -102,6 +104,8 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
         if (Visible("LookingForGroupSelectRole"))
         { check = "role_editor_still_open"; error = "직업 선택 창이 열려 있어 갱신을 중단했습니다."; return false; }
         if (slotEdit != null && (!slotEdit.Completed || !ValidateSlotGuard(agent, slotEdit, true, out error))) return false;
+        if (descriptionSession != null && (!descriptionSession.Completed ||
+            !ValidateDescriptionGuard(addon, agent, descriptionSession, true, out error))) return false;
 
         // Recheck immediately before dispatch, including the localized label.
         if (!ReadEditorAction() || buttonMode != RecruitmentEditorMode.Refresh)

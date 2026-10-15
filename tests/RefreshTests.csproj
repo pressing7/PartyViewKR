@@ -8,6 +8,7 @@
     <None Include="../compatibility/native-contract.json" Link="native-contract.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="../src/ListingIdentity.cs" Link="ListingIdentity.cs" />
     <Compile Include="../src/ListingDescription.cs" Link="ListingDescription.cs" />
+    <Compile Include="../src/ListingDescriptionEdit.cs" Link="ListingDescriptionEdit.cs" />
     <Compile Include="../src/ListingSlots.cs" Link="ListingSlots.cs" />
     <Compile Include="../src/ListingJobRules.cs" Link="ListingJobRules.cs" />
     <Compile Include="../src/ListingRoleButtons.cs" Link="ListingRoleButtons.cs" />
