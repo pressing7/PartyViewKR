@@ -33,6 +33,12 @@ internal sealed record NativeContract(int Schema, int ApiLevel, string AssemblyN
             var layout = type.GetLayout();
             entries[$"type:{name}"] = $"size={layout.Size};pack={layout.PackingSize};layout={type.Attributes & TypeAttributes.LayoutMask};" +
                 Attributes(md, names, type.GetCustomAttributes());
+            // Tooltip-map nodes and pairs use sequential layout: metadata gives
+            // their fields offset=-1, so declaration order is also ABI evidence.
+            if ((type.Attributes & TypeAttributes.LayoutMask) == TypeAttributes.SequentialLayout)
+                entries[$"layout:{name}.instanceFieldOrder"] = string.Join("|", type.GetFields()
+                    .Select(md.GetFieldDefinition).Where(f => (f.Attributes & FieldAttributes.Static) == 0)
+                    .Select(f => md.GetString(f.Name)));
             foreach (var fh in type.GetFields())
             {
                 var field = md.GetFieldDefinition(fh);
@@ -41,6 +47,7 @@ internal sealed record NativeContract(int Schema, int ApiLevel, string AssemblyN
                 if (name.EndsWith(".AtkEventType") && fieldName is not ("value__" or "ButtonClick" or "MouseOver" or "MouseOut")) continue;
                 if (name.EndsWith(".NodeType") && fieldName is not ("value__" or "Text")) continue;
                 if (name.EndsWith(".ComponentType") && fieldName is not ("value__" or "Button" or "CheckBox")) continue;
+                if (name.EndsWith(".AtkTooltipType") && fieldName is not ("value__" or "Text")) continue;
                 if (name.EndsWith("+DutyCategory") && fieldName is not ("value__" or "PvP")) continue;
                 var signature = field.DecodeSignature(names, (object?)null);
                 var constant = "";

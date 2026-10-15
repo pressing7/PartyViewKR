@@ -39,10 +39,18 @@ static class CompatibilityTests
             check(baseline.Differences(actual).Contains("assembly"), "wrong DLL accepted");
             check(baseline.Differences(actual).Any(k => k.StartsWith("type:")), "missing type not detected");
         });
+        test("sequential native fields retain declaration order in the contract", () => {
+            var name = typeof(SequentialLayoutFixture).FullName!;
+            var actual = NativeContract.Read(typeof(CompatibilityTests).Assembly.Location, new() { [name] = [] }, 15);
+            check(actual.Entries[$"layout:{name}.instanceFieldOrder"] == "Second|First", "sequential field order was lost");
+        });
         test("malformed baseline does not silently become compatible", () => {
             using var invalid = new MemoryStream(Encoding.UTF8.GetBytes("null"));
             try { NativeContract.Parse(invalid); throw new Exception("null baseline accepted"); }
             catch (InvalidDataException) { }
         });
     }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct SequentialLayoutFixture { public byte Second; public int First; }
 }

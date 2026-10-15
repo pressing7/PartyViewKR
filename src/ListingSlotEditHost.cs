@@ -16,10 +16,12 @@ internal sealed unsafe partial class ListingRefreshHost
     private long roleOpenedRevision, roleClosedRevision;
     private SlotEditSession? slotEdit;
     private string slotCheck = "not_started";
+    private string roleNameCheck = "not_started", roleButtonRead = "", roleNameRead = "";
     private int matchedRoleButtons;
     private string SlotEditDiagnostic => $"slotEditCheck={slotCheck}; slotEditPhase={slotEdit?.Phase ?? "none"}; " +
         $"roleButtonsMatched={matchedRoleButtons}; roleOpenedRevision={Interlocked.Read(ref roleOpenedRevision)}; " +
-        $"roleClosedRevision={Interlocked.Read(ref roleClosedRevision)}; slotToggleCalls={slotEdit?.ToggleCalls ?? 0}";
+        $"roleClosedRevision={Interlocked.Read(ref roleClosedRevision)}; slotToggleCalls={slotEdit?.ToggleCalls ?? 0}\n" +
+        $"roleNameCheck={roleNameCheck}\nroleButtonRead={roleButtonRead}\nroleNameRead={roleNameRead}";
 
     internal void RoleOpened() => Interlocked.Increment(ref roleOpenedRevision);
     internal void RoleClosed() => Interlocked.Increment(ref roleClosedRevision);
@@ -42,6 +44,7 @@ internal sealed unsafe partial class ListingRefreshHost
     public bool BeginSlotEdit(RefreshTarget target, ListingJobEdit edit, out string error)
     {
         slotEdit = null; matchedRoleButtons = 0; slotCheck = "validating";
+        roleNameCheck = "not_started"; roleButtonRead = roleNameRead = "";
         error = "빈자리의 기존 모집 조건을 확인하지 못했습니다.";
         if (!edit.MatchesOriginal(target) || Visible("LookingForGroupSelectRole")) return false;
         if (!ValidateEditor(target, out var addon, out var agent, out error)) return false;
@@ -101,7 +104,13 @@ internal sealed unsafe partial class ListingRefreshHost
             return SlotEditProgress.Waiting;
         }
         if (!ReadJobButtons(role, session.Edit.Rules, out var nodes, out var observed, out error))
+        {
+            // Setup can precede registration of the hover tooltips. Retry only
+            // these reads before the first click; never repeat a sent toggle.
+            if (session.Phase == "opening" && Environment.TickCount64 - session.Started <= 3000)
+                return SlotEditProgress.Waiting;
             return SlotEditProgress.Failed;
+        }
         if (session.Phase == "opening")
         {
             var originalFlags = session.Original.Slots.Slots[session.Edit.Position - 1].SlotFlags & session.Edit.Rules.AllFlags;
@@ -134,19 +143,37 @@ internal sealed unsafe partial class ListingRefreshHost
         out ulong flags, out string error)
     {
         nodes = []; flags = 0; error = "";
+        matchedRoleButtons = 0;
+        if (!ListingRoleTooltips.Read(role, out var tooltips, out roleNameCheck))
+        {
+            slotCheck = "role_tooltips_unreadable";
+            error = "게임 직업 선택창의 툴팁 정보를 읽지 못했습니다. 진단 정보를 확인해 주세요.";
+            return false;
+        }
+        var observations = new List<RoleButtonNames>();
+        var buttonReads = new List<string>();
+        var nameReads = new List<string>();
         foreach (var nodeId in JobNodeCandidates)
         {
-            if (!TryButton(role, nodeId, ComponentType.CheckBox, out _, out var button, requireEnabled: false)) continue;
-            if (!NativeReadGuard.TextNode(button->ButtonTextNode, out var label)) continue;
-            var job = rules.Choices.FirstOrDefault(j => ListingIdentity.SameText(j.Name, label));
-            if (job == null) continue;
-            if (!nodes.TryAdd(job.Id, nodeId)) { error = "같은 직업의 체크박스가 중복되어 중단했습니다."; return false; }
-            if (button->IsChecked) flags |= job.Flag;
+            if (!TryButton(role, nodeId, ComponentType.CheckBox, out var node, out var button, out var reason, requireEnabled: false))
+            { buttonReads.Add($"{nodeId}:{reason}"); continue; }
+            NativeReadGuard.TextNode(button->ButtonTextNode, out var label);
+            var hoverNames = ListingRoleTooltips.ForButton(node, button, tooltips);
+            observations.Add(new(nodeId, button->IsChecked, label, hoverNames));
+            buttonReads.Add($"{nodeId}:ok,tooltip={hoverNames.Length},textChars={label.Length}");
+            var preview = string.Join("|", hoverNames.Append(label).Where(n => n.Length > 0).Distinct())
+                .Replace('\r', ' ').Replace('\n', ' ').Replace(';', ',');
+            nameReads.Add($"{nodeId}:{(preview.Length > 80 ? preview[..80] : preview)}");
         }
+        roleButtonRead = string.Join(";", buttonReads);
+        roleNameRead = string.Join(";", nameReads);
+        var result = ListingRoleNames.Read(rules, observations);
+        nodes = result.Nodes; flags = result.CheckedFlags;
         matchedRoleButtons = nodes.Count;
-        if (nodes.Count == rules.Count) return true;
-        slotCheck = $"role_job_labels_incomplete; missingJobIds={string.Join(",", rules.Choices.Select(j => j.Id).Except(nodes.Keys))}";
-        error = "게임 직업 선택창의 직업 이름을 모두 확인하지 못했습니다. 진단 정보를 확인해 주세요.";
+        if (result.Complete) return true;
+        slotCheck = $"role_job_names_incomplete; missingJobIds={string.Join(",", result.MissingJobs)}; " +
+            $"ambiguousNodes={string.Join(",", result.AmbiguousNodes)}; duplicateJobIds={string.Join(",", result.DuplicateJobs)}";
+        error = "게임 직업 선택창의 버튼과 툴팁 이름을 모두 연결하지 못했습니다. 진단 정보를 확인해 주세요.";
         return false;
     }
 
@@ -178,18 +205,36 @@ internal sealed unsafe partial class ListingRefreshHost
 
     private static bool TryButton(AtkUnitBase* addon, uint id, ComponentType type, out AtkResNode* node,
         out AtkComponentButton* button, bool requireEnabled = true)
+        => TryButton(addon, id, type, out node, out button, out _, requireEnabled);
+
+    private static bool TryButton(AtkUnitBase* addon, uint id, ComponentType type, out AtkResNode* node,
+        out AtkComponentButton* button, out string reason, bool requireEnabled = true)
     {
-        node = null; button = null;
+        node = null; button = null; reason = "addon_not_ready";
         if (!NativeReadGuard.Readable(addon, (nuint)sizeof(AtkUnitBase)) || !addon->IsVisible || !addon->IsReady) return false;
+        reason = "node_unreadable";
         node = addon->GetNodeById(id);
-        if (!NativeReadGuard.Readable(node, (nuint)sizeof(AtkResNode)) || !node->IsVisible()) return false;
+        if (!NativeReadGuard.Readable(node, (nuint)sizeof(AtkResNode))) return false;
+        reason = "node_hidden";
+        if (!node->IsVisible()) return false;
+        reason = "component_node_unreadable";
         var componentNode = node->GetAsAtkComponentNode();
         if (!NativeReadGuard.Readable(componentNode, (nuint)sizeof(AtkComponentNode))) return false;
+        reason = "component_unreadable";
         var component = componentNode->Component;
-        if (!NativeReadGuard.Readable(component, (nuint)sizeof(AtkComponentButton)) || component->GetComponentType() != type) return false;
+        if (!NativeReadGuard.Readable(component, (nuint)sizeof(AtkComponentButton))) return false;
+        var actualType = component->GetComponentType();
+        reason = $"component_type_{(int)actualType}";
+        if (actualType != type) return false;
         button = (AtkComponentButton*)component;
-        return (!requireEnabled || button->IsEnabled) && button->OwnerNode == componentNode &&
-            NativeReadGuard.Readable(addon->VirtualTable, (nuint)sizeof(AtkUnitBase.AtkUnitBaseVirtualTable));
+        reason = "owner_mismatch";
+        if (button->OwnerNode != componentNode) return false;
+        reason = "disabled";
+        if (requireEnabled && !button->IsEnabled) return false;
+        reason = "vtable_unreadable";
+        if (!NativeReadGuard.Readable(addon->VirtualTable, (nuint)sizeof(AtkUnitBase.AtkUnitBaseVirtualTable))) return false;
+        reason = "ok";
+        return true;
     }
 
     private static void FireNode(AtkUnitBase* addon, AtkResNode* node, AtkComponentButton* button, AtkEventType type, int param)
