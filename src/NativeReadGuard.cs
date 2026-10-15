@@ -45,19 +45,6 @@ internal static unsafe class NativeReadGuard
         return Readable(node, (nuint)sizeof(AtkTextNode)) && node->Type == NodeType.Text && Text(&node->NodeText, out text);
     }
 
-    internal static bool CString(byte* bytes, out string text)
-    {
-        text = "";
-        // Tooltip text has no Utf8String length. Bound the scan and check each
-        // address so a valid short string need not have 512 readable bytes after it.
-        for (var i = 0; i < 512; i++)
-        {
-            if (!Readable(bytes + i, 1)) return false;
-            if (bytes[i] == 0) return FixedText(new ReadOnlySpan<byte>(bytes, i), out text);
-        }
-        return false;
-    }
-
     internal static bool Text(Utf8String* value, out string text)
     {
         text = "";

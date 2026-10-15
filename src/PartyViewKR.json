@@ -2,7 +2,7 @@
   "Author": "Local build",
   "Name": "Party View KR",
   "InternalName": "PartyViewKR",
-  "AssemblyVersion": "0.3.8.0",
+  "AssemblyVersion": "0.3.9.0",
   "Description": "한섭 파티원·모집글 조회와 내 모집글 수동 갱신. /pvkr에서 확인하고 일반 4·8인 모집의 빈자리 허용 직업을 한 자리씩 수정할 수 있습니다.",
   "Punchline": "모집글 조회·수동 갱신과 빈자리 허용 직업 수정",
   "ApplicableVersion": "any",

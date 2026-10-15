@@ -236,7 +236,7 @@ Test("adding text during an empty-comment refresh is detected", () => {
 });
 ListingSlotsTests.Run(Test, Check);
 ListingJobRulesTests.Run(Test, Check);
-ListingRoleNamesTests.Run(Test, Check);
+ListingRoleButtonsTests.Run(Test, Check);
 ListingJobEditTests.Run(Test, Check);
 CompatibilityTests.Run(Test, Check);
 Console.WriteLine($"All {passed} tests passed. Native game interaction still requires in-game validation.");

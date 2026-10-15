@@ -53,35 +53,3 @@ internal sealed record ListingJobEdit(RefreshTarget Original, int Position, ulon
             pair.First.MemberContentId == pair.Second.MemberContentId && pair.First.JobId == pair.Second.JobId &&
             pair.First.SlotFlags == pair.Second.SlotFlags);
 }
-
-// Each UI toggle is dispatched once. Observe its result before choosing the
-// next one, so a delayed callback or manual interference cannot invert it twice.
-internal sealed class JobToggleSequence(ulong initial, ulong desired, IReadOnlyList<RecruitmentJobOption> jobs)
-{
-    internal ulong Expected { get; private set; } = initial;
-    private ulong previous = initial;
-    private bool pending;
-    private long sentAt;
-
-    internal bool Next(ulong observed, long now, out RecruitmentJobOption? next, out bool complete, out string error)
-    {
-        next = null; complete = false; error = "";
-        if (pending && observed == previous && observed != Expected)
-        {
-            if (now - sentAt > 2500) error = "직업 선택 결과를 확인하지 못했습니다.";
-            return error.Length == 0;
-        }
-        if (observed != Expected) { error = "게임 직업 선택이 도중에 변경되어 중단했습니다."; return false; }
-        pending = false;
-        // Add new choices first so switching a single allowed job never creates
-        // an intermediate selection with no jobs in the game's editor.
-        next = jobs.FirstOrDefault(job => (desired & job.Flag) != 0 && (observed & job.Flag) == 0) ??
-            jobs.FirstOrDefault(job => (desired & job.Flag) == 0 && (observed & job.Flag) != 0);
-        if (next == null) { complete = observed == desired; return complete; }
-        previous = observed;
-        Expected = observed ^ next.Flag;
-        sentAt = now;
-        pending = true;
-        return true;
-    }
-}

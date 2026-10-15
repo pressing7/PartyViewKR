@@ -109,20 +109,5 @@ static class ListingJobEditTests
                 check(f.Stage == RefreshStage.Unconfirmed && h.SubmitCalls == 1, "unverified result accepted or retried");
             }
         });
-        test("a delayed checkbox response is never toggled twice", () => {
-            var sequence = new JobToggleSequence(0x100, 0x400, rules.Choices);
-            check(sequence.Next(0x100, 1000, out var first, out _, out _) && first!.Id == 21 && sequence.Expected == 0x500, "new job must be added first");
-            check(sequence.Next(0x100, 2000, out var waiting, out var done, out _) && waiting == null && !done, "toggle retried");
-            check(sequence.Next(0x500, 2100, out var next, out _, out _) && next!.Id == 19, "old job removed only after new job selected");
-            check(sequence.Next(0x400, 2200, out var last, out done, out _) && done && last == null, "completion");
-        });
-        test("checkbox timeouts and unexpected selection changes stop the sequence", () => {
-            foreach (var (observed, now) in new[] { (0x100ul, 4000L), (0x2000ul, 1500L) })
-            {
-                var sequence = new JobToggleSequence(0x100, 0x400, rules.Choices);
-                sequence.Next(0x100, 1000, out _, out _, out _);
-                check(!sequence.Next(observed, now, out var next, out _, out var error) && next == null && error.Length > 0, "unexpected state ignored");
-            }
-        });
     }
 }

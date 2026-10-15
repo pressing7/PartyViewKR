@@ -10,7 +10,7 @@
     <Compile Include="../src/ListingDescription.cs" Link="ListingDescription.cs" />
     <Compile Include="../src/ListingSlots.cs" Link="ListingSlots.cs" />
     <Compile Include="../src/ListingJobRules.cs" Link="ListingJobRules.cs" />
-    <Compile Include="../src/ListingRoleNames.cs" Link="ListingRoleNames.cs" />
+    <Compile Include="../src/ListingRoleButtons.cs" Link="ListingRoleButtons.cs" />
     <Compile Include="../src/ListingJobEdit.cs" Link="ListingJobEdit.cs" />
     <Compile Include="../src/ListingRefresh.cs" Link="ListingRefresh.cs" />
   </ItemGroup>
