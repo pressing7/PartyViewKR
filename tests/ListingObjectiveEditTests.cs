@@ -45,6 +45,32 @@ static class ListingObjectiveEditTests
             var beforeFields = t.Criteria.Split('/'); var afterFields = after.Criteria.Split('/');
             check(beforeFields.Where((_, i) => i != 2).SequenceEqual(afterFields.Where((_, i) => i != 2)), "beginner or other conditions changed");
         });
+        test("reported UI index 3 sends command selection 4 and stores Loot, not Practice", () => {
+            var (h, f, edit) = Start(selected: 3, original: 2);
+            check(edit.SelectedIndex == 3 && h.ObjectiveCallbackSelection == 4, "zero-based UI index sent as callback selection");
+            check(ListingObjectives.Read(h.ObjectiveExpected!.Criteria) == 8, "callback selects Practice instead of Loot");
+            f.Update(2500); f.Update(4000); h.Target = h.SubmittedTarget! with { RemainingSeconds = 3598 }; h.FinishQuery(); f.Update(4500);
+            check(f.Stage == RefreshStage.Completed && h.ObjectiveEditCalls == 1 && h.SubmitCalls == 1, "corrected command did not complete once");
+        });
+        test("all menu choices use one-based command selections including explicit None", () => {
+            uint[] commandSelections = [1, 2, 3, 4];
+            byte[] storedValues = [1, 2, 4, 8];
+            for (var index = 0; index < 4; index++)
+            {
+                var (h, f, _) = Start(index, original: index == 0 ? (byte)8 : (byte)1);
+                check(h.ObjectiveCallbackSelection == commandSelections[index], "wrong outgoing command selection");
+                check(ListingObjectives.Read(h.ObjectiveExpected!.Criteria) == storedValues[index], "wrong stored objective");
+                f.Update(2500);
+                check(h.SubmitCalls == 1, "valid purpose not submitted");
+            }
+        });
+        test("the reported Practice value after a Loot request still blocks submission", () => {
+            var (h, f, _) = Start(selected: 3, original: 2);
+            h.ObjectiveExpected = h.Target with { Criteria = h.Target.Criteria.Replace("/321/2/", "/321/4/") };
+            f.Update(2500); f.Update(3000); f.Update(20000);
+            check(f.Stage == RefreshStage.Stopped && h.ObjectiveEditCalls == 1 && h.SubmitCalls == 0,
+                "mismatched purpose submitted or selection retried");
+        });
         test("every purpose transition including clearing sends once and verifies 4/8/24/48 listings", () => {
             foreach (var count in new[] { 4, 8, 24, 48 })
             foreach (byte original in new byte[] { 1, 2, 4, 8 })

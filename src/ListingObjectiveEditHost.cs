@@ -14,6 +14,8 @@ internal sealed unsafe partial class ListingRefreshHost
     private string ObjectiveEditDiagnostic => $"objectiveEditCheck={objectiveCheck}; objectiveEditPhase={objectiveSession?.Phase ?? "none"}; " +
         $"objectiveCallbackCalls={objectiveSession?.CallbackCalls ?? 0}; objectiveCallbackReturned={objectiveSession?.CallbackReturned?.ToString() ?? "unknown"}; " +
         $"objectiveRequestedIndex={objectiveSession?.Edit.SelectedIndex.ToString() ?? "unknown"}; " +
+        $"objectiveCallbackSelection={objectiveSession?.Edit.CallbackSelection.ToString() ?? "unknown"}; " +
+        $"objectiveBeforeValue={(objectiveSession == null ? "unknown" : ListingObjectives.Read(objectiveSession.Original.Criteria)?.ToString() ?? "unknown")}; " +
         $"objectiveRequestedValue={objectiveSession?.Edit.Value?.ToString() ?? "unknown"}; " +
         $"objectiveUiIndex={objectiveUiIndex}; objectiveStoredValue={objectiveStored?.ToString() ?? "unknown"}";
 
@@ -50,12 +52,14 @@ internal sealed unsafe partial class ListingRefreshHost
         objectiveSession.CallbackCalls++;
         objectiveCheck = "selecting_objective_once";
         // PFRemote 1.0.0.12 CreatePf b__0 / FireLfgCommand(uint, uint):
-        // command 20, dropdown index, selector 0. Index 0 must be sent too when
-        // clearing an existing purpose, unlike the original new-listing path.
+        // command 20, one-based selection, selector 0. The original forwards
+        // req.Objective directly; it does not establish a zero-based UI index.
+        // The KR report confirms selection 3 produces Practice (4). Use 4 for
+        // Loot (8), and explicitly send selection 1 to clear an existing purpose.
         var values = stackalloc AtkValue[3];
         new Span<AtkValue>(values, 3).Clear();
         values[0].Type = AtkValueType.Int; values[0].Int = 20;
-        values[1].Type = AtkValueType.UInt; values[1].UInt = (uint)edit.SelectedIndex;
+        values[1].Type = AtkValueType.UInt; values[1].UInt = edit.CallbackSelection;
         values[2].Type = AtkValueType.UInt; values[2].UInt = 0;
         objectiveSession.CallbackReturned = ((AtkUnitBase*)addon)->FireCallback(3, values, true);
         error = "";

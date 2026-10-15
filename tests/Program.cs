@@ -267,6 +267,7 @@ sealed class FakeHost : IListingRefreshHost
     public bool DescriptionEditAllowed = true, DescriptionEditComplete = true, DescriptionEditFailed, ThrowOnDescriptionEdit;
     public RefreshTarget? DescriptionExpected;
     public int ObjectiveEditCalls;
+    public uint? ObjectiveCallbackSelection;
     public bool ObjectiveEditAllowed = true, ObjectiveEditComplete = true, ObjectiveEditFailed, ThrowOnObjectiveEdit;
     public RefreshTarget? ObjectiveExpected;
     public RefreshTarget Target = new(10, 1, 123, "기존 모집 문구", "same", 1800, 8);
@@ -312,7 +313,13 @@ sealed class FakeHost : IListingRefreshHost
     {
         ObjectiveEditCalls++; error = "목적 선택 실패";
         if (ThrowOnObjectiveEdit) throw new InvalidOperationException("simulated objective failure");
-        ObjectiveExpected = edit.Expected(target);
+        ObjectiveCallbackSelection = edit.CallbackSelection;
+        // Independent game-side fixture: selection 3 -> Practice (4) is the
+        // reported KR behavior. Do not simply echo edit.Expected(target), which
+        // let the wrong outgoing value pass the 0.3.15 managed tests.
+        var stored = ObjectiveCallbackSelection switch { 1 => "1", 2 => "2", 3 => "4", 4 => "8", _ => "0" };
+        var fields = target.Criteria.Split('/'); fields[2] = stored;
+        ObjectiveExpected = target with { Criteria = string.Join('/', fields) };
         return ObjectiveEditAllowed;
     }
     public SlotEditProgress UpdateObjectiveEdit(out RefreshTarget expected, out string error)
