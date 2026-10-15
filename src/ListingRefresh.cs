@@ -143,8 +143,7 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
                 var progress = host.UpdateSlotEdit(out var expected, out var jobError);
                 if (progress == SlotEditProgress.Failed) { Stop(jobError, "job_edit_failed"); return; }
                 if (progress == SlotEditProgress.Waiting) return;
-                var requested = JobEdit!.Expected(target!);
-                if (!RefreshEvidence.SameRecruitment(requested, expected) || !ListingJobEdit.SameSlots(requested.Slots, expected.Slots))
+                if (!JobEdit!.MatchesResult(target!, expected))
                 { Stop("요청한 자리의 직업 변경 결과가 다릅니다.", "job_edit_result_mismatch"); return; }
                 target = expected;
                 Submit(now);
@@ -167,7 +166,8 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
                 { WaitForOwn(verifyError, true); return; }
                 ownWaitReason = "";
                 afterSeconds = after.RemainingSeconds;
-                if (!RefreshEvidence.SameRecruitment(target!, after) || JobEdit != null && !ListingJobEdit.SameSlots(target!.Slots, after.Slots))
+                var contentsAgree = JobEdit != null ? JobEdit.MatchesResult(target!, after) : RefreshEvidence.SameRecruitment(target!, after);
+                if (!contentsAgree)
                 { Stop("등록 후 모집 내용 또는 조건이 다르게 보입니다. 게임에서 확인해 주세요.", "verify_contents_changed"); return; }
                 var confirmed = after.ListingId != target!.ListingId ||
                     after.RemainingSeconds is { } seconds && target.RemainingSeconds is { } before && seconds > before;

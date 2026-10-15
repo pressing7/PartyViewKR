@@ -18,15 +18,20 @@ internal sealed unsafe partial class ListingRefreshHost
         $"roleOpenedRevision={Interlocked.Read(ref roleOpenedRevision)}; roleClosedRevision={Interlocked.Read(ref roleClosedRevision)}; " +
         $"slotResetCalls={slotEdit?.ResetCalls ?? 0}; slotToggleCalls={slotEdit?.ToggleCalls ?? 0}; " +
         $"slotConfirmCalls={slotEdit?.ConfirmCalls ?? 0}; slotButtonsPlanned={slotEdit?.Sequence.Actions.Count ?? 0}\n" +
+        $"slotRequestedFlags={slotEdit?.Edit.Selected.ToString("X16") ?? "unknown"}; " +
+        $"slotKnownJobsMask={slotEdit?.Edit.Rules.AllFlags.ToString("X16") ?? "unknown"}; " +
+        $"slotOriginalFlags={(slotEdit == null ? "unknown" : slotEdit.AllFlags[slotEdit.Edit.Position - 1].ToString("X16"))}; " +
+        $"slotConfirmedFlags={(slotEdit?.ConfirmedTarget == null ? "unknown" : slotEdit.ConfirmedTarget.Slots.Slots[slotEdit.Edit.Position - 1].SlotFlags.ToString("X16"))}\n" +
         $"roleButtonRead={roleButtonRead}";
 
     internal void RoleOpened() => Interlocked.Increment(ref roleOpenedRevision);
     internal void RoleClosed() => Interlocked.Increment(ref roleClosedRevision);
 
-    private sealed class SlotEditSession(RefreshTarget original, RefreshTarget expected, ListingJobEdit edit,
+    private sealed class SlotEditSession(RefreshTarget original, ListingJobEdit edit,
         string invariant, ulong[] allFlags, RoleButtonSequence sequence, long openedRevision, long closedRevision)
     {
-        internal readonly RefreshTarget Original = original, Expected = expected;
+        internal readonly RefreshTarget Original = original;
+        internal RefreshTarget? ConfirmedTarget;
         internal readonly ListingJobEdit Edit = edit;
         internal readonly string Invariant = invariant;
         internal readonly ulong[] AllFlags = allFlags;
@@ -53,7 +58,7 @@ internal sealed unsafe partial class ListingRefreshHost
         { slotCheck = "editor_members_or_shape_changed"; error = "모집 수정 창의 인원 또는 파티 구성이 달라 중단했습니다."; return false; }
         if (!TryEventNode((AtkUnitBase*)addon, (uint)(50 + edit.Position), out var node, out var component, out var reason))
         { slotCheck = $"slot_button_unavailable; reason={reason}"; error = "선택한 빈자리의 게임 버튼을 확인하지 못했습니다."; return false; }
-        slotEdit = new(target, edit.Expected(target), edit, DraftInvariant(agent), draft.SlotFlags.ToArray(), sequence,
+        slotEdit = new(target, edit, DraftInvariant(agent), draft.SlotFlags.ToArray(), sequence,
             Interlocked.Read(ref roleOpenedRevision), Interlocked.Read(ref roleClosedRevision));
         slotCheck = "opening_slot";
         // Dispatch once, matching the verified hover/click/out event sequence.
@@ -94,10 +99,12 @@ internal sealed unsafe partial class ListingRefreshHost
                 // Read only while waiting; never resend Confirm or any job event.
                 return now - session.ConfirmedAt <= 3000 ? SlotEditProgress.Waiting : SlotEditProgress.Failed;
             }
-            editingTarget = session.Expected;
-            if (!ValidateEditor(session.Expected, out _, out _, out error)) return SlotEditProgress.Failed;
+            session.ConfirmedTarget = session.Edit.Expected(session.Original,
+                agent->StoredRecruitmentInfo.SlotFlags[session.Edit.Position - 1]);
+            editingTarget = session.ConfirmedTarget;
+            if (!ValidateEditor(session.ConfirmedTarget, out _, out _, out error)) return SlotEditProgress.Failed;
             session.Completed = true; session.Phase = "complete"; slotCheck = "slot_change_verified";
-            expected = session.Expected;
+            expected = session.ConfirmedTarget;
             return SlotEditProgress.Complete;
         }
         if (closed != session.ClosedRevision || opened > session.OpenedRevision + 1)
@@ -115,8 +122,7 @@ internal sealed unsafe partial class ListingRefreshHost
                 return now - session.Started <= 3000 ? SlotEditProgress.Waiting : SlotEditProgress.Failed;
             session.Phase = "selecting";
         }
-        var next = session.Sequence.Take(now);
-        if (next != null)
+        foreach (var next in session.Sequence.TakeBatch(now))
         {
             if (!TryEventNode(role, next.NodeId, out var node, out var component, out var reason))
             {
@@ -148,7 +154,7 @@ internal sealed unsafe partial class ListingRefreshHost
         {
             var available = TryEventNode(role, action.NodeId, out _, out _, out var reason);
             reads.Add($"{action.NodeId}:{reason}");
-            if (!available) error = "ゲーム 직업 선택창의 버튼이 준비되지 않았습니다. 진단 정보를 확인해 주세요.";
+            if (!available) error = "게임 직업 선택창의 버튼이 준비되지 않았습니다. 진단 정보를 확인해 주세요.";
         }
         roleButtonRead = string.Join(";", reads);
         slotCheck = error.Length == 0 ? "role_nodes_ready" : "role_nodes_unavailable";
@@ -162,8 +168,22 @@ internal sealed unsafe partial class ListingRefreshHost
         var flags = agent->StoredRecruitmentInfo.SlotFlags;
         for (var i = 0; i < flags.Length; i++)
         {
-            if (i == session.Edit.Position - 1 && !final) continue;
-            var expected = i == session.Edit.Position - 1 ? session.Edit.DesiredFlags : session.AllFlags[i];
+            if (i == session.Edit.Position - 1)
+            {
+                if (!final) continue;
+                if (!session.Edit.MatchesSelectedFlags(flags[i]))
+                {
+                    slotCheck = $"editor_job_selection_mismatch; position={i + 1}; requestedFlags={session.Edit.Selected:X16}; " +
+                        $"knownJobsMask={session.Edit.Rules.AllFlags:X16}; actualFlags={flags[i]:X16}";
+                    error = "게임 수정창의 허용 직업이 선택한 내용과 달라 중단했습니다.";
+                    return false;
+                }
+                if (session.ConfirmedTarget == null) continue;
+            }
+            // Once the game draft has been verified, pin its exact raw value
+            // until Submit. Unedited slots are always compared byte for byte.
+            var expected = i == session.Edit.Position - 1 ?
+                session.ConfirmedTarget!.Slots.Slots[i].SlotFlags : session.AllFlags[i];
             if (flags[i] != expected)
             {
                 slotCheck = $"editor_slot_mismatch; position={i + 1}; expectedFlags={expected:X16}; actualFlags={flags[i]:X16}";

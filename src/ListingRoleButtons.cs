@@ -41,7 +41,8 @@ internal static class ListingRoleButtons
 }
 
 // Original dispatch order: Anyone once, excluded jobs once each, Confirm once.
-// Wait at least 100 ms between events. We do not interpret button labels,
+// Exclude jobs in one batch as in PFRemote. Wait at least 100 ms between
+// resetting, excluding and confirming. We do not interpret button labels,
 // tooltips or IsChecked; the stored draft and the fresh listing verify the result.
 internal sealed class RoleButtonSequence(RoleButtonAction[] actions)
 {
@@ -49,10 +50,13 @@ internal sealed class RoleButtonSequence(RoleButtonAction[] actions)
     private int next;
     private long nextTick;
 
-    internal RoleButtonAction? Take(long now)
+    internal RoleButtonAction[] TakeBatch(long now)
     {
-        if (next >= actions.Length || now < nextTick) return null;
+        if (next >= actions.Length || now < nextTick) return [];
+        var start = next++;
+        if (actions[start].Kind == RoleButtonActionKind.ExcludeJob)
+            while (next < actions.Length && actions[next].Kind == RoleButtonActionKind.ExcludeJob) next++;
         nextTick = now + 100;
-        return actions[next++]; // Reserve before native dispatch; never retry a sent event.
+        return actions[start..next]; // Reserve the batch before dispatch; never retry sent events.
     }
 }
