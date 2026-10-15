@@ -72,8 +72,7 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
             Slots = ListingSlots.Read(true, detail.TotalSlots, detail.SlotsFilled, detail.NumberOfParties, detail.IsAlliance,
                 detail.Jobs, detail.MemberContentIds, detail.SlotFlags, id => id.ToString(), listing.Slots.JobRules),
             ExtraCriteria = $"{detail.AvgItemLv}/{(byte)detail.JoinConditionFlags}/{detail.IsAlliance}/{detail.NumberOfParties}",
-            SinglePartyEditable = !detail.IsAlliance && detail.NumberOfParties <= 1 &&
-                ((uint)detail.Category & (uint)AgentLookingForGroup.DutyCategory.PvP) == 0,
+            JobEditingAllowed = ((uint)detail.Category & (uint)AgentLookingForGroup.DutyCategory.PvP) == 0,
         };
         check = "own_verified";
         error = "";

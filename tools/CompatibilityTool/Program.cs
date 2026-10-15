@@ -39,6 +39,7 @@ if (args[0].StartsWith("capture", StringComparison.Ordinal))
         [gui + "AtkComponentTextInput"] = [],
         [gui + "AtkTextNode"] = [],
         [gui + "AtkEvent"] = [], [gui + "AtkEventData"] = [],
+        [gui + "AtkEventManager"] = [], [gui + "AtkEventState"] = [],
         [gui + "AtkEventType"] = [], [gui + "NodeType"] = [],
         ["FFXIVClientStructs.FFXIV.Client.System.String.Utf8String"] = []
     };

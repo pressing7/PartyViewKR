@@ -94,7 +94,7 @@ public sealed class Plugin : IDalamudPlugin
         if (refreshHost.BlockReason is { } reason) { JobDraftStatus = reason; return; }
         if (!refreshHost.TryGetOwn(out var target, out var error)) { JobDraftStatus = error; return; }
         if (!ListingJobEdit.Supports(target))
-        { JobDraftStatus = "현재 직업 수정은 일반 4·8인 모집에서 한 자리씩 지원합니다."; return; }
+        { JobDraftStatus = "직업 수정은 일반 4·8인 및 연합 24·48인 모집에서 지원합니다. PvP이거나 파티 구성을 확인하지 못한 경우에는 수정할 수 없습니다."; return; }
         if (position < 1 || position > target.TotalSlots || target.Slots.Slots[position - 1].HasMember || !target.Slots.JobRules.Complete)
         { JobDraftStatus = "수정할 빈자리의 직업 조건을 확인하지 못했습니다. 다시 조회해 주세요."; return; }
         JobDraft = new(target, position, target.Slots.JobRules);

@@ -8,12 +8,13 @@ namespace PartyViewKR;
 internal sealed unsafe partial class ListingRefreshHost
 {
     // Supplied PFRemote 1.0.0.12: .cctor, EnqueueSlotJobsChange and FireEventOnNode.
-    // Only normal-party slot nodes 51–58 are established. Do not reuse these
-    // positions for alliance/custom-match tabs without verifying their mapping.
+    // Alliance navigation comes from the user's KR Addon Inspector observations.
+    // The existing normal-party hover/click/out dispatch remains unchanged.
     private long roleOpenedRevision, roleClosedRevision;
     private SlotEditSession? slotEdit;
     private string slotCheck = "not_started";
     private string roleButtonRead = "";
+    private string slotRouteRead = "not_started";
     private string SlotEditDiagnostic => $"slotEditCheck={slotCheck}; slotEditPhase={slotEdit?.Phase ?? "none"}; " +
         $"roleOpenedRevision={Interlocked.Read(ref roleOpenedRevision)}; roleClosedRevision={Interlocked.Read(ref roleClosedRevision)}; " +
         $"slotResetCalls={slotEdit?.ResetCalls ?? 0}; slotToggleCalls={slotEdit?.ToggleCalls ?? 0}; " +
@@ -22,49 +23,63 @@ internal sealed unsafe partial class ListingRefreshHost
         $"slotKnownJobsMask={slotEdit?.Edit.Rules.AllFlags.ToString("X16") ?? "unknown"}; " +
         $"slotOriginalFlags={(slotEdit == null ? "unknown" : slotEdit.AllFlags[slotEdit.Edit.Position - 1].ToString("X16"))}; " +
         $"slotConfirmedFlags={(slotEdit?.ConfirmedTarget == null ? "unknown" : slotEdit.ConfirmedTarget.Slots.Slots[slotEdit.Edit.Position - 1].SlotFlags.ToString("X16"))}\n" +
+        $"slotMemberSelectCalls={slotEdit?.MemberSelectCalls ?? 0}; {slotRouteRead}\n" +
         $"roleButtonRead={roleButtonRead}";
 
     internal void RoleOpened() => Interlocked.Increment(ref roleOpenedRevision);
     internal void RoleClosed() => Interlocked.Increment(ref roleClosedRevision);
 
     private sealed class SlotEditSession(RefreshTarget original, ListingJobEdit edit,
-        string invariant, ulong[] allFlags, RoleButtonSequence sequence, long openedRevision, long closedRevision)
+        ListingSlotRoute route, string invariant, ulong[] allFlags, RoleButtonSequence sequence, long openedRevision, long closedRevision)
     {
         internal readonly RefreshTarget Original = original;
         internal RefreshTarget? ConfirmedTarget;
         internal readonly ListingJobEdit Edit = edit;
+        internal readonly ListingSlotRoute Route = route;
         internal readonly string Invariant = invariant;
         internal readonly ulong[] AllFlags = allFlags;
         internal readonly RoleButtonSequence Sequence = sequence;
         internal readonly long OpenedRevision = openedRevision, ClosedRevision = closedRevision;
         internal readonly long Started = Environment.TickCount64;
         internal string Phase = "opening";
-        internal int ResetCalls, ToggleCalls, ConfirmCalls;
-        internal long ConfirmedAt;
+        internal int ResetCalls, ToggleCalls, ConfirmCalls, MemberSelectCalls;
+        internal long ConfirmedAt, MemberSelectedAt;
         internal bool Completed;
     }
 
     public bool BeginSlotEdit(RefreshTarget target, ListingJobEdit edit, out string error)
     {
-        slotEdit = null; slotCheck = "validating"; roleButtonRead = "";
+        slotEdit = null; slotCheck = "validating"; roleButtonRead = ""; slotRouteRead = "not_started";
         error = "빈자리의 기존 모집 조건을 확인하지 못했습니다.";
         if (!edit.MatchesOriginal(target) || Visible("LookingForGroupSelectRole")) return false;
+        if (!ListingSlotRoute.TryCreate(target.Slots, edit.Position, out var route))
+        { slotCheck = "unsupported_slot_layout"; return false; }
         if (!ListingRoleButtons.TryPlan(edit.Rules, edit.Selected, out var sequence, out error))
         { slotCheck = "job_button_plan_unavailable"; return false; }
         if (!ValidateEditor(target, out var addon, out var agent, out error)) return false;
         ref var draft = ref agent->StoredRecruitmentInfo;
-        if (draft.NumberOfGroups != 1 || draft.NumberOfSlotsInMainParty != target.TotalSlots ||
+        slotRouteRead = $"slotLayout={route.Layout}; slotGroup={(char)('A' + route.GroupIndex)}; slotMember={route.MemberIndex + 1}; " +
+            $"slotOpenNode={route.OpenNodeId}; slotOpenParam={route.OpenParam?.ToString() ?? "registered"}; " +
+            $"slotMemberNode={route.MemberNodeId}; slotMemberParam={route.MemberParam}; " +
+            $"editorGroups={draft.NumberOfGroups}; editorMainPartySlots={draft.NumberOfSlotsInMainParty}";
+        if (!route.MatchesEditorShape(draft.NumberOfGroups, draft.NumberOfSlotsInMainParty) ||
             !draft.MemberContentIds[..target.TotalSlots].SequenceEqual(target.Slots.Slots.Select(s => s.MemberContentId).ToArray()))
         { slotCheck = "editor_members_or_shape_changed"; error = "모집 수정 창의 인원 또는 파티 구성이 달라 중단했습니다."; return false; }
-        if (!TryEventNode((AtkUnitBase*)addon, (uint)(50 + edit.Position), out var node, out var component, out var reason))
+        if (!TryEventNode((AtkUnitBase*)addon, route.OpenNodeId, out var node, out var component, out var reason))
         { slotCheck = $"slot_button_unavailable; reason={reason}"; error = "선택한 빈자리의 게임 버튼을 확인하지 못했습니다."; return false; }
-        slotEdit = new(target, edit, DraftInvariant(agent), draft.SlotFlags.ToArray(), sequence,
+        var openParam = route.OpenParam ?? 0;
+        if (route.Layout != RecruitmentSlotLayout.SingleParty &&
+            !TryRegisteredClickParam((AtkUnitBase*)addon, node, route.OpenParam, out openParam, out reason))
+        { slotCheck = $"slot_click_unverified; nodeId={route.OpenNodeId}; reason={reason}"; error = "선택한 자리의 클릭 이벤트를 확인하지 못했습니다."; return false; }
+        slotRouteRead += $"; slotResolvedOpenParam={openParam}";
+        slotEdit = new(target, edit, route, DraftInvariant(agent), draft.SlotFlags.ToArray(), sequence,
             Interlocked.Read(ref roleOpenedRevision), Interlocked.Read(ref roleClosedRevision));
         slotCheck = "opening_slot";
-        // Dispatch once, matching the verified hover/click/out event sequence.
-        FireNode((AtkUnitBase*)addon, node, component, AtkEventType.MouseOver, 8);
-        FireNode((AtkUnitBase*)addon, node, component, AtkEventType.ButtonClick, 8);
-        FireNode((AtkUnitBase*)addon, node, component, AtkEventType.MouseOut, 8);
+        // Normal / 24p: a slot button. 48p: a party button, followed by a
+        // member selector only after the new role window is ready.
+        if (!route.SelectMember) FireNode((AtkUnitBase*)addon, node, component, AtkEventType.MouseOver, openParam);
+        FireNode((AtkUnitBase*)addon, node, component, AtkEventType.ButtonClick, openParam);
+        if (!route.SelectMember) FireNode((AtkUnitBase*)addon, node, component, AtkEventType.MouseOut, openParam);
         error = "";
         return true;
     }
@@ -118,8 +133,32 @@ internal sealed unsafe partial class ListingRefreshHost
         if (session.Phase == "opening")
         {
             if (now - session.Started < 200) return SlotEditProgress.Waiting;
+            if (session.Route.SelectMember)
+            {
+                if (!TryEventNode(role, session.Route.MemberNodeId, out var memberNode, out var memberComponent, out var reason) ||
+                    !TryRegisteredClickParam(role, memberNode, session.Route.MemberParam, out _, out reason))
+                {
+                    slotCheck = $"member_button_unavailable; nodeId={session.Route.MemberNodeId}; reason={reason}";
+                    error = "직업 선택창의 파티원 선택 버튼을 확인하지 못했습니다.";
+                    return now - session.Started <= 3000 ? SlotEditProgress.Waiting : SlotEditProgress.Failed;
+                }
+                // Advance BEFORE dispatch. A failed click must never be retried.
+                session.Phase = "selecting_member";
+                session.MemberSelectedAt = now;
+                session.MemberSelectCalls++;
+                slotCheck = $"selecting_member; nodeId={session.Route.MemberNodeId}; param={session.Route.MemberParam}";
+                FireNode(role, memberNode, memberComponent, AtkEventType.ButtonClick, session.Route.MemberParam);
+                return SlotEditProgress.Waiting;
+            }
             if (!CheckRoleNodes(role, session.Sequence, out error))
                 return now - session.Started <= 3000 ? SlotEditProgress.Waiting : SlotEditProgress.Failed;
+            session.Phase = "selecting";
+        }
+        if (session.Phase == "selecting_member")
+        {
+            if (now - session.MemberSelectedAt < 200) return SlotEditProgress.Waiting;
+            if (!CheckRoleNodes(role, session.Sequence, out error))
+                return now - session.MemberSelectedAt <= 3000 ? SlotEditProgress.Waiting : SlotEditProgress.Failed;
             session.Phase = "selecting";
         }
         foreach (var next in session.Sequence.TakeBatch(now))
@@ -236,5 +275,33 @@ internal sealed unsafe partial class ListingRefreshHost
         var evt = new AtkEvent { Param = (uint)param, Node = node, Target = (AtkEventTarget*)node, Listener = (AtkEventListener*)component };
         var data = new AtkEventData();
         addon->ReceiveEvent(type, param, &evt, &data);
+    }
+
+    private static bool TryRegisteredClickParam(AtkUnitBase* addon, AtkResNode* node, int? expected,
+        out int param, out string reason)
+    {
+        param = 0; reason = "click_event_missing";
+        // A bounded, read-only walk. Never substitute a guessed callback when
+        // the known node has no unique click registered to the expected addon.
+        var seen = new HashSet<nuint>();
+        var matches = 0;
+        for (var evt = node->AtkEventManager.Event; evt != null; evt = evt->NextEvent)
+        {
+            if (seen.Count >= 32 || !seen.Add((nuint)evt))
+            { reason = "event_chain_invalid"; return false; }
+            if (!NativeReadGuard.Readable(evt, (nuint)sizeof(AtkEvent)))
+            { reason = "event_unreadable"; return false; }
+            if (evt->State.EventType != AtkEventType.ButtonClick) continue;
+            if (evt->Node != node || evt->Target != (AtkEventTarget*)node || evt->Listener != (AtkEventListener*)addon)
+            { reason = "event_target_or_listener_mismatch"; return false; }
+            if (++matches != 1 || evt->Param > int.MaxValue)
+            { reason = "click_event_ambiguous"; return false; }
+            param = (int)evt->Param;
+        }
+        if (matches != 1) return false;
+        if (expected is { } value && param != value)
+        { reason = $"click_param_changed; expectedParam={value}; actualParam={param}"; return false; }
+        reason = "ok";
+        return true;
     }
 }

@@ -126,7 +126,7 @@ internal sealed class PartyWindow : Window
         ImGui.TextUnformatted("모집글에서 받은 직업을 자리 순서대로 표시합니다.");
         ImGui.TextWrapped("빈자리의 직업 제한에 마우스를 올리면 허용 직업을 볼 수 있습니다.");
         if (listing.Owner == ListingOwner.Self)
-            ImGui.TextWrapped("빈자리를 클릭해 허용 직업 수정 · 현재 일반 4·8인 모집에서 한 자리씩 지원");
+            ImGui.TextWrapped("빈자리를 클릭해 허용 직업 수정 · 일반 4·8인 / 연합 24·48인에서 한 자리씩 지원");
         if (!slots.CountsAgree)
             ImGui.TextWrapped("모집 인원수와 자리 정보가 아직 일치하지 않습니다. 다시 조회해 주세요.");
 
@@ -166,7 +166,7 @@ internal sealed class PartyWindow : Window
             label += " · 변경 예정";
         ImGui.TableNextColumn();
         var editable = listing.IsLive && listing.Owner == ListingOwner.Self && allowed.Complete &&
-            listing.Slots.TotalSlots <= 8 && !listing.Slots.IsAlliance && listing.Slots.NumberOfParties <= 1;
+            ListingSlotRoute.Classify(listing.Slots) != RecruitmentSlotLayout.Unknown;
         if (editable)
         {
             ImGui.BeginDisabled(plugin.Refresh.Busy || plugin.ListingBusy);

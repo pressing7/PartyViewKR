@@ -17,10 +17,9 @@ internal sealed class ListingJobDraft(RefreshTarget original, int position, List
 
 internal sealed record ListingJobEdit(RefreshTarget Original, int Position, ulong Selected, ListingJobRules Rules)
 {
-    internal static bool Supports(RefreshTarget target) => target.SinglePartyEditable &&
-        target.TotalSlots is >= 1 and <= 8 && target.Slots.Readable && target.Slots.CountsAgree &&
-        !target.Slots.IsAlliance && target.Slots.NumberOfParties <= 1 &&
-        target.Slots.TotalSlots == target.TotalSlots && target.Slots.Slots.Length == target.TotalSlots;
+    internal static bool Supports(RefreshTarget target) => target.JobEditingAllowed &&
+        target.Slots.TotalSlots == target.TotalSlots &&
+        ListingSlotRoute.Classify(target.Slots) != RecruitmentSlotLayout.Unknown;
 
     internal bool Valid => Supports(Original) && Rules.Complete && Position >= 1 && Position <= Original.TotalSlots &&
         !Original.Slots.Slots[Position - 1].HasMember && Selected != 0 && (Selected & ~Rules.AllFlags) == 0 &&

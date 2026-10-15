@@ -7,7 +7,7 @@ internal sealed record RefreshTarget(ulong SelfId, ulong ListingId, ushort DutyI
 {
     internal ListingSlots Slots { get; init; } = ListingSlots.Unavailable("not_captured");
     internal string ExtraCriteria { get; init; } = "";
-    internal bool SinglePartyEditable { get; init; }
+    internal bool JobEditingAllowed { get; init; }
 }
 
 internal enum RecruitmentEditorMode { Unknown, Refresh, Create }

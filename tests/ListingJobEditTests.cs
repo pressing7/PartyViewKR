@@ -14,7 +14,7 @@ static class ListingJobEditTests
             {
                 Slots = ListingSlots.Read(true, 4, 1, 1, false, new byte[] { 21, 0, 0, 0 },
                     new ulong[] { 10, 0, 0, 0 }, flags, id => $"직업 #{id}", rules),
-                SinglePartyEditable = true, ExtraCriteria = "700/0/False/1",
+                JobEditingAllowed = true, ExtraCriteria = "700/0/False/1",
             };
         }
         ListingJobEdit Edit(RefreshTarget t) => new(t, 2, 0x2000, rules);
@@ -56,7 +56,7 @@ static class ListingJobEditTests
                 Edit(target) with { Selected = 0 }, Edit(target) with { Selected = rules.AllFlags },
                 Edit(target) with { Selected = 1ul << 60 }, Edit(target) with { Position = 1 },
                 Edit(target) with { Position = 0 }, Edit(target) with { Position = 5 },
-                Edit(target with { SinglePartyEditable = false }), Edit(target with { TotalSlots = 24 }),
+                Edit(target with { JobEditingAllowed = false }), Edit(target with { TotalSlots = 24 }),
                 Edit(target with { TotalSlots = 48 }), Edit(target) with { Rules = ListingJobRules.Unavailable },
             };
             foreach (var edit in cases)
