@@ -68,10 +68,12 @@ internal sealed unsafe partial class ListingRefreshHost
         if (!TryEventNode((AtkUnitBase*)addon, route.OpenNodeId, out var node, out var component, out var reason))
         { slotCheck = $"slot_button_unavailable; reason={reason}"; error = "선택한 빈자리의 게임 버튼을 확인하지 못했습니다."; return false; }
         var openParam = route.OpenParam ?? 0;
-        if (route.Layout != RecruitmentSlotLayout.SingleParty &&
-            !TryRegisteredClickParam((AtkUnitBase*)addon, node, route.OpenParam, out openParam, out reason))
+        // Use the verified normal/48p constants directly, like PFRemote.
+        // Only 24p lacks a supplied Param and needs registration lookup.
+        if (route.OpenParam == null &&
+            !TryRegisteredClickParam((AtkUnitBase*)addon, node, out openParam, out reason))
         { slotCheck = $"slot_click_unverified; nodeId={route.OpenNodeId}; reason={reason}"; error = "선택한 자리의 클릭 이벤트를 확인하지 못했습니다."; return false; }
-        slotRouteRead += $"; slotResolvedOpenParam={openParam}";
+        slotRouteRead += $"; slotResolvedOpenParam={openParam}; slotOpenParamSource={(route.OpenParam.HasValue ? "verified_map" : "registered_event")}";
         slotEdit = new(target, edit, route, DraftInvariant(agent), draft.SlotFlags.ToArray(), sequence,
             Interlocked.Read(ref roleOpenedRevision), Interlocked.Read(ref roleClosedRevision));
         slotCheck = "opening_slot";
@@ -135,8 +137,7 @@ internal sealed unsafe partial class ListingRefreshHost
             if (now - session.Started < 200) return SlotEditProgress.Waiting;
             if (session.Route.SelectMember)
             {
-                if (!TryEventNode(role, session.Route.MemberNodeId, out var memberNode, out var memberComponent, out var reason) ||
-                    !TryRegisteredClickParam(role, memberNode, session.Route.MemberParam, out _, out reason))
+                if (!TryEventNode(role, session.Route.MemberNodeId, out var memberNode, out var memberComponent, out var reason))
                 {
                     slotCheck = $"member_button_unavailable; nodeId={session.Route.MemberNodeId}; reason={reason}";
                     error = "직업 선택창의 파티원 선택 버튼을 확인하지 못했습니다.";
@@ -277,7 +278,7 @@ internal sealed unsafe partial class ListingRefreshHost
         addon->ReceiveEvent(type, param, &evt, &data);
     }
 
-    private static bool TryRegisteredClickParam(AtkUnitBase* addon, AtkResNode* node, int? expected,
+    private static bool TryRegisteredClickParam(AtkUnitBase* addon, AtkResNode* node,
         out int param, out string reason)
     {
         param = 0; reason = "click_event_missing";
@@ -292,15 +293,18 @@ internal sealed unsafe partial class ListingRefreshHost
             if (!NativeReadGuard.Readable(evt, (nuint)sizeof(AtkEvent)))
             { reason = "event_unreadable"; return false; }
             if (evt->State.EventType != AtkEventType.ButtonClick) continue;
-            if (evt->Node != node || evt->Target != (AtkEventTarget*)node || evt->Listener != (AtkEventListener*)addon)
-            { reason = "event_target_or_listener_mismatch"; return false; }
+            // AtkEvent.Node is an optional extra node argument, not the button
+            // identity. RegisterEvent accepts nodeParam separately from target.
+            // See FFXIVClientStructs AtkEvent.cs / AtkEventManager.cs.
+            if (evt->Target != (AtkEventTarget*)node)
+            { reason = "event_target_mismatch"; return false; }
+            if (evt->Listener != (AtkEventListener*)addon)
+            { reason = "event_listener_mismatch"; return false; }
             if (++matches != 1 || evt->Param > int.MaxValue)
             { reason = "click_event_ambiguous"; return false; }
             param = (int)evt->Param;
         }
         if (matches != 1) return false;
-        if (expected is { } value && param != value)
-        { reason = $"click_param_changed; expectedParam={value}; actualParam={param}"; return false; }
         reason = "ok";
         return true;
     }
