@@ -42,12 +42,14 @@ internal interface IListingRefreshHost
     SlotEditProgress UpdatePrivateEdit(out RefreshTarget expected, out string error);
     bool BeginCompletionEdit(RefreshTarget target, ListingCompletionEdit edit, out string error);
     SlotEditProgress UpdateCompletionEdit(out RefreshTarget expected, out string error);
+    bool BeginItemLevelEdit(RefreshTarget target, ListingItemLevelEdit edit, out string error);
+    SlotEditProgress UpdateItemLevelEdit(out RefreshTarget expected, out string error);
     // null keeps the existing button route; an empty string explicitly clears
     // the introduction and must still be carried in the final submission.
     bool Submit(RefreshTarget target, string? description, out string error);
 }
 
-internal enum RefreshStage { Idle, Queued, ReadingOwn, OpeningEditor, EditingSlot, EditingDescription, EditingObjective, EditingBeginner, EditingUniqueJobs, EditingPrivate, EditingCompletion, WaitingResult, Verifying, Completed, Unconfirmed, Stopped }
+internal enum RefreshStage { Idle, Queued, ReadingOwn, OpeningEditor, EditingSlot, EditingDescription, EditingObjective, EditingBeginner, EditingUniqueJobs, EditingPrivate, EditingCompletion, EditingItemLevel, WaitingResult, Verifying, Completed, Unconfirmed, Stopped }
 
 // No timers/tasks or automatic retries: every run comes from one button press.
 // Advancing the stage BEFORE dispatch also prevents a thrown callback being retried.
@@ -55,7 +57,7 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
 {
     internal RefreshStage Stage { get; private set; }
     internal bool Busy => Stage is RefreshStage.Queued or RefreshStage.ReadingOwn or
-        RefreshStage.OpeningEditor or RefreshStage.EditingSlot or RefreshStage.EditingDescription or RefreshStage.EditingObjective or RefreshStage.EditingBeginner or RefreshStage.EditingUniqueJobs or RefreshStage.EditingPrivate or RefreshStage.EditingCompletion or RefreshStage.WaitingResult or RefreshStage.Verifying;
+        RefreshStage.OpeningEditor or RefreshStage.EditingSlot or RefreshStage.EditingDescription or RefreshStage.EditingObjective or RefreshStage.EditingBeginner or RefreshStage.EditingUniqueJobs or RefreshStage.EditingPrivate or RefreshStage.EditingCompletion or RefreshStage.EditingItemLevel or RefreshStage.WaitingResult or RefreshStage.Verifying;
     internal ListingJobEdit? JobEdit { get; private set; }
     internal ListingDescriptionEdit? DescriptionEdit { get; private set; }
     internal ListingObjectiveEdit? ObjectiveEdit { get; private set; }
@@ -63,12 +65,13 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
     internal ListingUniqueJobsEdit? UniqueJobsEdit { get; private set; }
     internal ListingPrivateEdit? PrivateEdit { get; private set; }
     internal ListingCompletionEdit? CompletionEdit { get; private set; }
+    internal ListingItemLevelEdit? ItemLevelEdit { get; private set; }
     internal string Status { get; private set; } = "버튼을 누르면 현재 모집 조건으로 한 번 갱신합니다.";
     internal bool CoolingDown(long now) => now < cooldownUntil;
     internal string Diagnostic => $"refreshStage={Stage}; refreshEditCalls={editCalls}; refreshSubmitCalls={submitCalls}; " +
         $"refreshBeforeSeconds={target?.RemainingSeconds?.ToString() ?? "unknown"}; refreshAfterSeconds={afterSeconds?.ToString() ?? "unknown"}; " +
         $"refreshOwnWaitChecks={ownWaitChecks}; refreshEditorMode={editorMode}; refreshJobSlot={JobEdit?.Position ?? 0}; " +
-        $"refreshDescriptionEdit={DescriptionEdit != null}; refreshObjectiveEdit={ObjectiveEdit != null}; refreshBeginnerEdit={BeginnerEdit != null}; refreshUniqueJobsEdit={UniqueJobsEdit != null}; refreshPrivateEdit={PrivateEdit != null}; refreshCompletionEdit={CompletionEdit != null}\nrefreshResult={result}\n{descriptionVerification}\n{objectiveVerification}\n{beginnerVerification}\n{uniqueJobsVerification}\n{privateVerification}\n{completionVerification}";
+        $"refreshDescriptionEdit={DescriptionEdit != null}; refreshObjectiveEdit={ObjectiveEdit != null}; refreshBeginnerEdit={BeginnerEdit != null}; refreshUniqueJobsEdit={UniqueJobsEdit != null}; refreshPrivateEdit={PrivateEdit != null}; refreshCompletionEdit={CompletionEdit != null}; refreshItemLevelEdit={ItemLevelEdit != null}\nrefreshResult={result}\n{descriptionVerification}\n{objectiveVerification}\n{beginnerVerification}\n{uniqueJobsVerification}\n{privateVerification}\n{completionVerification}\n{itemLevelVerification}";
 
     private RefreshTarget? target;
     private ulong self;
@@ -83,10 +86,11 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
     private string uniqueJobsVerification = "uniqueJobsResultCheck=not_started";
     private string privateVerification = "privateResultCheck=not_started";
     private string completionVerification = "completionResultCheck=not_started";
+    private string itemLevelVerification = "itemLevelResultCheck=not_started";
     private RecruitmentEditorMode editorMode;
 
     internal void Request(long now, ListingJobEdit? edit = null, ListingDescriptionEdit? descriptionEdit = null,
-        ListingObjectiveEdit? objectiveEdit = null, ListingBeginnerEdit? beginnerEdit = null, ListingUniqueJobsEdit? uniqueJobsEdit = null, ListingPrivateEdit? privateEdit = null, ListingCompletionEdit? completionEdit = null)
+        ListingObjectiveEdit? objectiveEdit = null, ListingBeginnerEdit? beginnerEdit = null, ListingUniqueJobsEdit? uniqueJobsEdit = null, ListingPrivateEdit? privateEdit = null, ListingCompletionEdit? completionEdit = null, ListingItemLevelEdit? itemLevelEdit = null)
     {
         if (Busy || CoolingDown(now)) return;
         JobEdit = edit;
@@ -96,6 +100,7 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
         UniqueJobsEdit = uniqueJobsEdit;
         PrivateEdit = privateEdit;
         CompletionEdit = completionEdit;
+        ItemLevelEdit = itemLevelEdit;
         target = null;
         editCalls = submitCalls = ownWaitChecks = 0;
         ownWaitReason = "";
@@ -105,8 +110,11 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
         uniqueJobsVerification = "uniqueJobsResultCheck=not_started";
         privateVerification = "privateResultCheck=not_started";
         completionVerification = "completionResultCheck=not_started";
+        itemLevelVerification = "itemLevelResultCheck=not_started";
         editorMode = RecruitmentEditorMode.Unknown;
         afterSeconds = null;
+        if (itemLevelEdit != null && (edit != null || descriptionEdit != null || objectiveEdit != null || beginnerEdit != null || uniqueJobsEdit != null || privateEdit != null || completionEdit != null || !itemLevelEdit.Valid))
+        { Stop("평균 아이템 레벨 설정과 1~999 범위의 숫자를 다시 확인해 주세요.", "invalid_item_level_edit"); return; }
         if (completionEdit != null && (edit != null || descriptionEdit != null || objectiveEdit != null || beginnerEdit != null || uniqueJobsEdit != null || privateEdit != null || !completionEdit.Valid))
         { Stop("변경할 완료조건을 다시 확인해 주세요.", "invalid_completion_edit"); return; }
         if (privateEdit != null && (edit != null || descriptionEdit != null || objectiveEdit != null || beginnerEdit != null || uniqueJobsEdit != null || !privateEdit.Valid))
@@ -160,6 +168,8 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
                 { Stop("편집 중 모집글 또는 참가자가 바뀌었습니다. 다시 조회한 뒤 목적을 수정해 주세요.", "objective_edit_stale"); return; }
                 if (CompletionEdit != null && !CompletionEdit.MatchesOriginal(own))
                 { Stop("편집 중 모집글 또는 참가자가 바뀌었습니다. 다시 조회한 뒤 완료조건을 수정해 주세요.", "completion_edit_stale"); return; }
+                if (ItemLevelEdit != null && !ItemLevelEdit.MatchesOriginal(own))
+                { Stop("편집 중 모집글 또는 참가자가 바뀌었습니다. 다시 조회한 뒤 평균 아이템 레벨을 수정해 주세요.", "item_level_edit_stale"); return; }
                 if (BeginnerEdit != null && !BeginnerEdit.MatchesOriginal(own))
                 { Stop("편집 중 모집글 또는 참가자가 바뀌었습니다. 다시 조회한 뒤 초보자 환영 설정을 수정해 주세요.", "beginner_edit_stale"); return; }
                 if (UniqueJobsEdit != null && !UniqueJobsEdit.MatchesOriginal(own))
@@ -213,6 +223,12 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
                     SetStage(RefreshStage.EditingCompletion, now, "모집 완료조건 반영 중");
                     if (!host.BeginCompletionEdit(target!, CompletionEdit, out var completionError))
                         Stop(completionError, "completion_edit_start_failed");
+                }
+                else if (ItemLevelEdit != null)
+                {
+                    SetStage(RefreshStage.EditingItemLevel, now, "모집 평균 아이템 레벨 반영 중");
+                    if (!host.BeginItemLevelEdit(target!, ItemLevelEdit, out var itemLevelError))
+                        Stop(itemLevelError, "item_level_edit_start_failed");
                 }
                 else if (BeginnerEdit != null)
                 {
@@ -291,6 +307,20 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
                 Submit(now);
                 break;
 
+            case RefreshStage.EditingItemLevel:
+                if (host.EditorClosedRevision != editorClosedRevision || !host.EditorVisible)
+                { Stop("모집 수정 창이 닫혀 평균 아이템 레벨 수정을 중단했습니다.", "item_level_editor_closed"); return; }
+                if (now - stageTick > 8000)
+                { Stop("평균 아이템 레벨이 게임 수정창에 반영됐는지 확인하지 못했습니다.", "item_level_edit_timeout"); return; }
+                var itemLevelProgress = host.UpdateItemLevelEdit(out var itemLevelExpected, out var itemLevelReadError);
+                if (itemLevelProgress == SlotEditProgress.Failed) { Stop(itemLevelReadError, "item_level_edit_failed"); return; }
+                if (itemLevelProgress == SlotEditProgress.Waiting) return;
+                if (!ItemLevelEdit!.MatchesResult(target!, itemLevelExpected))
+                { Stop("평균 아이템 레벨 또는 다른 모집 조건이 요청한 내용과 다릅니다.", "item_level_edit_result_mismatch"); return; }
+                target = itemLevelExpected;
+                Submit(now);
+                break;
+
             case RefreshStage.EditingBeginner:
                 if (host.EditorClosedRevision != editorClosedRevision || !host.EditorVisible)
                 { Stop("모집 수정 창이 닫혀 초보자 환영 수정을 중단했습니다.", "beginner_editor_closed"); return; }
@@ -366,6 +396,11 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
                         $"completionResultExpected={CompletionEdit.Value}; completionResultActual={ListingCompletions.Read(after.Criteria)?.ToString() ?? "unknown"}; " +
                         $"completionResultSlotsAgree={ListingJobEdit.SameSlots(target!.Slots, after.Slots)}; " +
                         $"completionResultContentsAgree={CompletionEdit.MatchesResult(target, after)}";
+                if (ItemLevelEdit != null)
+                    itemLevelVerification = $"itemLevelResultCheck=read; " +
+                        $"itemLevelResultExpected={ItemLevelEdit.Value}; itemLevelResultActual={ListingItemLevels.Read(after.ExtraCriteria)?.ToString() ?? "unknown"}; " +
+                        $"itemLevelResultSlotsAgree={ListingJobEdit.SameSlots(target!.Slots, after.Slots)}; " +
+                        $"itemLevelResultContentsAgree={ItemLevelEdit.MatchesResult(target, after)}";
                 if (BeginnerEdit != null)
                     beginnerVerification = $"beginnerResultCheck=read; " +
                         $"beginnerResultExpected={BeginnerEdit.Enabled}; beginnerResultActual={ListingBeginners.Read(after.Criteria)?.ToString() ?? "unknown"}; " +
@@ -385,6 +420,7 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
                     DescriptionEdit != null ? DescriptionEdit.MatchesResult(target!, after) :
                     ObjectiveEdit != null ? ObjectiveEdit.MatchesResult(target!, after) :
                     CompletionEdit != null ? CompletionEdit.MatchesResult(target!, after) :
+                    ItemLevelEdit != null ? ItemLevelEdit.MatchesResult(target!, after) :
                     BeginnerEdit != null ? BeginnerEdit.MatchesResult(target!, after) :
                     UniqueJobsEdit != null ? UniqueJobsEdit.MatchesResult(target!, after) :
                     PrivateEdit != null ? PrivateEdit.MatchesResult(target!, after) : RefreshEvidence.SameRecruitment(target!, after);
@@ -399,12 +435,14 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
                         UniqueJobsEdit != null ? "잡 중복 없음 변경 및 갱신 확인 — 내 모집글을 다시 조회했습니다." :
                         BeginnerEdit != null ? "초보자 환영 변경 및 갱신 확인 — 내 모집글을 다시 조회했습니다." :
                         CompletionEdit != null ? "완료조건 변경 및 갱신 확인 — 내 모집글을 다시 조회했습니다." :
+                        ItemLevelEdit != null ? "평균 아이템 레벨 변경 및 갱신 확인 — 내 모집글을 다시 조회했습니다." :
                         ObjectiveEdit != null ? "목적 변경 및 갱신 확인 — 내 모집글을 다시 조회했습니다." :
                         DescriptionEdit != null ? "소개말 변경 및 갱신 확인 — 내 모집글을 다시 조회했습니다." : "갱신 확인 — 재등록 후 내 모집글을 다시 조회했습니다.") :
                     PrivateEdit != null ? "비공개 설정이 반영된 것을 확인했습니다. 남은 시간 초기화 여부는 게임에서 확인해 주세요." :
                     UniqueJobsEdit != null ? "잡 중복 없음 설정이 반영된 것을 확인했습니다. 남은 시간 초기화 여부는 게임에서 확인해 주세요." :
                     BeginnerEdit != null ? "초보자 환영 설정이 반영된 것을 확인했습니다. 남은 시간 초기화 여부는 게임에서 확인해 주세요." :
                     CompletionEdit != null ? "수정한 완료조건이 등록된 것을 확인했습니다. 남은 시간 초기화 여부는 게임에서 확인해 주세요." :
+                    ItemLevelEdit != null ? "수정한 평균 아이템 레벨이 등록된 것을 확인했습니다. 남은 시간 초기화 여부는 게임에서 확인해 주세요." :
                     ObjectiveEdit != null ? "수정한 목적이 등록된 것을 확인했습니다. 남은 시간 초기화 여부는 게임에서 확인해 주세요." :
                     DescriptionEdit != null ? "수정한 소개말이 등록된 것을 확인했습니다. 남은 시간 초기화 여부는 게임에서 확인해 주세요." :
                     "재등록 요청 후 내 모집글을 확인했습니다. 남은 시간 초기화 여부는 게임에서 확인해 주세요.");

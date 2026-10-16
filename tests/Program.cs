@@ -246,6 +246,7 @@ ListingBeginnerEditTests.Run(Test, Check);
 ListingUniqueJobsEditTests.Run(Test, Check);
 ListingPrivateEditTests.Run(Test, Check);
 ListingCompletionEditTests.Run(Test, Check);
+ListingItemLevelEditTests.Run(Test, Check);
 CompatibilityTests.Run(Test, Check);
 Console.WriteLine($"All {passed} tests passed. Native game interaction still requires in-game validation.");
 
@@ -285,6 +286,9 @@ sealed class FakeHost : IListingRefreshHost
     public int CompletionEditCalls;
     public bool CompletionEditAllowed = true, CompletionEditComplete = true, CompletionEditFailed, ThrowOnCompletionEdit;
     public RefreshTarget? CompletionExpected;
+    public int ItemLevelEditCalls;
+    public bool ItemLevelEditAllowed = true, ItemLevelEditComplete = true, ItemLevelEditFailed, ThrowOnItemLevelEdit;
+    public RefreshTarget? ItemLevelExpected;
     public RefreshTarget Target = new(10, 1, 123, "기존 모집 문구", "same", 1800, 8);
     public void QueryOwn() { QueryCalls++; QueryBusy = true; QuerySucceeded = false; }
     public void FinishQuery() { QueryBusy = false; QuerySucceeded = true; DetailRevision++; }
@@ -389,5 +393,18 @@ sealed class FakeHost : IListingRefreshHost
     {
         expected = CompletionExpected!; error = "완료조건 반영 확인 실패";
         return CompletionEditFailed ? SlotEditProgress.Failed : CompletionEditComplete ? SlotEditProgress.Complete : SlotEditProgress.Waiting;
+    }
+    public bool BeginItemLevelEdit(RefreshTarget target, ListingItemLevelEdit edit, out string error)
+    {
+        ItemLevelEditCalls++; error = "평균 아이템 레벨 설정 실패";
+        if (ThrowOnItemLevelEdit) throw new InvalidOperationException("simulated itemLevel failure");
+        // This fake exercises the managed flow, not the native click route.
+        ItemLevelExpected = edit.Expected(target);
+        return ItemLevelEditAllowed;
+    }
+    public SlotEditProgress UpdateItemLevelEdit(out RefreshTarget expected, out string error)
+    {
+        expected = ItemLevelExpected!; error = "평균 아이템 레벨 반영 확인 실패";
+        return ItemLevelEditFailed ? SlotEditProgress.Failed : ItemLevelEditComplete ? SlotEditProgress.Complete : SlotEditProgress.Waiting;
     }
 }
