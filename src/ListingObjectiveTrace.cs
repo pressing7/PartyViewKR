@@ -73,7 +73,7 @@ internal sealed unsafe class ListingObjectiveTrace(Plugin plugin) : IDisposable
 
     private void Start()
     {
-        if (plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.DescriptionDraft != null || plugin.ObjectiveDraft != null || plugin.BeginnerDraft != null || plugin.UniqueJobsDraft != null)
+        if (plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.DescriptionDraft != null || plugin.ObjectiveDraft != null || plugin.BeginnerDraft != null || plugin.UniqueJobsDraft != null || plugin.PrivateDraft != null)
         { status = "진행 중인 조회·갱신과 PVKR 편집창을 끝낸 뒤 기록해 주세요."; return; }
         if (!Plugin.ClientState.IsLoggedIn || !Plugin.PlayerState.IsLoaded || !NativeCompatibility.IsCompatible)
         { status = "로그인 및 구조 DLL 호환 상태를 확인한 뒤 기록해 주세요."; return; }
@@ -220,10 +220,12 @@ internal sealed unsafe class ListingObjectiveTrace(Plugin plugin) : IDisposable
     {
         if (count == 0) return "[]";
         if (count > 16 || !NativeReadGuard.Readable(values, (nuint)(count * sizeof(AtkValue)))) return "unreadable_or_oversized";
+        var passwordCommand = values[0].Type == AtkValueType.Int && values[0].Int == 16;
         var parts = new string[count];
         for (var i = 0; i < count; i++)
         {
             ref var value = ref values[i];
+            if (passwordCommand && i == 1) { parts[i] = $"{value.Type}:redacted"; continue; }
             // Never dereference strings, vectors, pointers or other payloads.
             parts[i] = value.Type switch {
                 AtkValueType.Int => $"Int:{value.Int}", AtkValueType.UInt => $"UInt:{value.UInt}",

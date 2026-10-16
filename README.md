@@ -1,6 +1,6 @@
 # PartyViewKR
 
-한섭 파티원·모집글 조회, **내 모집글 수동 갱신 및 잡 중복 없음·초보자 환영·목적·소개말·빈자리 허용 직업 수정** 플러그인입니다. `/pvkr`로 엽니다.
+한섭 파티원·모집글 조회, **내 모집글 수동 갱신 및 비공개·비밀번호·잡 중복 없음·초보자 환영·목적·소개말·빈자리 허용 직업 수정** 플러그인입니다. `/pvkr`로 엽니다.
 콘텐츠·파티 유형 등 전체 조건의 편집과 새 모집 시작은 이후 단계입니다.
 
 ## 설치와 업데이트
@@ -14,6 +14,24 @@ https://raw.githubusercontent.com/pressing7/PartyViewKR/main/pluginmaster.json
 플러그인 설치기에서 **Party View KR**을 설치하거나 업데이트합니다.
 배포 파일은 [Releases](https://github.com/pressing7/PartyViewKR/releases)의 `PartyViewKR.zip`입니다.
 저장소 루트에 남아 있는 이전 수동 업로드 DLL/JSON은 최신 배포 파일이 아닙니다.
+
+## 0.3.21의 비공개 설정과 비밀번호
+
+**내 모집글 조회 → 비공개 설정 → 체크 및 비밀번호 입력 → 변경 적용 및 갱신**으로 사용합니다.
+
+- 비공개를 켤 때는 ASCII 숫자 **네 자리**를 입력해야 합니다. `0123`처럼 앞에 0이 있는 입력도 유지하며, 게임에는 해당 숫자 값으로 전달합니다. 기존 비밀번호는 상세 조회에 없으므로 미리 채우지 않습니다.
+- 이미 비공개인 모집에서는 비밀번호만 바꿀 수 있습니다. 비공개를 끌 때는 비밀번호 입력이 필요 없습니다.
+- [RecruitmentSub 정의](https://github.com/aers/FFXIVClientStructs/blob/main/FFXIVClientStructs/FFXIV/Client/UI/Agent/AgentLookingForGroup.cs)의 `Password=10000`은 공개 상태, `0`은 비밀번호 미설정 상태입니다. 이 정의에 따라 `0000`은 적용하지 않습니다. 실제 입력창의 허용 범위도 확인합니다.
+
+수동 기록에서 체크박스는 **ButtonClick(25), Param 29 → 명령 21의 UInt 1/0**, 비밀번호는 **ValueUpdate(27), Param 29 → 명령 16의 Int 값**으로 확인했습니다. 앞자리 0이 있는 입력은 숫자로 전달됐습니다. 중간의 명령 15는 소개말 입력과 관련된 이벤트이므로 비밀번호 처리에 사용하지 않습니다.
+
+PVKR은 실제 체크박스와 숫자 입력 컨트롤의 소유 노드·등록된 이벤트 연결을 확인합니다. 체크박스는 기존 토글과 같이 `SetChecked` 및 등록된 클릭 이벤트를 한 번 처리합니다. 비밀번호는 [숫자 입력 API](https://github.com/aers/FFXIVClientStructs/blob/main/FFXIVClientStructs/FFXIV/Component/GUI/AtkComponentNumericInput.cs)의 `InnerSetValue(value, triggerCallback: true, playSoundEffect: false)`를 한 번 호출하며, 값 변경 이벤트와 콜백은 게임이 생성합니다. 명령 16/21을 직접 생성하거나 모집 정보의 Password 필드에 값을 쓰지 않습니다.
+
+비공개 체크 상태, 숫자 입력값, 저장된 비밀번호가 요청과 일치하고 갱신 버튼이 활성화된 뒤 제출합니다. 비공개 해제는 체크 해제와 공개 상태 저장값이 일치해야 합니다. 그동안 소개말·목적·초보자 환영·잡 중복 없음·전체 자리와 참가자를 비롯한 나머지 조건이 바뀌면 중단합니다. 실패한 입력을 다시 보내지 않습니다.
+
+갱신 후 새로 조회한 상세에서 **비공개 여부와 다른 조건 유지**를 확인합니다. 상세에는 비밀번호가 없으므로 서버에 등록된 비밀번호까지 재조회했다고 표시하지 않습니다. 진단의 `privatePasswordUiMatches/StoredMatches`는 제출 전 입력·저장 일치 여부이고, `privatePasswordServerCheck=unavailable`은 서버 비밀번호를 읽지 못한다는 뜻입니다. 일반 진단과 수동 기록에는 비밀번호 숫자를 출력하지 않습니다.
+
+로컬 빌드와 관리 코드 테스트를 통과했고, 이전 구조체 검사 985개를 유지한 채 숫자 입력 관련 79개를 추가했습니다. **실제 게임에서는 공개→비공개, 비공개 상태에서 비밀번호 변경(앞자리 0 포함), 비공개→공개를 확인해야 합니다.** 실제 비밀번호로 참가할 수 있는지도 확인해 주세요. Actions 빌드·배포는 사용자가 직접 실행합니다.
 
 ## 0.3.20의 잡 중복 없음 설정
 

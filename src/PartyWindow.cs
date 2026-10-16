@@ -12,6 +12,7 @@ internal sealed class PartyWindow : Window
     private ListingObjectiveDraft? shownObjectiveDraft;
     private ListingBeginnerDraft? shownBeginnerDraft;
     private ListingUniqueJobsDraft? shownUniqueJobsDraft;
+    private ListingPrivateDraft? shownPrivateDraft;
     internal PartyWindow(Plugin plugin) : base("파티 모집 조회##PartyViewKR")
     {
         this.plugin = plugin;
@@ -28,6 +29,7 @@ internal sealed class PartyWindow : Window
         DrawObjectiveEditor();
         DrawBeginnerEditor();
         DrawUniqueJobsEditor();
+        DrawPrivateEditor();
         ImGui.Separator();
         if (ImGui.Button("다시 읽기")) plugin.RequestRead();
         ImGui.SameLine();
@@ -95,6 +97,7 @@ internal sealed class PartyWindow : Window
         if (plugin.ObjectiveDraftStatus.Length > 0) ImGui.TextWrapped(plugin.ObjectiveDraftStatus);
         if (plugin.BeginnerDraftStatus.Length > 0) ImGui.TextWrapped(plugin.BeginnerDraftStatus);
         if (plugin.UniqueJobsDraftStatus.Length > 0) ImGui.TextWrapped(plugin.UniqueJobsDraftStatus);
+        if (plugin.PrivateDraftStatus.Length > 0) ImGui.TextWrapped(plugin.PrivateDraftStatus);
         ImGui.TextUnformatted(listing.Status);
         if (listing.ReadAt is { } at)
         {
@@ -113,6 +116,7 @@ internal sealed class PartyWindow : Window
             DrawObjective(listing);
             DrawBeginner(listing);
             DrawUniqueJobs(listing);
+            DrawPrivate(listing);
             DrawDescription(listing);
             DrawListingSlots(listing);
         }
@@ -131,7 +135,7 @@ internal sealed class PartyWindow : Window
         if (listing.Owner == ListingOwner.Self)
         {
             ImGui.SameLine();
-            ImGui.BeginDisabled(plugin.ObjectiveTrace.Busy || !listing.IsLive || plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.ObjectiveDraft != null || plugin.BeginnerDraft != null || plugin.UniqueJobsDraft != null ||
+            ImGui.BeginDisabled(plugin.ObjectiveTrace.Busy || !listing.IsLive || plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.ObjectiveDraft != null || plugin.BeginnerDraft != null || plugin.UniqueJobsDraft != null || plugin.PrivateDraft != null ||
                 ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
             if (ImGui.SmallButton("소개말 수정")) plugin.RequestDescriptionEdit();
             ImGui.EndDisabled();
@@ -235,7 +239,7 @@ internal sealed class PartyWindow : Window
         if (listing.Owner != ListingOwner.Self) return;
         ImGui.SameLine();
         ImGui.BeginDisabled(!ListingObjectives.AutomaticEditingAvailable || plugin.ObjectiveTrace.Busy || !listing.IsLive || !listing.Objective.HasValue || plugin.Refresh.Busy || plugin.ListingBusy ||
-            plugin.JobDraft != null || plugin.DescriptionDraft != null || plugin.BeginnerDraft != null || plugin.UniqueJobsDraft != null || ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
+            plugin.JobDraft != null || plugin.DescriptionDraft != null || plugin.BeginnerDraft != null || plugin.UniqueJobsDraft != null || plugin.PrivateDraft != null || ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
         if (ImGui.SmallButton("목적 수정")) plugin.RequestObjectiveEdit();
         ImGui.EndDisabled();
     }
@@ -246,7 +250,7 @@ internal sealed class PartyWindow : Window
         if (listing.Owner != ListingOwner.Self) return;
         ImGui.SameLine();
         ImGui.BeginDisabled(plugin.ObjectiveTrace.Busy || !listing.IsLive || !listing.BeginnerFriendly.HasValue ||
-            plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.DescriptionDraft != null || plugin.ObjectiveDraft != null || plugin.UniqueJobsDraft != null ||
+            plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.DescriptionDraft != null || plugin.ObjectiveDraft != null || plugin.UniqueJobsDraft != null || plugin.PrivateDraft != null ||
             ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
         if (ImGui.SmallButton("초보자 환영 설정")) plugin.RequestBeginnerEdit();
         ImGui.EndDisabled();
@@ -291,7 +295,7 @@ internal sealed class PartyWindow : Window
         if (listing.Owner != ListingOwner.Self) return;
         ImGui.SameLine();
         ImGui.BeginDisabled(plugin.ObjectiveTrace.Busy || !listing.IsLive || !listing.UniqueJobs.HasValue ||
-            plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.DescriptionDraft != null || plugin.ObjectiveDraft != null || plugin.BeginnerDraft != null ||
+            plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.DescriptionDraft != null || plugin.ObjectiveDraft != null || plugin.BeginnerDraft != null || plugin.PrivateDraft != null ||
             ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
         if (ImGui.SmallButton("잡 중복 없음 설정")) plugin.RequestUniqueJobsEdit();
         ImGui.EndDisabled();
@@ -330,6 +334,64 @@ internal sealed class PartyWindow : Window
         if (!open) plugin.CloseUniqueJobsDraft();
     }
 
+    private void DrawPrivate(ListingSnapshot listing)
+    {
+        ImGui.TextUnformatted($"비공개: {ListingCheckboxValues.Label(listing.Private)}");
+        if (listing.Owner != ListingOwner.Self) return;
+        ImGui.SameLine();
+        ImGui.BeginDisabled(plugin.ObjectiveTrace.Busy || !listing.IsLive || !listing.Private.HasValue ||
+            plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.DescriptionDraft != null ||
+            plugin.ObjectiveDraft != null || plugin.BeginnerDraft != null || plugin.UniqueJobsDraft != null ||
+            ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
+        if (ImGui.SmallButton("비공개 설정")) plugin.RequestPrivateEdit();
+        ImGui.EndDisabled();
+    }
+
+    private void DrawPrivateEditor()
+    {
+        const string popup = "비공개 설정##PartyViewKR-private-editor";
+        var draft = plugin.PrivateDraft;
+        if (draft == null)
+        {
+            if (shownPrivateDraft != null)
+            {
+                var closing = true;
+                if (ImGui.BeginPopupModal(popup, ref closing)) { ImGui.CloseCurrentPopup(); ImGui.EndPopup(); }
+            }
+            shownPrivateDraft = null;
+            return;
+        }
+        if (!ReferenceEquals(draft, shownPrivateDraft)) { shownPrivateDraft = draft; ImGui.OpenPopup(popup); }
+        var open = true;
+        if (ImGui.BeginPopupModal(popup, ref open, ImGuiWindowFlags.AlwaysAutoResize))
+        {
+            ImGui.TextUnformatted($"현재 설정: {ListingCheckboxValues.Label(ListingPrivate.Read(draft.Original.ExtraCriteria))}");
+            var enabled = draft.Enabled;
+            if (ImGui.Checkbox("비공개 설정", ref enabled)) draft.Enabled = enabled;
+            if (draft.Enabled)
+            {
+                var password = draft.Password;
+                ImGui.SetNextItemWidth(180);
+                // Allow an overlong paste to remain invalid instead of silently
+                // truncating it to a different, valid four-digit password.
+                if (ImGui.InputText("비밀번호 (숫자 4자리)", ref password, 32, ImGuiInputTextFlags.CharsDecimal)) draft.Password = password;
+                if (draft.Password == "0000") ImGui.TextDisabled("0000은 비밀번호 미설정 값이므로 사용할 수 없습니다.");
+                else if (!ListingPrivate.TryPassword(draft.Password, out _)) ImGui.TextDisabled("0001~9999 사이의 숫자 네 자리를 입력해 주세요.");
+                if (ListingPrivate.Read(draft.Original.ExtraCriteria) == true)
+                    ImGui.TextUnformatted("비공개를 유지하며 입력한 비밀번호로 변경합니다.");
+            }
+            else ImGui.TextUnformatted("비공개를 끄면 비밀번호 없이 참가할 수 있습니다.");
+            var edit = draft.Request;
+            ImGui.Separator();
+            ImGui.TextUnformatted("적용하면 선택한 설정으로 모집을 갱신합니다.");
+            ImGui.BeginDisabled(!edit.Valid || plugin.Refresh.Busy || plugin.ListingBusy || plugin.Refresh.CoolingDown(Environment.TickCount64));
+            if (ImGui.Button("변경 적용 및 갱신", new Vector2(400, 0)) && plugin.ApplyPrivateDraft()) ImGui.CloseCurrentPopup();
+            ImGui.EndDisabled();
+            ImGui.EndPopup();
+        }
+        if (!open) plugin.ClosePrivateDraft();
+    }
+
     private void DrawObjectiveTrace()
     {
         if (!ImGui.CollapsingHeader("목적 선택 진단")) return;
@@ -338,7 +400,7 @@ internal sealed class PartyWindow : Window
         ImGui.TextWrapped("각 항목에서 잠깐 기다린 뒤 다음 항목을 선택하고, 기록 종료 후 복사해 주세요. 갱신 버튼을 누를 필요는 없습니다.");
         ImGui.TextWrapped(plugin.ObjectiveTrace.Status);
         ImGui.BeginDisabled(plugin.ObjectiveTrace.Busy || plugin.Refresh.Busy || plugin.ListingBusy ||
-            plugin.JobDraft != null || plugin.DescriptionDraft != null || plugin.ObjectiveDraft != null || plugin.BeginnerDraft != null || plugin.UniqueJobsDraft != null);
+            plugin.JobDraft != null || plugin.DescriptionDraft != null || plugin.ObjectiveDraft != null || plugin.BeginnerDraft != null || plugin.UniqueJobsDraft != null || plugin.PrivateDraft != null);
         if (ImGui.Button("목적 기록 시작")) plugin.ObjectiveTrace.RequestStart();
         ImGui.EndDisabled();
         ImGui.SameLine();

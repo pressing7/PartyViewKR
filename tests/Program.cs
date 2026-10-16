@@ -244,6 +244,7 @@ ListingDescriptionEditTests.Run(Test, Check);
 ListingObjectiveEditTests.Run(Test, Check);
 ListingBeginnerEditTests.Run(Test, Check);
 ListingUniqueJobsEditTests.Run(Test, Check);
+ListingPrivateEditTests.Run(Test, Check);
 CompatibilityTests.Run(Test, Check);
 Console.WriteLine($"All {passed} tests passed. Native game interaction still requires in-game validation.");
 
@@ -277,6 +278,9 @@ sealed class FakeHost : IListingRefreshHost
     public int UniqueJobsEditCalls;
     public bool UniqueJobsEditAllowed = true, UniqueJobsEditComplete = true, UniqueJobsEditFailed, ThrowOnUniqueJobsEdit;
     public RefreshTarget? UniqueJobsExpected;
+    public int PrivateEditCalls;
+    public bool PrivateEditAllowed = true, PrivateEditComplete = true, PrivateEditFailed, ThrowOnPrivateEdit;
+    public RefreshTarget? PrivateExpected;
     public RefreshTarget Target = new(10, 1, 123, "기존 모집 문구", "same", 1800, 8);
     public void QueryOwn() { QueryCalls++; QueryBusy = true; QuerySucceeded = false; }
     public void FinishQuery() { QueryBusy = false; QuerySucceeded = true; DetailRevision++; }
@@ -355,5 +359,18 @@ sealed class FakeHost : IListingRefreshHost
     {
         expected = UniqueJobsExpected!; error = "잡 중복 없음 반영 확인 실패";
         return UniqueJobsEditFailed ? SlotEditProgress.Failed : UniqueJobsEditComplete ? SlotEditProgress.Complete : SlotEditProgress.Waiting;
+    }
+    public bool BeginPrivateEdit(RefreshTarget target, ListingPrivateEdit edit, out string error)
+    {
+        PrivateEditCalls++; error = "비공개 설정 실패";
+        if (ThrowOnPrivateEdit) throw new InvalidOperationException("simulated private failure");
+        // This fake exercises the managed flow, not the native click route.
+        PrivateExpected = edit.Expected(target);
+        return PrivateEditAllowed;
+    }
+    public SlotEditProgress UpdatePrivateEdit(out RefreshTarget expected, out string error)
+    {
+        expected = PrivateExpected!; error = "비공개 반영 확인 실패";
+        return PrivateEditFailed ? SlotEditProgress.Failed : PrivateEditComplete ? SlotEditProgress.Complete : SlotEditProgress.Waiting;
     }
 }
