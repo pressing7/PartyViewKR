@@ -3,9 +3,9 @@
     "Author": "Local build",
     "Name": "Party View KR",
     "InternalName": "PartyViewKR",
-    "AssemblyVersion": "0.3.21.0",
-    "Description": "한섭 파티원·모집글 조회와 내 모집글 수동 갱신. /pvkr에서 확인하고 일반 4·8인 및 연합 24·48인 모집의 비공개 설정과 네 자리 비밀번호, 잡 중복 없음, 초행 및 초보자 환영, 목적, 소개말과 빈자리 허용 직업을 수정할 수 있습니다. 게임 수정창에 반영하고 갱신 결과를 확인합니다.",
-    "Punchline": "모집글 조회·수동 갱신과 비공개·잡 중복 없음·초보자 환영·목적·소개말·허용 직업 수정",
+    "AssemblyVersion": "0.3.22.0",
+    "Description": "한섭 파티원·모집글 조회와 내 모집글 수동 갱신. /pvkr에서 확인하고 일반 4·8인 및 연합 24·48인 모집의 완료조건, 비공개 설정과 네 자리 비밀번호, 잡 중복 없음, 초행 및 초보자 환영, 목적, 소개말과 빈자리 허용 직업을 수정할 수 있습니다. 게임 수정창에 반영하고 갱신 결과를 확인합니다.",
+    "Punchline": "모집글 조회·수동 갱신과 완료조건·비공개·잡 중복 없음·초보자 환영·목적·소개말·허용 직업 수정",
     "ApplicableVersion": "any",
     "DalamudApiLevel": 15,
     "Tags": [
@@ -13,9 +13,9 @@
       "korean"
     ],
     "RepoUrl": "https://github.com/pressing7/PartyViewKR",
-    "LastUpdate": 1792124806,
-    "DownloadLinkInstall": "https://github.com/pressing7/PartyViewKR/releases/download/0.3.21/PartyViewKR.zip",
-    "DownloadLinkUpdate": "https://github.com/pressing7/PartyViewKR/releases/download/0.3.21/PartyViewKR.zip",
-    "DownloadLinkTesting": "https://github.com/pressing7/PartyViewKR/releases/download/0.3.21/PartyViewKR.zip"
+    "LastUpdate": 1792127337,
+    "DownloadLinkInstall": "https://github.com/pressing7/PartyViewKR/releases/download/0.3.22/PartyViewKR.zip",
+    "DownloadLinkUpdate": "https://github.com/pressing7/PartyViewKR/releases/download/0.3.22/PartyViewKR.zip",
+    "DownloadLinkTesting": "https://github.com/pressing7/PartyViewKR/releases/download/0.3.22/PartyViewKR.zip"
   }
 ]
