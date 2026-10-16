@@ -1,0 +1,85 @@
+// Requires a built RefreshTests.dll and Playwright with Chromium installed.
+// PVKR_DOTNET selects dotnet; PVKR_BROWSER_ARTIFACTS optionally saves screenshots.
+const { chromium } = require("playwright");
+const { spawn } = require("node:child_process");
+const path = require("node:path");
+const fs = require("node:fs");
+const assert = require("node:assert/strict");
+
+(async () => {
+  const fixture = spawn(process.env.PVKR_DOTNET || "dotnet", [path.join(__dirname, "bin/Release/net10.0/RefreshTests.dll"), "--web-fixture"], { stdio: ["pipe", "pipe", "pipe"] });
+  let browser;
+  const send = command => fixture.stdin.write(command + "\n");
+  const artifacts = process.env.PVKR_BROWSER_ARTIFACTS;
+  if (artifacts) fs.mkdirSync(artifacts, { recursive: true });
+  try {
+    const url = await new Promise((resolve, reject) => {
+      let output = ""; const timer = setTimeout(() => reject(new Error("fixture did not start")), 10000);
+      fixture.once("error", reject); fixture.once("exit", code => { clearTimeout(timer); reject(new Error("fixture exited: " + code)); });
+      fixture.stdout.on("data", data => { output += data; const line = output.split("\n").find(x => x.startsWith("http://127.0.0.1:")); if (line) { clearTimeout(timer); resolve(line.trim()); } });
+      fixture.stderr.on("data", data => process.stderr.write(data));
+    });
+    browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
+    const page = await browser.newPage({ viewport: { width: 1280, height: 1000 }, locale: "ko-KR" });
+    const errors = [], requests = [];
+    page.on("pageerror", error => errors.push(error.message));
+    page.on("request", request => { if (request.url().endsWith("/api/query")) requests.push(request); });
+    await page.goto(url);
+    await page.waitForFunction(() => document.querySelectorAll(".slot").length === 4 && !document.querySelector("#query").disabled);
+    assert.equal(new URL(page.url()).hash, "", "connection key remained in URL");
+    assert.equal(requests.length, 0, "opening the page queried the game");
+    assert.equal(await page.locator(".job.filled").textContent(), "흑마도사");
+    assert.deepEqual(await page.locator(".allowed .job-chip").allTextContents(), ["나이트", "백마도사"]);
+    await page.locator(".allowed summary").click();
+    await page.waitForTimeout(1200);
+    assert.equal(await page.locator("details[open]").count(), 1, "polling collapsed allowed jobs");
+    if (artifacts) await page.screenshot({ path: path.join(artifacts, "browser-desktop.png"), fullPage: true });
+    await page.evaluate(() => { document.querySelector("#query").click(); document.querySelector("#query").click(); });
+    await page.waitForFunction(() => document.querySelector("#notice").textContent.includes("내 모집글을 조회했습니다"));
+    assert.equal(requests.length, 1, "duplicate click or polling sent another query");
+    send("friendly");
+    await page.waitForFunction(() => document.querySelectorAll(".slot").length === 18);
+    assert.deepEqual(await page.locator(".group").evaluateAll(groups => groups.map(g => g.querySelectorAll(".slot").length)), [5, 5, 8]);
+    assert.equal(await page.locator(".position").last().textContent(), "관전 8");
+    assert.deepEqual(await page.locator(".group-head h3").allTextContents(), ["별빛팀", "그림자팀", "관전"]);
+    if (artifacts) await page.screenshot({ path: path.join(artifacts, "browser-friendly.png"), fullPage: true });
+    send("48");
+    await page.waitForFunction(() => document.querySelectorAll(".slot").length === 48);
+    assert.equal(await page.locator(".group").count(), 6); assert.equal(await page.locator(".position").last().textContent(), "F파티 8");
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, "mobile overflow");
+    if (artifacts) await page.screenshot({ path: path.join(artifacts, "browser-mobile.png"), fullPage: true });
+    send("unsafe-text");
+    await page.waitForFunction(() => document.querySelector("#description").textContent.includes("<img"));
+    assert.equal(await page.locator("#description img, #description script").count(), 0);
+    assert.equal(await page.evaluate(() => window.injected), undefined, "description interpreted as HTML");
+    send("busy");
+    await page.waitForFunction(() => document.querySelector("#query").disabled && document.querySelector("#notice").textContent.includes("수정창"));
+    send("ready"); send("closed");
+    await page.waitForFunction(() => document.querySelector("#freshness").textContent === "마지막 조회 결과" && !document.querySelector("#query").disabled);
+    send("pause");
+    await page.waitForFunction(() => document.querySelector("#connection").textContent === "게임 응답 대기", undefined, { timeout: 10000 });
+    assert.equal(await page.locator("#query").isDisabled(), true);
+    send("resume"); send("logout");
+    await page.waitForFunction(() => document.querySelector("#listing").hidden && document.querySelector("#connection").textContent === "로그인 대기");
+    send("login");
+    await page.waitForFunction(() => document.querySelectorAll(".slot").length === 4 && !document.querySelector("#query").disabled);
+    await page.reload();
+    await page.waitForFunction(() => !document.querySelector("#query").disabled);
+    assert.equal(requests.length, 1, "reload queried automatically");
+    await page.goto(new URL(url).origin + "/#key=" + "0".repeat(64));
+    await page.waitForFunction(() => document.querySelector("#connection").textContent === "연결 필요");
+    assert.equal(await page.locator("#listing").isVisible(), false, "authentication failure left listing visible");
+    await page.goto(url);
+    await page.waitForFunction(() => !document.querySelector("#query").disabled);
+    send("quit");
+    await page.waitForFunction(() => document.querySelector("#connection").textContent === "연결 끊김");
+    assert.equal(await page.locator("#query").isDisabled(), true);
+    assert.equal(await page.locator("#freshness").textContent(), "마지막 조회 결과");
+    assert.deepEqual(errors, [], "browser JavaScript errors");
+    console.log("PASS browser smoke: authenticated real listener, query, 4/48/friendly slots, tooltips, mobile, plain text, busy/stale/logout/reconnect/stop");
+  } finally {
+    if (browser) await browser.close();
+    fixture.kill();
+  }
+})().catch(error => { console.error(error); process.exitCode = 1; });

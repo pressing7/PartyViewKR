@@ -4,6 +4,12 @@
     <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../src/ListingSnapshot.cs" Link="ListingSnapshot.cs" />
+    <Compile Include="../src/ListingWebView.cs" Link="ListingWebView.cs" />
+    <Compile Include="../src/ListingWebBridge.cs" Link="ListingWebBridge.cs" />
+    <Compile Include="../src/ListingWebServer.cs" Link="ListingWebServer.cs" />
+    <Compile Include="../src/ListingWebRequestGuard.cs" Link="ListingWebRequestGuard.cs" />
+    <EmbeddedResource Include="../src/Web/*" LogicalName="PartyViewKR.Web.%(Filename)%(Extension)" />
     <Compile Include="../shared/NativeContract.cs" Link="NativeContract.cs" />
     <None Include="../compatibility/native-contract.json" Link="native-contract.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="../src/ListingIdentity.cs" Link="ListingIdentity.cs" />

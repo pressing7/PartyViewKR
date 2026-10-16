@@ -42,8 +42,24 @@ internal sealed class PartyWindow : Window
         if (ImGui.Button("진단 정보 복사")) ImGui.SetClipboardText(plugin.Diagnostic);
         DrawObjectiveTrace();
         ImGui.Separator();
+        DrawBrowser();
         if (ImGui.CollapsingHeader("현재 파티 상태 · 실시간 직업"))
             DrawCurrentParty();
+    }
+
+    private void DrawBrowser()
+    {
+        if (!ImGui.CollapsingHeader("브라우저 조회")) return;
+        ImGui.TextWrapped(plugin.WebStatus);
+        if (plugin.WebEnabled)
+        {
+            ImGui.TextUnformatted(plugin.WebAddress);
+            if (ImGui.Button("접속 링크 복사")) ImGui.SetClipboardText(plugin.WebLink);
+            ImGui.SameLine();
+            if (ImGui.Button("브라우저 조회 끄기")) plugin.StopWeb();
+        }
+        else if (ImGui.Button("브라우저 조회 켜기")) plugin.StartWeb();
+        ImGui.TextWrapped("접속 링크를 같은 PC의 브라우저 주소창에 붙여넣으세요. 내 모집글과 등록된 직업·모집 조건을 확인할 수 있습니다.");
     }
 
     private void DrawCurrentParty()
@@ -82,7 +98,7 @@ internal sealed class PartyWindow : Window
         var listing = plugin.Listing;
         ImGui.TextUnformatted("모집글 조회");
         ImGui.SameLine();
-        ImGui.BeginDisabled(plugin.ObjectiveTrace.Busy || plugin.ListingBusy || plugin.Refresh.Busy || !Plugin.ClientState.IsLoggedIn || !Plugin.PlayerState.IsLoaded);
+        ImGui.BeginDisabled(plugin.QueryUnavailableReason != null);
         if (ImGui.Button("내 모집글 조회")) plugin.QueryOwnListing();
         ImGui.EndDisabled();
         ImGui.SameLine();

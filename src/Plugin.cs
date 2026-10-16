@@ -8,7 +8,7 @@ using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
 
 namespace PartyViewKR;
 
-public sealed class Plugin : IDalamudPlugin
+public sealed partial class Plugin : IDalamudPlugin
 {
     [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
     [PluginService] internal static ICommandManager Commands { get; private set; } = null!;
@@ -101,7 +101,7 @@ public sealed class Plugin : IDalamudPlugin
     private void OnCommand(string command, string arguments) => Open();
     private void Open() { window.IsOpen = true; window.BringToFront(); RequestRead(); }
     internal void RequestRead() => readRequested = true;
-    internal void QueryOwnListing() { if (!Refresh.Busy && !ObjectiveTrace.Busy) listingReader.RequestOwn(); RequestRead(); }
+    internal void QueryOwnListing() => TryQueryOwnListing(out _);
     internal void RefreshOwnListing()
     {
         if (ObjectiveTrace.Busy || Refresh.Busy || ListingBusy || Refresh.CoolingDown(Environment.TickCount64) ||
@@ -418,6 +418,7 @@ public sealed class Plugin : IDalamudPlugin
         }
         try
         {
+            webHost?.BeforeRead(now);
             Listing = listingReader.Read(Snapshot, Listing);
             lastListingError = "";
         }
@@ -441,11 +442,13 @@ public sealed class Plugin : IDalamudPlugin
             Refresh.Fail(ex.GetBaseException().Message);
             Log.Error(ex, "PartyViewKR: manual listing refresh stopped");
         }
+        UpdateWeb(now);
     }
 
     public void Dispose()
     {
         disposed = true;
+        StopWeb();
         ObjectiveTrace.Dispose();
         Refresh.Cancel();
         AddonLifecycle.UnregisterListener(AddonEvent.PostSetup, "LookingForGroupDetail", OnDetailUpdated);

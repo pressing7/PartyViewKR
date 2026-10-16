@@ -1,5 +1,7 @@
 using PartyViewKR;
 
+if (args.Contains("--web-fixture")) { await WebBrowserFixture.Run(); return; }
+
 var passed = 0;
 void Check(bool value, string label) { if (!value) throw new Exception(label); }
 void Test(string name, Action body) { body(); passed++; Console.WriteLine("PASS " + name); }
@@ -254,6 +256,7 @@ ListingItemLevelEditTests.Run(Test, Check);
 ListingRuleEditTests.Run(Test, Check);
 ListingBatchTests.Run(Test, Check);
 ListingDescriptionRecoveryTests.Run(Test, Check);
+ListingWebTests.Run(Test, Check);
 CompatibilityTests.Run(Test, Check);
 Console.WriteLine($"All {passed} tests passed. Native game interaction still requires in-game validation.");
 
