@@ -16,6 +16,8 @@
     <Compile Include="../src/ListingPrivateEdit.cs" Link="ListingPrivateEdit.cs" />
     <Compile Include="../src/ListingCompletionEdit.cs" Link="ListingCompletionEdit.cs" />
     <Compile Include="../src/ListingItemLevelEdit.cs" Link="ListingItemLevelEdit.cs" />
+    <Compile Include="../src/ListingRuleEdit.cs" Link="ListingRuleEdit.cs" />
+    <Compile Include="../src/ListingLootUi.cs" Link="ListingLootUi.cs" />
     <Compile Include="../src/ListingObjectiveUi.cs" Link="ListingObjectiveUi.cs" />
     <Compile Include="../src/ObjectiveTraceBuffer.cs" Link="ObjectiveTraceBuffer.cs" />
     <Compile Include="../src/ListingSlots.cs" Link="ListingSlots.cs" />

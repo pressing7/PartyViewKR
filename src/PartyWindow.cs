@@ -15,6 +15,7 @@ internal sealed class PartyWindow : Window
     private ListingPrivateDraft? shownPrivateDraft;
     private ListingCompletionDraft? shownCompletionDraft;
     private ListingItemLevelDraft? shownItemLevelDraft;
+    private ListingRuleDraft? shownRuleDraft;
     internal PartyWindow(Plugin plugin) : base("파티 모집 조회##PartyViewKR")
     {
         this.plugin = plugin;
@@ -34,6 +35,7 @@ internal sealed class PartyWindow : Window
         DrawPrivateEditor();
         DrawCompletionEditor();
         DrawItemLevelEditor();
+        DrawRuleEditor();
         ImGui.Separator();
         if (ImGui.Button("다시 읽기")) plugin.RequestRead();
         ImGui.SameLine();
@@ -103,6 +105,7 @@ internal sealed class PartyWindow : Window
         if (plugin.UniqueJobsDraftStatus.Length > 0) ImGui.TextWrapped(plugin.UniqueJobsDraftStatus);
         if (plugin.PrivateDraftStatus.Length > 0) ImGui.TextWrapped(plugin.PrivateDraftStatus);
         if (plugin.CompletionDraftStatus.Length > 0) ImGui.TextWrapped(plugin.CompletionDraftStatus);
+        if (plugin.RuleDraftStatus.Length > 0) ImGui.TextWrapped(plugin.RuleDraftStatus);
         if (plugin.ItemLevelDraftStatus.Length > 0) ImGui.TextWrapped(plugin.ItemLevelDraftStatus);
         ImGui.TextUnformatted(listing.Status);
         if (listing.ReadAt is { } at)
@@ -122,6 +125,7 @@ internal sealed class PartyWindow : Window
             DrawObjective(listing);
             DrawCompletion(listing);
             DrawItemLevel(listing);
+            foreach (var kind in Enum.GetValues<ListingRuleKind>()) DrawRule(listing, kind);
             DrawBeginner(listing);
             DrawUniqueJobs(listing);
             DrawPrivate(listing);
@@ -143,7 +147,7 @@ internal sealed class PartyWindow : Window
         if (listing.Owner == ListingOwner.Self)
         {
             ImGui.SameLine();
-            ImGui.BeginDisabled(plugin.ObjectiveTrace.Busy || !listing.IsLive || plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.ObjectiveDraft != null || plugin.BeginnerDraft != null || plugin.UniqueJobsDraft != null || plugin.PrivateDraft != null || plugin.CompletionDraft != null || plugin.ItemLevelDraft != null ||
+            ImGui.BeginDisabled(plugin.RuleDraft != null || plugin.ObjectiveTrace.Busy || !listing.IsLive || plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.ObjectiveDraft != null || plugin.BeginnerDraft != null || plugin.UniqueJobsDraft != null || plugin.PrivateDraft != null || plugin.CompletionDraft != null || plugin.ItemLevelDraft != null ||
                 ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
             if (ImGui.SmallButton("소개말 수정")) plugin.RequestDescriptionEdit();
             ImGui.EndDisabled();
@@ -246,7 +250,7 @@ internal sealed class PartyWindow : Window
         ImGui.TextUnformatted($"모집 목적: {ListingObjectives.Label(listing.Objective)}");
         if (listing.Owner != ListingOwner.Self) return;
         ImGui.SameLine();
-        ImGui.BeginDisabled(!ListingObjectives.AutomaticEditingAvailable || plugin.ObjectiveTrace.Busy || !listing.IsLive || !listing.Objective.HasValue || plugin.Refresh.Busy || plugin.ListingBusy ||
+        ImGui.BeginDisabled(plugin.RuleDraft != null || !ListingObjectives.AutomaticEditingAvailable || plugin.ObjectiveTrace.Busy || !listing.IsLive || !listing.Objective.HasValue || plugin.Refresh.Busy || plugin.ListingBusy ||
             plugin.JobDraft != null || plugin.DescriptionDraft != null || plugin.BeginnerDraft != null || plugin.UniqueJobsDraft != null || plugin.PrivateDraft != null || plugin.CompletionDraft != null || plugin.ItemLevelDraft != null || ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
         if (ImGui.SmallButton("목적 수정")) plugin.RequestObjectiveEdit();
         ImGui.EndDisabled();
@@ -257,7 +261,7 @@ internal sealed class PartyWindow : Window
         ImGui.TextUnformatted($"초행 및 초보자 환영: {ListingBeginners.Label(listing.BeginnerFriendly)}");
         if (listing.Owner != ListingOwner.Self) return;
         ImGui.SameLine();
-        ImGui.BeginDisabled(plugin.ObjectiveTrace.Busy || !listing.IsLive || !listing.BeginnerFriendly.HasValue ||
+        ImGui.BeginDisabled(plugin.RuleDraft != null || plugin.ObjectiveTrace.Busy || !listing.IsLive || !listing.BeginnerFriendly.HasValue ||
             plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.DescriptionDraft != null || plugin.ObjectiveDraft != null || plugin.UniqueJobsDraft != null || plugin.PrivateDraft != null || plugin.CompletionDraft != null || plugin.ItemLevelDraft != null ||
             ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
         if (ImGui.SmallButton("초보자 환영 설정")) plugin.RequestBeginnerEdit();
@@ -302,7 +306,7 @@ internal sealed class PartyWindow : Window
         ImGui.TextUnformatted($"잡 중복 없음: {ListingCheckboxValues.Label(listing.UniqueJobs)}");
         if (listing.Owner != ListingOwner.Self) return;
         ImGui.SameLine();
-        ImGui.BeginDisabled(plugin.ObjectiveTrace.Busy || !listing.IsLive || !listing.UniqueJobs.HasValue ||
+        ImGui.BeginDisabled(plugin.RuleDraft != null || plugin.ObjectiveTrace.Busy || !listing.IsLive || !listing.UniqueJobs.HasValue ||
             plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.DescriptionDraft != null || plugin.ObjectiveDraft != null || plugin.BeginnerDraft != null || plugin.PrivateDraft != null || plugin.CompletionDraft != null || plugin.ItemLevelDraft != null ||
             ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
         if (ImGui.SmallButton("잡 중복 없음 설정")) plugin.RequestUniqueJobsEdit();
@@ -347,7 +351,7 @@ internal sealed class PartyWindow : Window
         ImGui.TextUnformatted($"비공개: {ListingCheckboxValues.Label(listing.Private)}");
         if (listing.Owner != ListingOwner.Self) return;
         ImGui.SameLine();
-        ImGui.BeginDisabled(plugin.ObjectiveTrace.Busy || !listing.IsLive || !listing.Private.HasValue ||
+        ImGui.BeginDisabled(plugin.RuleDraft != null || plugin.ObjectiveTrace.Busy || !listing.IsLive || !listing.Private.HasValue ||
             plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.DescriptionDraft != null ||
             plugin.ObjectiveDraft != null || plugin.BeginnerDraft != null || plugin.UniqueJobsDraft != null || plugin.CompletionDraft != null || plugin.ItemLevelDraft != null ||
             ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
@@ -404,7 +408,7 @@ internal sealed class PartyWindow : Window
         ImGui.TextUnformatted($"완료조건: {ListingCompletions.Label(listing.Completion)}");
         if (listing.Owner != ListingOwner.Self) return;
         ImGui.SameLine();
-        ImGui.BeginDisabled(plugin.ObjectiveTrace.Busy || !listing.IsLive || !ListingCompletions.Supported(listing.Completion) || plugin.ItemLevelDraft != null ||
+        ImGui.BeginDisabled(plugin.RuleDraft != null || plugin.ObjectiveTrace.Busy || !listing.IsLive || !ListingCompletions.Supported(listing.Completion) || plugin.ItemLevelDraft != null ||
             plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.DescriptionDraft != null ||
             plugin.ObjectiveDraft != null || plugin.BeginnerDraft != null || plugin.UniqueJobsDraft != null || plugin.PrivateDraft != null ||
             ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
@@ -464,7 +468,7 @@ internal sealed class PartyWindow : Window
         ImGui.TextUnformatted($"평균 아이템 레벨: {ListingItemLevels.Label(listing.ItemLevel)}");
         if (listing.Owner != ListingOwner.Self) return;
         ImGui.SameLine();
-        ImGui.BeginDisabled(plugin.ObjectiveTrace.Busy || !listing.IsLive || !listing.ItemLevel.HasValue ||
+        ImGui.BeginDisabled(plugin.RuleDraft != null || plugin.ObjectiveTrace.Busy || !listing.IsLive || !listing.ItemLevel.HasValue ||
             plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.DescriptionDraft != null ||
             plugin.ObjectiveDraft != null || plugin.BeginnerDraft != null || plugin.UniqueJobsDraft != null ||
             plugin.PrivateDraft != null || plugin.CompletionDraft != null || ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
@@ -514,6 +518,64 @@ internal sealed class PartyWindow : Window
         if (!open) plugin.CloseItemLevelDraft();
     }
 
+    private void DrawRule(ListingSnapshot listing, ListingRuleKind kind)
+    {
+        var value = listing.RuleValue(kind);
+        ImGui.TextUnformatted($"{ListingRules.Title(kind)}: {ListingRules.Label(kind, value)}");
+        if (listing.Owner != ListingOwner.Self) return;
+        ImGui.SameLine();
+        ImGui.BeginDisabled(plugin.ObjectiveTrace.Busy || !listing.IsLive || !value.HasValue || plugin.Refresh.Busy || plugin.ListingBusy ||
+            plugin.RuleDraft != null || plugin.ItemLevelDraft != null || plugin.CompletionDraft != null || plugin.JobDraft != null ||
+            plugin.DescriptionDraft != null || plugin.ObjectiveDraft != null || plugin.BeginnerDraft != null || plugin.UniqueJobsDraft != null ||
+            plugin.PrivateDraft != null || ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
+        if (ImGui.SmallButton($"{ListingRules.Title(kind)} 설정")) plugin.RequestRuleEdit(kind);
+        ImGui.EndDisabled();
+    }
+
+    private void DrawRuleEditor()
+    {
+        const string popup = "모집 규칙 설정##PartyViewKR-rule-editor";
+        var draft = plugin.RuleDraft;
+        if (draft == null)
+        {
+            if (shownRuleDraft != null)
+            {
+                var closing = true;
+                if (ImGui.BeginPopupModal(popup, ref closing)) { ImGui.CloseCurrentPopup(); ImGui.EndPopup(); }
+            }
+            shownRuleDraft = null;
+            return;
+        }
+        if (!ReferenceEquals(draft, shownRuleDraft)) { shownRuleDraft = draft; ImGui.OpenPopup(popup); }
+        var open = true;
+        if (ImGui.BeginPopupModal(popup, ref open, ImGuiWindowFlags.AlwaysAutoResize))
+        {
+            ImGui.TextUnformatted(ListingRules.Title(draft.Kind));
+            ImGui.TextUnformatted($"현재 설정: {ListingRules.Label(draft.Kind, ListingRules.Read(draft.Original.Criteria, draft.Kind))}");
+            if (draft.Kind == ListingRuleKind.Loot)
+            {
+                var selected = draft.SelectedValue;
+                ImGui.SetNextItemWidth(220);
+                if (ImGui.Combo("전리품 규칙", ref selected, ListingRules.LootLabels, ListingRules.LootLabels.Length)) draft.SelectedValue = selected;
+            }
+            else
+            {
+                var enabled = draft.SelectedValue == 1;
+                if (ImGui.Checkbox(ListingRules.Title(draft.Kind), ref enabled)) draft.SelectedValue = enabled ? 1 : 0;
+            }
+            var edit = draft.Request;
+            if (!edit.Changed) ImGui.TextDisabled("설정을 변경하면 적용할 수 있습니다.");
+            ImGui.TextUnformatted("게임 수정창에서 선택할 수 있는 항목만 적용합니다.");
+            ImGui.Separator();
+            ImGui.TextUnformatted("적용하면 선택한 규칙으로 모집을 갱신합니다.");
+            ImGui.BeginDisabled(!edit.Valid || plugin.Refresh.Busy || plugin.ListingBusy || plugin.Refresh.CoolingDown(Environment.TickCount64));
+            if (ImGui.Button("변경 적용 및 갱신", new Vector2(420, 0)) && plugin.ApplyRuleDraft()) ImGui.CloseCurrentPopup();
+            ImGui.EndDisabled();
+            ImGui.EndPopup();
+        }
+        if (!open) plugin.CloseRuleDraft();
+    }
+
     private void DrawObjectiveTrace()
     {
         if (!ImGui.CollapsingHeader("목적 선택 진단")) return;
@@ -522,7 +584,7 @@ internal sealed class PartyWindow : Window
         ImGui.TextWrapped("각 항목에서 잠깐 기다린 뒤 다음 항목을 선택하고, 기록 종료 후 복사해 주세요. 갱신 버튼을 누를 필요는 없습니다.");
         ImGui.TextWrapped(plugin.ObjectiveTrace.Status);
         ImGui.BeginDisabled(plugin.ObjectiveTrace.Busy || plugin.Refresh.Busy || plugin.ListingBusy ||
-            plugin.JobDraft != null || plugin.DescriptionDraft != null || plugin.ObjectiveDraft != null || plugin.BeginnerDraft != null || plugin.UniqueJobsDraft != null || plugin.PrivateDraft != null || plugin.CompletionDraft != null || plugin.ItemLevelDraft != null);
+            plugin.JobDraft != null || plugin.DescriptionDraft != null || plugin.ObjectiveDraft != null || plugin.BeginnerDraft != null || plugin.UniqueJobsDraft != null || plugin.PrivateDraft != null || plugin.CompletionDraft != null || plugin.RuleDraft != null || plugin.ItemLevelDraft != null);
         if (ImGui.Button("목적 기록 시작")) plugin.ObjectiveTrace.RequestStart();
         ImGui.EndDisabled();
         ImGui.SameLine();

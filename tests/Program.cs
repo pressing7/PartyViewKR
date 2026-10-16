@@ -247,6 +247,7 @@ ListingUniqueJobsEditTests.Run(Test, Check);
 ListingPrivateEditTests.Run(Test, Check);
 ListingCompletionEditTests.Run(Test, Check);
 ListingItemLevelEditTests.Run(Test, Check);
+ListingRuleEditTests.Run(Test, Check);
 CompatibilityTests.Run(Test, Check);
 Console.WriteLine($"All {passed} tests passed. Native game interaction still requires in-game validation.");
 
@@ -289,6 +290,9 @@ sealed class FakeHost : IListingRefreshHost
     public int ItemLevelEditCalls;
     public bool ItemLevelEditAllowed = true, ItemLevelEditComplete = true, ItemLevelEditFailed, ThrowOnItemLevelEdit;
     public RefreshTarget? ItemLevelExpected;
+    public int RuleEditCalls;
+    public bool RuleEditAllowed = true, RuleEditComplete = true, RuleEditFailed, ThrowOnRuleEdit;
+    public RefreshTarget? RuleExpected;
     public RefreshTarget Target = new(10, 1, 123, "기존 모집 문구", "same", 1800, 8);
     public void QueryOwn() { QueryCalls++; QueryBusy = true; QuerySucceeded = false; }
     public void FinishQuery() { QueryBusy = false; QuerySucceeded = true; DetailRevision++; }
@@ -407,4 +411,17 @@ sealed class FakeHost : IListingRefreshHost
         expected = ItemLevelExpected!; error = "평균 아이템 레벨 반영 확인 실패";
         return ItemLevelEditFailed ? SlotEditProgress.Failed : ItemLevelEditComplete ? SlotEditProgress.Complete : SlotEditProgress.Waiting;
     }
+    public bool BeginRuleEdit(RefreshTarget target, ListingRuleEdit edit, out string error)
+    {
+        RuleEditCalls++; error = "모집 규칙 설정 실패";
+        if (ThrowOnRuleEdit) throw new InvalidOperationException("simulated rule failure");
+        RuleExpected = edit.Expected(target);
+        return RuleEditAllowed;
+    }
+    public SlotEditProgress UpdateRuleEdit(out RefreshTarget expected, out string error)
+    {
+        expected = RuleExpected!; error = "모집 규칙 반영 확인 실패";
+        return RuleEditFailed ? SlotEditProgress.Failed : RuleEditComplete ? SlotEditProgress.Complete : SlotEditProgress.Waiting;
+    }
+
 }
