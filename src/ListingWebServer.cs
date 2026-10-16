@@ -40,6 +40,7 @@ internal sealed class ListingWebServer : IDisposable
             ["/"] = ("text/html; charset=utf-8", Asset("index.html")),
             ["/app.js"] = ("text/javascript; charset=utf-8", Asset("app.js")),
             ["/editor.js"] = ("text/javascript; charset=utf-8", Asset("editor.js")),
+            ["/connection.js"] = ("text/javascript; charset=utf-8", Asset("connection.js")),
             ["/style.css"] = ("text/css; charset=utf-8", Asset("style.css"))
         };
         var key = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));

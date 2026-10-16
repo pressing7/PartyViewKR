@@ -6,6 +6,7 @@ public sealed partial class Plugin
     private WebHost? webHost;
     private string webStatus = "브라우저 조회가 꺼져 있습니다.";
     internal bool WebEnabled => webServer?.Running == true;
+    private bool AnyWebEnabled => WebEnabled || RelayEnabled;
     internal string WebAddress => webServer?.BaseUrl ?? "";
     internal string WebLink => WebEnabled ? webServer!.ConnectionUrl : "";
     internal string WebStatus => webServer is { Running: false } ? "연결이 종료됐습니다. 브라우저 조회를 다시 켜 주세요." : webStatus;
@@ -53,6 +54,7 @@ public sealed partial class Plugin
 
     internal void StopWeb()
     {
+        StopRelay();
         var server = Interlocked.Exchange(ref webServer, null);
         server?.Dispose();
         if (server != null) { webHost?.CancelOwnedQuery(); webHost?.CancelOwnedRefresh(); }
@@ -61,10 +63,10 @@ public sealed partial class Plugin
 
     private void UpdateWeb(long now)
     {
-        var server = webServer;
-        if (server?.Running != true || webHost == null) return;
-        try { server.Bridge.Update(webHost, now); }
-        catch (Exception) { server.Bridge.PublicationFailed(); }
+        var bridge = WebEnabled ? webServer!.Bridge : RelayEnabled ? relayClient!.Bridge : null;
+        if (bridge == null || webHost == null) return;
+        try { bridge.Update(webHost, now); }
+        catch (Exception) { bridge.PublicationFailed(); }
     }
 
     private sealed class WebHost(Plugin plugin) : IListingWebEditHost
@@ -110,12 +112,12 @@ public sealed partial class Plugin
         internal void BeforeRead(long now)
         {
             if (ownedRefresh.BeforeRead(SelfId, plugin.Refresh.RequestRevision, plugin.Refresh.Busy,
-                plugin.WebEnabled, plugin.Refresh.Stage == RefreshStage.Queued, now)) CancelOwnedRefresh();
+                plugin.AnyWebEnabled, plugin.Refresh.Stage == RefreshStage.Queued, now)) CancelOwnedRefresh();
             // RequestOwn sets a flag; native dispatch happens in a later Read.
             // Recheck then too, especially if the character/editor changed in
             // the intervening frame. Never cancel a newer local request.
             if (ownedQuery.Owns(plugin.listingReader.RequestRevision, plugin.listingReader.Busy) &&
-                ownedQuery.BeforeRead(SelfId, plugin.listingReader.RequestRevision, true, plugin.WebEnabled,
+                ownedQuery.BeforeRead(SelfId, plugin.listingReader.RequestRevision, true, plugin.AnyWebEnabled,
                     plugin.GetQueryUnavailableReason(true) != null, now))
                 CancelOwnedQuery();
         }

@@ -2,22 +2,30 @@
 (() => {
   const byId = id => document.getElementById(id);
   const connection = byId("connection"), notice = byId("notice"), queryButton = byId("query"), refreshButton = byId("refresh");
-  let key = "", state = null, online = false, posting = false, authFailed = false, actionMessage = "";
+  let key = "", room = "", state = null, online = false, posting = false, authFailed = false, actionMessage = "", connectionMessage = "";
   let groupsSignature = "", settingsSignature = "", session = "";
   const storageKey = "pvkr.connection";
   const operationKey = "pvkr.operation";
+  let connectionStorage;
+  try { connectionStorage = sessionStorage; } catch { /* A pasted link still works without storage. */ }
+  ({ key, room } = window.PvkrConnection.read(location, history, connectionStorage));
   let pendingWrite = null, operationSignature = "";
   try { const saved = JSON.parse(sessionStorage.getItem(operationKey) || "null");
     if (saved && /^[0-9a-f-]{36}$/.test(saved.id) && typeof saved.session === "string" && Number.isFinite(saved.sentAt)) pendingWrite = saved;
   } catch { /* Never store form values or passwords. */ }
-  try {
-    const fragmentKey = new URLSearchParams(location.hash.slice(1)).get("key");
-    history.replaceState(null, "", location.pathname);
-    key = fragmentKey || "";
-    if (!key) { try { key = sessionStorage.getItem(storageKey) || ""; } catch { /* Use the link's key in memory when storage is unavailable. */ } }
-    if (!/^[A-F0-9]{64}$/.test(key)) key = "";
-    if (key) { try { sessionStorage.setItem(storageKey, key); } catch { /* Refresh then requires a fresh connection link. */ } }
-  } catch { key = ""; }
+  byId("connect-form").addEventListener("submit", event => {
+    event.preventDefault();
+    const credentials = window.PvkrConnection.parse(byId("connection-code").value, location.origin);
+    if (!credentials) { text("connection-error", "이 서버의 접속 링크 또는 PVKR 연결 코드를 확인해 주세요."); return; }
+    const fragment = new URLSearchParams({ key: credentials.key });
+    if (credentials.room) fragment.set("room", credentials.room);
+    byId("connection-code").value = "";
+    history.replaceState(null, "", "/#" + fragment.toString()); location.reload();
+  });
+  byId("forget-connection").addEventListener("click", () => {
+    try { sessionStorage.removeItem(storageKey); sessionStorage.removeItem("pvkr.room"); sessionStorage.removeItem(operationKey); } catch { }
+    location.reload();
+  });
 
   function text(id, value) { const el = byId(id); if (el.textContent !== value) el.textContent = value; }
   function el(tag, className, value) {
@@ -39,6 +47,8 @@
     return value && Number.isFinite(date.getTime()) ? date.toLocaleTimeString("ko-KR", { hour12: false }) : "확인 불가";
   }
   function renderStatus() {
+    byId("connect-panel").hidden = !!key && !authFailed;
+    byId("forget-connection").hidden = !key;
     const old = stale(), busy = posting || active(state?.query) || active(state?.operation) || !!pendingWrite;
     queryButton.disabled = !key || !online || old || busy || !state?.canQuery || authFailed;
     const available = !!key && online && !old && !authFailed && !!state?.canRefresh;
@@ -52,8 +62,8 @@
     else if (!state?.loggedIn) badge("로그인 대기", "muted");
     else badge("PVKR 연결됨", "good");
     let message = "조회 버튼을 누르면 내 모집글을 다시 읽습니다.";
-    if (!key || authFailed) message = "게임의 /pvkr → 브라우저 조회에서 접속 링크를 복사해 다시 열어 주세요.";
-    else if (!online) message = "PVKR에 연결할 수 없습니다. 게임에서 브라우저 조회가 켜져 있는지 확인해 주세요. 마지막으로 받은 정보는 아래에 남아 있습니다.";
+    if (!key || authFailed) message = "게임의 /pvkr에서 접속 링크 또는 연결 코드를 복사해 연결해 주세요.";
+    else if (!online) message = connectionMessage || "PVKR에 연결할 수 없습니다. 게임에서 브라우저 연결이 켜져 있는지 확인해 주세요. 마지막으로 받은 정보는 아래에 남아 있습니다.";
     else if (old) message = "게임의 응답을 기다리는 중입니다. 표시된 내용은 마지막 조회 결과입니다.";
     else if (posting) message = "게임에 요청을 전달하는 중입니다.";
     else if (pendingWrite) message = "갱신 요청의 처리 결과를 확인하는 중입니다. 같은 요청은 다시 보내지 않습니다.";
@@ -136,10 +146,11 @@
 
   async function api(path, options = {}) {
     const response = await fetch(path, { ...options, cache: "no-store", credentials: "omit", redirect: "error",
-      signal: AbortSignal.timeout(3500), headers: { "Authorization": "Bearer " + key, ...options.headers } });
+      signal: AbortSignal.timeout(5000), headers: { "Authorization": "Bearer " + key, ...(room ? { "X-PVKR-Room": room } : {}), ...options.headers } });
     if (response.status === 401) {
       authFailed = true; key = ""; state = null; editor.clear(); savePending(null);
-      try { sessionStorage.removeItem(storageKey); } catch { /* Browser storage may be disabled. */ }
+      room = "";
+      try { sessionStorage.removeItem(storageKey); sessionStorage.removeItem("pvkr.room"); } catch { /* Browser storage may be disabled. */ }
       byId("listing").hidden = true; byId("empty").hidden = false;
       text("empty-title", "새 접속 링크가 필요합니다"); text("empty-text", "PVKR에서 접속 링크를 다시 복사해 주세요.");
       byId("groups").replaceChildren(); byId("settings").replaceChildren();
@@ -176,8 +187,9 @@
         "X-PVKR-Request-Id": request.id, "X-PVKR-Session": request.session }, body: JSON.stringify({ revision, changes }) });
       if (state?.session === request.session) { state.operation = operation; acceptOperation(operation); renderOperation(); }
     } catch (error) {
-      if (error.status) savePending(null);
-      actionMessage = error.status ? error.message : "응답이 끊겨 요청 결과를 확인하고 있습니다. 갱신을 다시 전송하지 않습니다.";
+      const rejected = window.PvkrConnection.definiteRejection(error.status);
+      if (rejected) savePending(null);
+      actionMessage = rejected ? error.message : "응답이 끊겨 요청 결과를 확인하고 있습니다. 갱신을 다시 전송하지 않습니다.";
     } finally { editor.clearPassword(); posting = false; renderStatus(); }
   }
   refreshButton.addEventListener("click", () => { if (!refreshButton.disabled && state?.editor) applyChanges(state.editor.revision, []); });
@@ -195,7 +207,7 @@
   async function poll() {
     if (!key || authFailed) { renderStatus(); return; }
     try {
-      const view = await api("/api/state"); online = true; render(view);
+      const view = await api("/api/state"); online = true; connectionMessage = ""; render(view);
       if (pendingWrite && !posting) {
         const request = pendingWrite;
         try {
@@ -209,7 +221,7 @@
       }
       renderStatus();
     }
-    catch { online = false; renderStatus(); }
+    catch (error) { online = false; connectionMessage = error.status ? error.message : ""; renderStatus(); }
     if (key && !authFailed) setTimeout(poll, document.hidden ? 4000 : 1000);
   }
   poll();

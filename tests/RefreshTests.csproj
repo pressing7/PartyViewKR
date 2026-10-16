@@ -11,6 +11,8 @@
     <Compile Include="../src/ListingWebRequestGuard.cs" Link="ListingWebRequestGuard.cs" />
     <Compile Include="../src/ListingWebEdit.cs" Link="ListingWebEdit.cs" />
     <Compile Include="../src/ListingWebBridge.Edit.cs" Link="ListingWebBridge.Edit.cs" />
+    <Compile Include="../src/ListingRelayProtocol.cs" Link="ListingRelayProtocol.cs" />
+    <Compile Include="../src/ListingRelayClient.cs" Link="ListingRelayClient.cs" />
     <EmbeddedResource Include="../src/Web/*" LogicalName="PartyViewKR.Web.%(Filename)%(Extension)" />
     <Compile Include="../shared/NativeContract.cs" Link="NativeContract.cs" />
     <None Include="../compatibility/native-contract.json" Link="native-contract.json" CopyToOutputDirectory="PreserveNewest" />

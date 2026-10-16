@@ -1,6 +1,7 @@
 using PartyViewKR;
 
 if (args.Contains("--web-fixture")) { await WebBrowserFixture.Run(); return; }
+if (args.Contains("--relay-fixture")) { await RelayFixture.Run(args); return; }
 
 var passed = 0;
 void Check(bool value, string label) { if (!value) throw new Exception(label); }
@@ -258,6 +259,7 @@ ListingBatchTests.Run(Test, Check);
 ListingDescriptionRecoveryTests.Run(Test, Check);
 ListingWebTests.Run(Test, Check);
 ListingWebEditTests.Run(Test, Check);
+ListingRelayTests.Run(Test, Check);
 CompatibilityTests.Run(Test, Check);
 Console.WriteLine($"All {passed} tests passed. Native game interaction still requires in-game validation.");
 

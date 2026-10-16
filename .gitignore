@@ -4,3 +4,8 @@ src/references/
 .build/
 release-output/
 __pycache__/
+**/node_modules/
+relay/assets/
+relay/.wrangler/
+relay/.dev.vars*
+relay/.env*

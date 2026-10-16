@@ -1,0 +1,13 @@
+{
+  "name": "pvkr-relay",
+  "version": "0.3.33",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test test/*.test.mjs",
+    "dev": "npm run build && wrangler dev",
+    "deploy": "npm run build && wrangler deploy"
+  },
+  "devDependencies": { "wrangler": "4.151.1", "miniflare": "5.20261012.1-beta" }
+}
