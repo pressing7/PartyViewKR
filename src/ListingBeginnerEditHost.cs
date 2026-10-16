@@ -22,8 +22,8 @@ internal sealed unsafe partial class ListingRefreshHost
         internal readonly RefreshTarget Expected = edit.Expected(original);
         internal readonly string Invariant = invariant;
         internal readonly nint Addon = (nint)addon, Agent = (nint)agent, Checkbox = (nint)checkbox;
-        internal readonly ListingBeginnerUi Ui = new(ListingBeginners.Read(original.Criteria)!.Value, edit.Enabled);
-        internal BeginnerUiState State;
+        internal readonly ListingCheckboxUi Ui = new(ListingBeginners.Read(original.Criteria)!.Value, edit.Enabled, "beginner");
+        internal CheckboxUiState State;
         internal int CheckCalls, ClickCalls;
         internal bool Completed;
     }
@@ -43,7 +43,7 @@ internal sealed unsafe partial class ListingRefreshHost
         var session = beginnerSession = new(target, edit, BeginnerInvariant(agent), addon, agent, checkbox) { State = state };
         var action = session.Ui.Next(state, Environment.TickCount64);
         beginnerCheck = session.Ui.Check;
-        if (action != BeginnerUiAction.Click)
+        if (action != CheckboxUiAction.Click)
         { error = "초보자 환영의 기존 체크 상태와 저장값이 일치하지 않아 중단했습니다."; return false; }
 
         // Follow the native checkbox UI path: set the control to the requested
@@ -78,8 +78,8 @@ internal sealed unsafe partial class ListingRefreshHost
         if (!ValidateBeginnerGuard(addon, agent, session, false, out _, out error)) return SlotEditProgress.Failed;
         var action = session.Ui.Next(session.State, Environment.TickCount64);
         beginnerCheck = session.Ui.Check;
-        if (action == BeginnerUiAction.Wait) return SlotEditProgress.Waiting;
-        if (action != BeginnerUiAction.Complete)
+        if (action == CheckboxUiAction.Wait) return SlotEditProgress.Waiting;
+        if (action != CheckboxUiAction.Complete)
         { error = "초보자 환영 체크 상태와 저장값이 요청과 달라 중단했습니다. 진단 정보를 확인해 주세요."; return SlotEditProgress.Failed; }
         if (!buttonEnabled) { error = "게임의 갱신 버튼이 준비되기를 기다리고 있습니다."; return SlotEditProgress.Waiting; }
         if (!ValidateBeginnerGuard(addon, agent, session, true, out _, out error)) return SlotEditProgress.Failed;
@@ -116,7 +116,7 @@ internal sealed unsafe partial class ListingRefreshHost
     }
 
     private bool ReadBeginnerControl(AddonLookingForGroupCondition* addon, AgentLookingForGroup* agent,
-        out AtkComponentCheckBox* checkbox, out BeginnerUiState state, out AtkEvent clickEvent, out string error)
+        out AtkComponentCheckBox* checkbox, out CheckboxUiState state, out AtkEvent clickEvent, out string error)
     {
         checkbox = addon->BeginnersWelcomeCheckBox; state = default; clickEvent = default;
         error = "현재 게임 수정창에서 초행 및 초보자 환영을 선택할 수 없습니다.";

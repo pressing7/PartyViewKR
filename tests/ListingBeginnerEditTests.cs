@@ -43,26 +43,26 @@ static class ListingBeginnerEditTests
             foreach (var enabled in new[] { false, true })
             {
                 byte old = enabled ? (byte)0 : (byte)1, wanted = enabled ? (byte)1 : (byte)0;
-                var ui = new ListingBeginnerUi(!enabled, enabled);
-                check(ui.Next(new(!enabled, old), 1000) == BeginnerUiAction.Click, "missing initial click");
-                check(ui.Next(new(enabled, old), 1500) == BeginnerUiAction.Wait, "UI-only change accepted");
-                check(ui.Next(new(enabled, old), 2000) == BeginnerUiAction.Wait, "click repeated while waiting");
-                check(ui.Next(new(enabled, wanted), 2500) == BeginnerUiAction.Complete, "matching states not confirmed");
-                check(ui.Next(new(enabled, wanted), 3000) == BeginnerUiAction.Complete, "completed operation clicked again");
-                check(ui.Next(new(enabled, old), 3500) == BeginnerUiAction.Failed, "late reversal accepted");
+                var ui = new ListingCheckboxUi(!enabled, enabled, "beginner");
+                check(ui.Next(new(!enabled, old), 1000) == CheckboxUiAction.Click, "missing initial click");
+                check(ui.Next(new(enabled, old), 1500) == CheckboxUiAction.Wait, "UI-only change accepted");
+                check(ui.Next(new(enabled, old), 2000) == CheckboxUiAction.Wait, "click repeated while waiting");
+                check(ui.Next(new(enabled, wanted), 2500) == CheckboxUiAction.Complete, "matching states not confirmed");
+                check(ui.Next(new(enabled, wanted), 3000) == CheckboxUiAction.Complete, "completed operation clicked again");
+                check(ui.Next(new(enabled, old), 3500) == CheckboxUiAction.Failed, "late reversal accepted");
             }
         });
         test("beginner UI unknown, initially stale, reversed and UI-only timeout states fail without retry", () => {
-            var unchanged = new ListingBeginnerUi(true, true);
-            check(unchanged.Next(new(true, 1), 1000) == BeginnerUiAction.Failed, "no-op clicked");
-            var stale = new ListingBeginnerUi(false, true);
-            check(stale.Next(new(true, 0), 1000) == BeginnerUiAction.Failed, "stale UI clicked");
+            var unchanged = new ListingCheckboxUi(true, true, "beginner");
+            check(unchanged.Next(new(true, 1), 1000) == CheckboxUiAction.Failed, "no-op clicked");
+            var stale = new ListingCheckboxUi(false, true, "beginner");
+            check(stale.Next(new(true, 0), 1000) == CheckboxUiAction.Failed, "stale UI clicked");
             foreach (var mode in new[] { 0, 1, 2 })
             {
-                var ui = new ListingBeginnerUi(false, true); ui.Next(new(false, 0), 1000);
-                var wrong = mode switch { 0 => new BeginnerUiState(true, 2), 1 => new(false, 1), _ => new(true, 0) };
-                check(ui.Next(wrong, 4001) == BeginnerUiAction.Failed, "unverified UI succeeded");
-                check(ui.Next(new(true, 1), 4500) == BeginnerUiAction.Failed, "failure retried");
+                var ui = new ListingCheckboxUi(false, true, "beginner"); ui.Next(new(false, 0), 1000);
+                var wrong = mode switch { 0 => new CheckboxUiState(true, 2), 1 => new(false, 1), _ => new(true, 0) };
+                check(ui.Next(wrong, 4001) == CheckboxUiAction.Failed, "unverified UI succeeded");
+                check(ui.Next(new(true, 1), 4500) == CheckboxUiAction.Failed, "failure retried");
             }
         });
         test("beginner on/off refreshes 4/8/24/48 once, preserving every purpose", () => {

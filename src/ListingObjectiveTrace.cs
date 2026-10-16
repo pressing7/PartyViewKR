@@ -73,7 +73,7 @@ internal sealed unsafe class ListingObjectiveTrace(Plugin plugin) : IDisposable
 
     private void Start()
     {
-        if (plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.DescriptionDraft != null || plugin.ObjectiveDraft != null || plugin.BeginnerDraft != null)
+        if (plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.DescriptionDraft != null || plugin.ObjectiveDraft != null || plugin.BeginnerDraft != null || plugin.UniqueJobsDraft != null)
         { status = "진행 중인 조회·갱신과 PVKR 편집창을 끝낸 뒤 기록해 주세요."; return; }
         if (!Plugin.ClientState.IsLoggedIn || !Plugin.PlayerState.IsLoaded || !NativeCompatibility.IsCompatible)
         { status = "로그인 및 구조 DLL 호환 상태를 확인한 뒤 기록해 주세요."; return; }

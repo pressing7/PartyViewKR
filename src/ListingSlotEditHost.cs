@@ -234,7 +234,7 @@ internal sealed unsafe partial class ListingRefreshHost
         return true;
     }
 
-    private static string DraftInvariant(AgentLookingForGroup* agent, bool includeComment = true, bool includeObjective = true, bool includeBeginner = true)
+    private static string DraftInvariant(AgentLookingForGroup* agent, bool includeComment = true, bool includeObjective = true, bool includeBeginner = true, bool includeUniqueJobs = true)
     {
         ref var draft = ref agent->StoredRecruitmentInfo;
         if (!NativeReadGuard.FixedText(draft.Comment, out var comment)) throw new InvalidDataException("draft_comment_unreadable");
@@ -242,7 +242,7 @@ internal sealed unsafe partial class ListingRefreshHost
             includeBeginner ? draft.BeginnerFriendly : (byte)0,
             (byte)draft.CompletionStatus, (byte)draft.DutyFinderSettingFlags, (byte)draft.LootRule, (byte)draft.LanguageFlags, []) +
             $"/{draft.Password}/{draft.NumberOfSlotsInMainParty}/{draft.NumberOfGroups}/{draft.LimitRecruitingToWorld}/" +
-            $"{draft.OnePlayerPerJob}/{agent->AvgItemLv}/{agent->AvgItemLvEnabled}/" +
+            $"{(includeUniqueJobs ? draft.OnePlayerPerJob : (byte)0)}/{agent->AvgItemLv}/{agent->AvgItemLvEnabled}/" +
             Convert.ToHexString(MemoryMarshal.AsBytes(draft.MemberContentIds)) + (includeComment ? "/" + comment : "");
     }
 

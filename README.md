@@ -1,6 +1,6 @@
 # PartyViewKR
 
-한섭 파티원·모집글 조회, **내 모집글 수동 갱신 및 초보자 환영·목적·소개말·빈자리 허용 직업 수정** 플러그인입니다. `/pvkr`로 엽니다.
+한섭 파티원·모집글 조회, **내 모집글 수동 갱신 및 잡 중복 없음·초보자 환영·목적·소개말·빈자리 허용 직업 수정** 플러그인입니다. `/pvkr`로 엽니다.
 콘텐츠·파티 유형 등 전체 조건의 편집과 새 모집 시작은 이후 단계입니다.
 
 ## 설치와 업데이트
@@ -14,6 +14,21 @@ https://raw.githubusercontent.com/pressing7/PartyViewKR/main/pluginmaster.json
 플러그인 설치기에서 **Party View KR**을 설치하거나 업데이트합니다.
 배포 파일은 [Releases](https://github.com/pressing7/PartyViewKR/releases)의 `PartyViewKR.zip`입니다.
 저장소 루트에 남아 있는 이전 수동 업로드 DLL/JSON은 최신 배포 파일이 아닙니다.
+
+## 0.3.20의 잡 중복 없음 설정
+
+**내 모집글 조회 → 잡 중복 없음 설정 → 체크 변경 → 변경 적용 및 갱신**으로 켜거나 끕니다. 현재 모집글의 상태를 미리 채우며, 변경하지 않으면 적용할 수 없습니다.
+
+사용자가 제공한 켜기·끄기 기록에서 모집 수정창의 `ButtonClick(25), Param 32`를 확인했습니다. 게임이 생성한 콜백은 켤 때 `Int 23 / UInt 1`, 끌 때 `Int 23 / UInt 0`이고 세 번째 인자는 `Undefined`였습니다. PVKR은 콜백을 직접 조립하지 않고 **게임 체크박스의 상태 설정과 등록된 클릭 이벤트**를 한 번 처리합니다.
+
+- 구조 DLL의 `OnePlayerPerJobCheckbox` 참조로 체크박스를 찾고, 소유 노드·실제 등록 이벤트의 대상·수신자·Param을 확인합니다. 기록에 없는 노드 번호를 추측하지 않습니다. 이벤트의 선택적 `Node` 인자는 등록된 값을 유지하며 실제 소유 노드 번호는 진단에 표시합니다.
+- 수정창에서는 `StoredRecruitmentInfo.OnePlayerPerJob`의 0/1과 UI 체크 상태를 함께 확인합니다. 화면만 바뀌었거나 저장값이 알 수 없는 값이면 갱신하지 않습니다.
+- 갱신 후에는 새 모집 상세의 `JoinConditionFlags.OnePlayerPerJob` 비트(`0x20`)로 확인합니다. 다른 참여 조건 비트, 목적·초보자 환영·소개말·자리와 참가자는 그대로 비교합니다. 기존 977개 호환 검사 항목은 유지하고 참여 조건 열거형 8개 항목을 추가했습니다.
+- 일반 4·8인 및 연합 24·48인의 기존 모집을 대상으로 합니다. 게임에서 체크박스가 숨겨져 있거나 비활성화되어 있으면 변경하지 않습니다. 창 변경·캐릭터 변경·실패·시간 초과 시 재클릭하지 않습니다.
+
+진단에는 `listingJoinConditionFlags`, `listingUniqueJobs`, `refreshUniqueJobsEdit`, `uniqueJobsEditCheck/Phase`, `uniqueJobsCheckCalls/ClickCalls`, `uniqueJobsUiChecked`, `uniqueJobsStoredValue`, `uniqueJobsNode/Param`, `uniqueJobsResultExpected/Actual/ContentsAgree`가 추가됩니다. 기존 초보자 환영과 공통 체크 상태 검증을 사용하며, 목적·소개말·직업 수정 경로는 유지합니다.
+
+**인게임에서는 끔→켬, 켬→끔 두 방향의 적용과 기존 조건 유지를 확인해 주세요. Actions 빌드·배포는 사용자가 직접 실행합니다.**
 
 ## 0.3.19의 초행 및 초보자 환영 설정
 
@@ -29,7 +44,7 @@ https://raw.githubusercontent.com/pressing7/PartyViewKR/main/pluginmaster.json
 
 진단에 `listingBeginnerRaw/Readable`, `refreshBeginnerEdit`, `beginnerEditCheck/Phase`, `beginnerCheckCalls/ClickCalls`, `beginnerUiChecked`, `beginnerStoredValue`, `beginnerResultExpected/Actual/ContentsAgree`를 추가했습니다. `beginnerDirectCallbackCalls=0`은 PVKR이 초보자 환영 콜백을 직접 생성하지 않는다는 뜻입니다. 전후 표시 시간이 모두 60분인 경우 설정 반영 확인과 시간 초기화 확인을 구분합니다.
 
-**새 체크박스 자동 적용은 인게임 확인이 필요합니다. 기존 목적 수정은 0.3.18 사용자 기록에서 요청값과 재조회 값이 일치했습니다. Actions 빌드·배포는 사용자가 직접 실행합니다.**
+**0.3.19 사용자 기록에서 초보자 환영 끄기의 체크 상태·저장값·재조회 결과가 일치했습니다. 기존 목적 수정도 0.3.18 사용자 기록에서 요청값과 재조회 값이 일치했습니다. Actions 빌드·배포는 사용자가 직접 실행합니다.**
 
 ## 0.3.18의 게임 드롭다운을 통한 목적 수정
 

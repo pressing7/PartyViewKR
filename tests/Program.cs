@@ -243,6 +243,7 @@ ListingSlotRouteTests.Run(Test, Check);
 ListingDescriptionEditTests.Run(Test, Check);
 ListingObjectiveEditTests.Run(Test, Check);
 ListingBeginnerEditTests.Run(Test, Check);
+ListingUniqueJobsEditTests.Run(Test, Check);
 CompatibilityTests.Run(Test, Check);
 Console.WriteLine($"All {passed} tests passed. Native game interaction still requires in-game validation.");
 
@@ -273,6 +274,9 @@ sealed class FakeHost : IListingRefreshHost
     public int BeginnerEditCalls;
     public bool BeginnerEditAllowed = true, BeginnerEditComplete = true, BeginnerEditFailed, ThrowOnBeginnerEdit;
     public RefreshTarget? BeginnerExpected;
+    public int UniqueJobsEditCalls;
+    public bool UniqueJobsEditAllowed = true, UniqueJobsEditComplete = true, UniqueJobsEditFailed, ThrowOnUniqueJobsEdit;
+    public RefreshTarget? UniqueJobsExpected;
     public RefreshTarget Target = new(10, 1, 123, "기존 모집 문구", "same", 1800, 8);
     public void QueryOwn() { QueryCalls++; QueryBusy = true; QuerySucceeded = false; }
     public void FinishQuery() { QueryBusy = false; QuerySucceeded = true; DetailRevision++; }
@@ -338,5 +342,18 @@ sealed class FakeHost : IListingRefreshHost
     {
         expected = BeginnerExpected!; error = "초보자 환영 반영 확인 실패";
         return BeginnerEditFailed ? SlotEditProgress.Failed : BeginnerEditComplete ? SlotEditProgress.Complete : SlotEditProgress.Waiting;
+    }
+    public bool BeginUniqueJobsEdit(RefreshTarget target, ListingUniqueJobsEdit edit, out string error)
+    {
+        UniqueJobsEditCalls++; error = "잡 중복 없음 설정 실패";
+        if (ThrowOnUniqueJobsEdit) throw new InvalidOperationException("simulated unique jobs failure");
+        // This fake exercises the managed flow, not the native click route.
+        UniqueJobsExpected = edit.Expected(target);
+        return UniqueJobsEditAllowed;
+    }
+    public SlotEditProgress UpdateUniqueJobsEdit(out RefreshTarget expected, out string error)
+    {
+        expected = UniqueJobsExpected!; error = "잡 중복 없음 반영 확인 실패";
+        return UniqueJobsEditFailed ? SlotEditProgress.Failed : UniqueJobsEditComplete ? SlotEditProgress.Complete : SlotEditProgress.Waiting;
     }
 }
