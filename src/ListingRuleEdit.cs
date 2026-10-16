@@ -58,7 +58,7 @@ internal sealed class ListingRuleDraft(RefreshTarget original, ListingRuleKind k
 internal sealed record ListingRuleEdit(RefreshTarget Original, ListingRuleKind Kind, int Value)
 {
     internal bool Changed => ListingRules.Read(Original.Criteria, Kind) is { } original && original != Value;
-    internal static bool Supports(RefreshTarget target, ListingRuleKind kind) => ListingJobEdit.Supports(target) && ListingRules.Read(target.Criteria, kind).HasValue;
+    internal static bool Supports(RefreshTarget target, ListingRuleKind kind) => ListingJobEdit.SupportsSettings(target) && ListingRules.Read(target.Criteria, kind).HasValue;
     internal bool Valid => Supports(Original, Kind) && ListingRules.ValidValue(Kind, Value) && Changed;
     internal bool MatchesOriginal(RefreshTarget current) => Valid && Supports(current, Kind) && current.ListingId == Original.ListingId &&
         RefreshEvidence.SameRecruitment(Original, current) && ListingJobEdit.SameSlots(Original.Slots, current.Slots);

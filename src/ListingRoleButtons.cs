@@ -1,6 +1,6 @@
 namespace PartyViewKR;
 
-internal enum RoleButtonActionKind { Anyone, ExcludeJob, Confirm }
+internal enum RoleButtonActionKind { Anyone, IncludeJob, ExcludeJob, Confirm }
 
 internal sealed record RoleButtonAction(RoleButtonActionKind Kind, uint NodeId, int Param, uint JobId = 0);
 
@@ -38,12 +38,34 @@ internal static class ListingRoleButtons
         error = "";
         return true;
     }
+
+    // Friendly teams and spectators may expose different allowed jobs. Start
+    // from the verified slot, avoiding an Anyone reset that could select a
+    // different mask. Add new choices before removing old ones to stay nonempty.
+    internal static bool TryPlanChanges(ListingJobRules rules, ulong current, ulong selected,
+        out RoleButtonSequence sequence, out string error)
+    {
+        sequence = null!;
+        error = "허용 직업과 기존 모집 조건을 확인하지 못했습니다.";
+        if (!rules.Complete || selected == 0 || (selected & ~rules.AllFlags) != 0 ||
+            selected == (current & rules.AllFlags) || rules.Choices.Any(job => !NodeByJob.ContainsKey(job.Id))) return false;
+        var actions = new List<RoleButtonAction>();
+        actions.AddRange(rules.Choices.Where(job => (selected & job.Flag) != 0 && (current & job.Flag) == 0)
+            .Select(job => new RoleButtonAction(RoleButtonActionKind.IncludeJob, NodeByJob[job.Id], 3, job.Id)));
+        actions.AddRange(rules.Choices.Where(job => (selected & job.Flag) == 0 && (current & job.Flag) != 0)
+            .Select(job => new RoleButtonAction(RoleButtonActionKind.ExcludeJob, NodeByJob[job.Id], 3, job.Id)));
+        actions.Add(new(RoleButtonActionKind.Confirm, Confirm, 0));
+        sequence = new(actions.ToArray());
+        error = "";
+        return true;
+    }
 }
 
 // Original dispatch order: Anyone once, excluded jobs once each, Confirm once.
 // Exclude jobs in one batch as in PFRemote. Wait at least 100 ms between
 // resetting, excluding and confirming. We do not interpret button labels,
 // tooltips or IsChecked; the stored draft and the fresh listing verify the result.
+// Friendly matches instead batch additions, removals and confirmation in order.
 internal sealed class RoleButtonSequence(RoleButtonAction[] actions)
 {
     internal IReadOnlyList<RoleButtonAction> Actions { get; } = Array.AsReadOnly(actions);
@@ -54,8 +76,8 @@ internal sealed class RoleButtonSequence(RoleButtonAction[] actions)
     {
         if (next >= actions.Length || now < nextTick) return [];
         var start = next++;
-        if (actions[start].Kind == RoleButtonActionKind.ExcludeJob)
-            while (next < actions.Length && actions[next].Kind == RoleButtonActionKind.ExcludeJob) next++;
+        if (actions[start].Kind is RoleButtonActionKind.IncludeJob or RoleButtonActionKind.ExcludeJob)
+            while (next < actions.Length && actions[next].Kind == actions[start].Kind) next++;
         nextTick = now + 100;
         return actions[start..next]; // Reserve the batch before dispatch; never retry sent events.
     }

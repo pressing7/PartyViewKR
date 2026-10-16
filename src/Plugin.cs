@@ -239,7 +239,7 @@ public sealed class Plugin : IDalamudPlugin
         if (refreshHost.BlockReason is { } reason) { JobDraftStatus = reason; return; }
         if (!refreshHost.TryGetOwn(out var target, out var error)) { JobDraftStatus = error; return; }
         if (!ListingJobEdit.Supports(target))
-        { JobDraftStatus = "직업 수정은 일반 4·8인 및 연합 24·48인 모집에서 지원합니다. PvP이거나 파티 구성을 확인하지 못한 경우에는 수정할 수 없습니다."; return; }
+        { JobDraftStatus = "직업 수정은 일반 4·8인, 연합 24·48인 및 친선경기 5·5·8인 모집에서 지원합니다. 파티 구성을 확인한 뒤 다시 시도해 주세요."; return; }
         if (position < 1 || position > target.TotalSlots || target.Slots.Slots[position - 1].HasMember || !target.Slots.JobRules.Complete)
         { JobDraftStatus = "수정할 빈자리의 직업 조건을 확인하지 못했습니다. 다시 조회해 주세요."; return; }
         JobDraft = new(target, position, target.Slots.JobRules);
@@ -255,7 +255,7 @@ public sealed class Plugin : IDalamudPlugin
         if (RuleDraft != null || ItemLevelDraft != null || CompletionDraft != null || Refresh.Busy || ListingBusy || JobDraft != null || ObjectiveDraft != null || BeginnerDraft != null || UniqueJobsDraft != null || PrivateDraft != null) return;
         if (refreshHost.BlockReason is { } reason) { DescriptionDraftStatus = reason; return; }
         if (!refreshHost.TryGetOwn(out var target, out var error)) { DescriptionDraftStatus = error; return; }
-        if (!ListingJobEdit.Supports(target))
+        if (!ListingJobEdit.SupportsSettings(target))
         { DescriptionDraftStatus = "일반 4·8인 및 연합 24·48인 모집 정보를 확인한 뒤 소개말을 수정할 수 있습니다."; return; }
         DescriptionDraft = new(target);
         DescriptionDraftStatus = "";

@@ -35,7 +35,7 @@ internal sealed record ListingCompletionEdit(RefreshTarget Original, bool Enable
 {
     internal byte? Value => ListingCompletions.Value(Enabled, SelectedIndex);
     internal bool Changed => Value.HasValue && ListingCompletions.Read(Original.Criteria) is { } original && original != Value;
-    internal static bool Supports(RefreshTarget target) => ListingJobEdit.Supports(target) && ListingCompletions.Supported(ListingCompletions.Read(target.Criteria));
+    internal static bool Supports(RefreshTarget target) => ListingJobEdit.SupportsSettings(target) && ListingCompletions.Supported(ListingCompletions.Read(target.Criteria));
     internal bool Valid => Supports(Original) && Changed;
     internal bool MatchesOriginal(RefreshTarget current) => Valid && Supports(current) &&
         current.ListingId == Original.ListingId && RefreshEvidence.SameRecruitment(Original, current) && ListingJobEdit.SameSlots(Original.Slots, current.Slots);

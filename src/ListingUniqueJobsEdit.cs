@@ -34,7 +34,7 @@ internal sealed class ListingUniqueJobsDraft(RefreshTarget original)
 internal sealed record ListingUniqueJobsEdit(RefreshTarget Original, bool Enabled)
 {
     internal bool Changed => ListingUniqueJobs.Read(Original.ExtraCriteria) is { } original && original != Enabled;
-    internal static bool Supports(RefreshTarget target) => ListingJobEdit.Supports(target) && ListingUniqueJobs.Read(target.ExtraCriteria).HasValue;
+    internal static bool Supports(RefreshTarget target) => ListingJobEdit.SupportsSettings(target) && ListingUniqueJobs.Read(target.ExtraCriteria).HasValue;
     internal bool Valid => Supports(Original) && Changed;
     internal bool MatchesOriginal(RefreshTarget current) => Valid && Supports(current) &&
         current.ListingId == Original.ListingId && RefreshEvidence.SameRecruitment(Original, current) &&

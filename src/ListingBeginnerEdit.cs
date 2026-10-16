@@ -25,7 +25,7 @@ internal sealed record ListingBeginnerEdit(RefreshTarget Original, bool Enabled)
 {
     internal byte Value => Enabled ? (byte)1 : (byte)0;
     internal bool Changed => ListingBeginners.Read(Original.Criteria) is { } original && original != Enabled;
-    internal static bool Supports(RefreshTarget target) => ListingJobEdit.Supports(target) && ListingBeginners.Read(target.Criteria).HasValue;
+    internal static bool Supports(RefreshTarget target) => ListingJobEdit.SupportsSettings(target) && ListingBeginners.Read(target.Criteria).HasValue;
     internal bool Valid => Supports(Original) && Changed;
     internal bool MatchesOriginal(RefreshTarget current) => Valid && Supports(current) &&
         current.ListingId == Original.ListingId && RefreshEvidence.SameRecruitment(Original, current) &&

@@ -34,7 +34,7 @@ internal sealed record ListingObjectiveEdit(RefreshTarget Original, int Selected
 {
     internal byte? Value => ListingObjectives.Value(SelectedIndex);
     internal bool Changed => Value.HasValue && ListingObjectives.Read(Original.Criteria) is { } original && original != Value;
-    internal static bool Supports(RefreshTarget target) => ListingJobEdit.Supports(target) && ListingObjectives.Read(target.Criteria).HasValue;
+    internal static bool Supports(RefreshTarget target) => ListingJobEdit.SupportsSettings(target) && ListingObjectives.Read(target.Criteria).HasValue;
     internal bool Valid => Supports(Original) && Changed;
 
     internal bool MatchesOriginal(RefreshTarget current) => Valid && Supports(current) &&

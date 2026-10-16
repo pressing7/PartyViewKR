@@ -38,7 +38,7 @@ internal sealed class ListingPrivateDraft(RefreshTarget original)
 
 internal sealed record ListingPrivateEdit(RefreshTarget Original, bool Enabled, string Password)
 {
-    internal static bool Supports(RefreshTarget target) => ListingJobEdit.Supports(target) && ListingPrivate.Read(target.ExtraCriteria).HasValue;
+    internal static bool Supports(RefreshTarget target) => ListingJobEdit.SupportsSettings(target) && ListingPrivate.Read(target.ExtraCriteria).HasValue;
     internal bool Valid => Supports(Original) && (Enabled ? ListingPrivate.TryPassword(Password, out _) : ListingPrivate.Read(Original.ExtraCriteria) == true);
     internal int PasswordValue => Enabled && ListingPrivate.TryPassword(Password, out var value) ? value : 0;
     internal bool MatchesOriginal(RefreshTarget current) => Valid && Supports(current) && current.ListingId == Original.ListingId &&

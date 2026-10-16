@@ -148,7 +148,7 @@ internal sealed class PartyWindow : Window
         {
             ImGui.SameLine();
             ImGui.BeginDisabled(plugin.RuleDraft != null || plugin.ObjectiveTrace.Busy || !listing.IsLive || plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.ObjectiveDraft != null || plugin.BeginnerDraft != null || plugin.UniqueJobsDraft != null || plugin.PrivateDraft != null || plugin.CompletionDraft != null || plugin.ItemLevelDraft != null ||
-                ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
+                !ListingSlotRoute.SupportsSettings(listing.Slots));
             if (ImGui.SmallButton("소개말 수정")) plugin.RequestDescriptionEdit();
             ImGui.EndDisabled();
         }
@@ -219,7 +219,7 @@ internal sealed class PartyWindow : Window
         ImGui.TextUnformatted("모집글에서 받은 직업을 자리 순서대로 표시합니다.");
         ImGui.TextWrapped("빈자리의 직업 제한에 마우스를 올리면 허용 직업을 볼 수 있습니다.");
         if (listing.Owner == ListingOwner.Self)
-            ImGui.TextWrapped("빈자리를 클릭해 허용 직업 수정 · 일반 4·8인 / 연합 24·48인에서 한 자리씩 지원");
+            ImGui.TextWrapped("빈자리를 클릭해 허용 직업 수정 · 일반 4·8인 / 연합 24·48인 / 친선경기 5·5·8인 지원");
         if (!slots.CountsAgree)
             ImGui.TextWrapped("모집 인원수와 자리 정보가 아직 일치하지 않습니다. 다시 조회해 주세요.");
 
@@ -228,7 +228,7 @@ internal sealed class PartyWindow : Window
             ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.ScrollY,
             new Vector2(0, height)))
         {
-            ImGui.TableSetupColumn("자리", ImGuiTableColumnFlags.WidthFixed, 40);
+            ImGui.TableSetupColumn("자리", ImGuiTableColumnFlags.WidthFixed, slots.IsFriendlyMatch ? ImGui.CalcTextSize("그림자팀 8").X + 12 : 40);
             ImGui.TableSetupColumn("상태", ImGuiTableColumnFlags.WidthFixed, 70);
             ImGui.TableSetupColumn("등록 직업 / 모집 조건");
             ImGui.TableSetupScrollFreeze(0, 1);
@@ -236,7 +236,7 @@ internal sealed class PartyWindow : Window
             foreach (var slot in slots.Slots)
             {
                 ImGui.TableNextRow();
-                Cell(slot.Position.ToString());
+                Cell(slots.PositionLabel(slot));
                 Cell(slot.HasMember ? "참가 중" : slots.CountsAgree ? "빈자리" : "확인 중");
                 DrawListingSlotJob(slot, listing);
             }
@@ -251,7 +251,7 @@ internal sealed class PartyWindow : Window
         if (listing.Owner != ListingOwner.Self) return;
         ImGui.SameLine();
         ImGui.BeginDisabled(plugin.RuleDraft != null || !ListingObjectives.AutomaticEditingAvailable || plugin.ObjectiveTrace.Busy || !listing.IsLive || !listing.Objective.HasValue || plugin.Refresh.Busy || plugin.ListingBusy ||
-            plugin.JobDraft != null || plugin.DescriptionDraft != null || plugin.BeginnerDraft != null || plugin.UniqueJobsDraft != null || plugin.PrivateDraft != null || plugin.CompletionDraft != null || plugin.ItemLevelDraft != null || ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
+            plugin.JobDraft != null || plugin.DescriptionDraft != null || plugin.BeginnerDraft != null || plugin.UniqueJobsDraft != null || plugin.PrivateDraft != null || plugin.CompletionDraft != null || plugin.ItemLevelDraft != null || !ListingSlotRoute.SupportsSettings(listing.Slots));
         if (ImGui.SmallButton("목적 수정")) plugin.RequestObjectiveEdit();
         ImGui.EndDisabled();
     }
@@ -263,7 +263,7 @@ internal sealed class PartyWindow : Window
         ImGui.SameLine();
         ImGui.BeginDisabled(plugin.RuleDraft != null || plugin.ObjectiveTrace.Busy || !listing.IsLive || !listing.BeginnerFriendly.HasValue ||
             plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.DescriptionDraft != null || plugin.ObjectiveDraft != null || plugin.UniqueJobsDraft != null || plugin.PrivateDraft != null || plugin.CompletionDraft != null || plugin.ItemLevelDraft != null ||
-            ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
+            !ListingSlotRoute.SupportsSettings(listing.Slots));
         if (ImGui.SmallButton("초보자 환영 설정")) plugin.RequestBeginnerEdit();
         ImGui.EndDisabled();
     }
@@ -308,7 +308,7 @@ internal sealed class PartyWindow : Window
         ImGui.SameLine();
         ImGui.BeginDisabled(plugin.RuleDraft != null || plugin.ObjectiveTrace.Busy || !listing.IsLive || !listing.UniqueJobs.HasValue ||
             plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.DescriptionDraft != null || plugin.ObjectiveDraft != null || plugin.BeginnerDraft != null || plugin.PrivateDraft != null || plugin.CompletionDraft != null || plugin.ItemLevelDraft != null ||
-            ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
+            !ListingSlotRoute.SupportsSettings(listing.Slots));
         if (ImGui.SmallButton("잡 중복 없음 설정")) plugin.RequestUniqueJobsEdit();
         ImGui.EndDisabled();
     }
@@ -354,7 +354,7 @@ internal sealed class PartyWindow : Window
         ImGui.BeginDisabled(plugin.RuleDraft != null || plugin.ObjectiveTrace.Busy || !listing.IsLive || !listing.Private.HasValue ||
             plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.DescriptionDraft != null ||
             plugin.ObjectiveDraft != null || plugin.BeginnerDraft != null || plugin.UniqueJobsDraft != null || plugin.CompletionDraft != null || plugin.ItemLevelDraft != null ||
-            ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
+            !ListingSlotRoute.SupportsSettings(listing.Slots));
         if (ImGui.SmallButton("비공개 설정")) plugin.RequestPrivateEdit();
         ImGui.EndDisabled();
     }
@@ -411,7 +411,7 @@ internal sealed class PartyWindow : Window
         ImGui.BeginDisabled(plugin.RuleDraft != null || plugin.ObjectiveTrace.Busy || !listing.IsLive || !ListingCompletions.Supported(listing.Completion) || plugin.ItemLevelDraft != null ||
             plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.DescriptionDraft != null ||
             plugin.ObjectiveDraft != null || plugin.BeginnerDraft != null || plugin.UniqueJobsDraft != null || plugin.PrivateDraft != null ||
-            ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
+            !ListingSlotRoute.SupportsSettings(listing.Slots));
         if (ImGui.SmallButton("완료조건 설정")) plugin.RequestCompletionEdit();
         ImGui.EndDisabled();
     }
@@ -471,7 +471,7 @@ internal sealed class PartyWindow : Window
         ImGui.BeginDisabled(plugin.RuleDraft != null || plugin.ObjectiveTrace.Busy || !listing.IsLive || !listing.ItemLevel.HasValue ||
             plugin.Refresh.Busy || plugin.ListingBusy || plugin.JobDraft != null || plugin.DescriptionDraft != null ||
             plugin.ObjectiveDraft != null || plugin.BeginnerDraft != null || plugin.UniqueJobsDraft != null ||
-            plugin.PrivateDraft != null || plugin.CompletionDraft != null || ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
+            plugin.PrivateDraft != null || plugin.CompletionDraft != null || !ListingSlotRoute.SupportsSettings(listing.Slots));
         if (ImGui.SmallButton("평균 아이템 레벨 설정")) plugin.RequestItemLevelEdit();
         ImGui.EndDisabled();
     }
@@ -527,7 +527,7 @@ internal sealed class PartyWindow : Window
         ImGui.BeginDisabled(plugin.ObjectiveTrace.Busy || !listing.IsLive || !value.HasValue || plugin.Refresh.Busy || plugin.ListingBusy ||
             plugin.RuleDraft != null || plugin.ItemLevelDraft != null || plugin.CompletionDraft != null || plugin.JobDraft != null ||
             plugin.DescriptionDraft != null || plugin.ObjectiveDraft != null || plugin.BeginnerDraft != null || plugin.UniqueJobsDraft != null ||
-            plugin.PrivateDraft != null || ListingSlotRoute.Classify(listing.Slots) == RecruitmentSlotLayout.Unknown);
+            plugin.PrivateDraft != null || !ListingSlotRoute.SupportsSettings(listing.Slots));
         if (ImGui.SmallButton($"{ListingRules.Title(kind)} 설정")) plugin.RequestRuleEdit(kind);
         ImGui.EndDisabled();
     }
@@ -695,7 +695,7 @@ internal sealed class PartyWindow : Window
         ImGui.SetNextWindowSize(new Vector2(640, 0), ImGuiCond.Appearing);
         if (ImGui.BeginPopupModal(popup, ref open, ImGuiWindowFlags.AlwaysAutoResize))
         {
-            ImGui.TextUnformatted($"{draft.Position}번 빈자리 · {(draft.Changed ? "변경 예정" : "현재 허용 직업")}");
+            ImGui.TextUnformatted($"{draft.Original.Slots.PositionLabel(draft.Original.Slots.Slots[draft.Position - 1])}번 빈자리 · {(draft.Changed ? "변경 예정" : "현재 허용 직업")}");
             ImGui.TextUnformatted("적용 버튼을 누르면 모집글을 다시 조회한 뒤 변경하고 갱신합니다.");
             if (ImGui.Button("전체 선택")) draft.Selected = draft.Rules.AllFlags;
             ImGui.SameLine();

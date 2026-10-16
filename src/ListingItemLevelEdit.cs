@@ -37,7 +37,7 @@ internal sealed record ListingItemLevelEdit(RefreshTarget Original, bool Enabled
 {
     internal int? Value => !Enabled ? 0 : ListingItemLevels.TryLevel(LevelText, out var value) ? value : null;
     internal bool Changed => Value.HasValue && ListingItemLevels.Read(Original.ExtraCriteria) is { } original && original != Value;
-    internal static bool Supports(RefreshTarget target) => ListingJobEdit.Supports(target) && ListingItemLevels.Read(target.ExtraCriteria).HasValue;
+    internal static bool Supports(RefreshTarget target) => ListingJobEdit.SupportsSettings(target) && ListingItemLevels.Read(target.ExtraCriteria).HasValue;
     internal bool Valid => Supports(Original) && Changed;
     internal bool MatchesOriginal(RefreshTarget current) => Valid && Supports(current) && current.ListingId == Original.ListingId &&
         RefreshEvidence.SameRecruitment(Original, current) && ListingJobEdit.SameSlots(Original.Slots, current.Slots);

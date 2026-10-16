@@ -21,6 +21,8 @@ internal sealed record ListingJobEdit(RefreshTarget Original, int Position, ulon
         target.Slots.TotalSlots == target.TotalSlots &&
         ListingSlotRoute.Classify(target.Slots) != RecruitmentSlotLayout.Unknown;
 
+    internal static bool SupportsSettings(RefreshTarget target) => Supports(target) && ListingSlotRoute.SupportsSettings(target.Slots);
+
     internal bool Valid => Supports(Original) && Rules.Complete && Position >= 1 && Position <= Original.TotalSlots &&
         !Original.Slots.Slots[Position - 1].HasMember && Selected != 0 && (Selected & ~Rules.AllFlags) == 0 &&
         Selected != (Original.Slots.Slots[Position - 1].SlotFlags & Rules.AllFlags);
@@ -43,8 +45,8 @@ internal sealed record ListingJobEdit(RefreshTarget Original, int Position, ulon
         var fields = fresh.Criteria.Split('/');
         if (fields.Length != 9) throw new InvalidDataException("invalid_recruitment_criteria");
         var flags = Convert.FromHexString(fields[^1]);
-        if (flags.Length != fresh.TotalSlots * sizeof(ulong)) throw new InvalidDataException("invalid_recruitment_slots");
-        BinaryPrimitives.WriteUInt64LittleEndian(flags.AsSpan((Position - 1) * sizeof(ulong)), actualFlags);
+        if (flags.Length != fresh.Slots.NativeSlotCount * sizeof(ulong)) throw new InvalidDataException("invalid_recruitment_slots");
+        BinaryPrimitives.WriteUInt64LittleEndian(flags.AsSpan(fresh.Slots.Slots[Position - 1].NativeIndex * sizeof(ulong)), actualFlags);
         fields[^1] = Convert.ToHexString(flags);
         var slots = fresh.Slots.Slots.ToArray();
         slots[Position - 1] = slots[Position - 1] with { SlotFlags = actualFlags, AllowedJobs = Rules.Describe(actualFlags) };
@@ -63,10 +65,11 @@ internal sealed record ListingJobEdit(RefreshTarget Original, int Position, ulon
         return RefreshEvidence.SameRecruitment(expected, after) && SameSlots(expected.Slots, after.Slots);
     }
 
-    internal static bool SameSlots(ListingSlots a, ListingSlots b) => a.Readable && b.Readable && a.CountsAgree && b.CountsAgree &&
+    internal static bool SameSlots(ListingSlots a, ListingSlots b) => a.MappingValid && b.MappingValid && a.CountsAgree && b.CountsAgree &&
         a.TotalSlots == b.TotalSlots && a.SlotsFilled == b.SlotsFilled && a.IsAlliance == b.IsAlliance &&
         a.NumberOfParties == b.NumberOfParties && a.Slots.Length == b.Slots.Length &&
         a.Slots.Zip(b.Slots).All(pair => pair.First.Position == pair.Second.Position &&
+            pair.First.NativeIndex == pair.Second.NativeIndex &&
             pair.First.MemberContentId == pair.Second.MemberContentId && pair.First.JobId == pair.Second.JobId &&
             pair.First.SlotFlags == pair.Second.SlotFlags);
 }

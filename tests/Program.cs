@@ -240,6 +240,7 @@ ListingJobRulesTests.Run(Test, Check);
 ListingRoleButtonsTests.Run(Test, Check);
 ListingJobEditTests.Run(Test, Check);
 ListingSlotRouteTests.Run(Test, Check);
+ListingFriendlyMatchTests.Run(Test, Check);
 ListingDescriptionEditTests.Run(Test, Check);
 ListingObjectiveEditTests.Run(Test, Check);
 ListingBeginnerEditTests.Run(Test, Check);

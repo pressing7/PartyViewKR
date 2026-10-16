@@ -68,13 +68,17 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
             !NativeReadGuard.FixedText(detail.Leader, out var name) || name != Plugin.PlayerState.CharacterName ||
             !NativeReadGuard.FixedText(detail.Comment, out var comment) || !ListingIdentity.SameText(comment, listing.Description))
         { check = "native_detail_mismatch"; return false; }
+        var slots = ListingSlots.Read(true, detail.TotalSlots, detail.SlotsFilled, detail.NumberOfParties, detail.IsAlliance,
+            detail.Jobs, detail.MemberContentIds, detail.SlotFlags, id => id.ToString(), listing.Slots.JobRules);
+        var friendly = ListingSlots.IsFriendlyMatchShape(detail.TotalSlots, detail.NumberOfParties, detail.IsAlliance);
+        if (friendly && (!slots.MappingValid || !slots.CountsAgree))
+        { check = "friendly_slot_mapping_unverified"; error = "친선경기의 자리와 참가자 정보를 확인하지 못했습니다. 다시 조회해 주세요."; return false; }
         target = new(SelfId, detail.ListingId, detail.DutyId, listing.Description,
-            DetailCriteria(ref detail), RefreshEvidence.ParseSeconds(listing.Remaining), detail.TotalSlots)
+            DetailCriteria(ref detail, friendly ? 24 : detail.TotalSlots), RefreshEvidence.ParseSeconds(listing.Remaining), detail.TotalSlots)
         {
-            Slots = ListingSlots.Read(true, detail.TotalSlots, detail.SlotsFilled, detail.NumberOfParties, detail.IsAlliance,
-                detail.Jobs, detail.MemberContentIds, detail.SlotFlags, id => id.ToString(), listing.Slots.JobRules),
+            Slots = slots,
             ExtraCriteria = $"{detail.AvgItemLv}/{(byte)detail.JoinConditionFlags}/{detail.IsAlliance}/{detail.NumberOfParties}",
-            JobEditingAllowed = ((uint)detail.Category & (uint)AgentLookingForGroup.DutyCategory.PvP) == 0,
+            JobEditingAllowed = ((uint)detail.Category & (uint)AgentLookingForGroup.DutyCategory.PvP) == 0 || friendly,
         };
         check = "own_verified";
         error = "";
@@ -205,9 +209,17 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
         if (!inputRead || !ListingIdentity.SameText(text, target.Description))
         { check = $"editor_comment_mismatch; editorTextReadable={inputRead}; editorTextChars={text.Length}"; return false; }
         ref var draft = ref agent->StoredRecruitmentInfo;
+        if (target.Slots.IsFriendlyMatch &&
+            (!ListingSlotRoute.TryCreate(target.Slots, 1, out var route) ||
+             !route.MatchesEditorShape(draft.NumberOfGroups, draft.NumberOfSlotsInMainParty) ||
+             !target.Slots.MatchesMembers(draft.MemberContentIds)))
+        {
+            check = $"friendly_editor_shape_or_members_changed; editorGroups={draft.NumberOfGroups}; editorMainPartySlots={draft.NumberOfSlotsInMainParty}";
+            return false;
+        }
         var storedCommentAgrees = NativeReadGuard.FixedText(draft.Comment, out var storedComment) &&
             ListingIdentity.SameText(storedComment, target.Description);
-        var draftCriteria = DraftCriteria(ref draft, target.TotalSlots);
+        var draftCriteria = DraftCriteria(ref draft, target.Slots.IsFriendlyMatch ? target.Slots.NativeSlotCount : target.TotalSlots);
         if (!storedCommentAgrees || draftCriteria != target.Criteria)
         {
             check = $"stored_criteria_mismatch; draftCommentAgrees={storedCommentAgrees}; " +
@@ -237,10 +249,10 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
         return buttonTextReadable && buttonEnabled;
     }
 
-    private static string DetailCriteria(ref AgentLookingForGroup.Detailed detail) =>
+    private static string DetailCriteria(ref AgentLookingForGroup.Detailed detail, int nativeSlots) =>
         Criteria((uint)detail.Category, detail.DutyId, (byte)detail.Objective, detail.BeginnerFriendly,
             (byte)detail.CompletionStatus, (byte)detail.DutyFinderSettingFlags, (byte)detail.LootRule,
-            (byte)detail.LanguageFlags, detail.SlotFlags[..detail.TotalSlots]);
+            (byte)detail.LanguageFlags, detail.SlotFlags[..nativeSlots]);
 
     private static string DraftCriteria(ref AgentLookingForGroup.RecruitmentSub draft, int slots) =>
         Criteria((uint)draft.SelectedCategory, draft.SelectedDutyId, (byte)draft.Objective, draft.BeginnerFriendly,

@@ -21,9 +21,9 @@ internal sealed record ListingDescriptionEdit(RefreshTarget Original, string Tex
     internal string ValidationError => ByteCount < 0 || Value.Any(c => c == '\ufffd' || char.IsControl(c) && c != '\n')
         ? "입력할 수 없는 문자가 포함되어 있습니다."
         : ByteCount > MaxBytes ? "소개말의 최대 입력 길이를 초과했습니다." : "";
-    internal bool Valid => ListingJobEdit.Supports(Original) && Changed && ValidationError.Length == 0;
+    internal bool Valid => ListingJobEdit.SupportsSettings(Original) && Changed && ValidationError.Length == 0;
 
-    internal bool MatchesOriginal(RefreshTarget current) => Valid && ListingJobEdit.Supports(current) &&
+    internal bool MatchesOriginal(RefreshTarget current) => Valid && ListingJobEdit.SupportsSettings(current) &&
         current.ListingId == Original.ListingId && RefreshEvidence.SameRecruitment(Original, current) &&
         ListingJobEdit.SameSlots(Original.Slots, current.Slots);
 
@@ -34,6 +34,6 @@ internal sealed record ListingDescriptionEdit(RefreshTarget Original, string Tex
     }
 
     internal bool MatchesResult(RefreshTarget before, RefreshTarget after) => Valid &&
-        ListingJobEdit.Supports(before) && ListingJobEdit.Supports(after) &&
+        ListingJobEdit.SupportsSettings(before) && ListingJobEdit.SupportsSettings(after) &&
         RefreshEvidence.SameRecruitment(Expected(before), after) && ListingJobEdit.SameSlots(before.Slots, after.Slots);
 }

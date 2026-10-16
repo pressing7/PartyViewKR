@@ -21,7 +21,7 @@ internal sealed unsafe partial class ListingRefreshHost
         $"slotConfirmCalls={slotEdit?.ConfirmCalls ?? 0}; slotButtonsPlanned={slotEdit?.Sequence.Actions.Count ?? 0}\n" +
         $"slotRequestedFlags={slotEdit?.Edit.Selected.ToString("X16") ?? "unknown"}; " +
         $"slotKnownJobsMask={slotEdit?.Edit.Rules.AllFlags.ToString("X16") ?? "unknown"}; " +
-        $"slotOriginalFlags={(slotEdit == null ? "unknown" : slotEdit.AllFlags[slotEdit.Edit.Position - 1].ToString("X16"))}; " +
+        $"slotOriginalFlags={(slotEdit == null ? "unknown" : slotEdit.AllFlags[slotEdit.Route.NativeIndex].ToString("X16"))}; " +
         $"slotConfirmedFlags={(slotEdit?.ConfirmedTarget == null ? "unknown" : slotEdit.ConfirmedTarget.Slots.Slots[slotEdit.Edit.Position - 1].SlotFlags.ToString("X16"))}\n" +
         $"slotMemberSelectCalls={slotEdit?.MemberSelectCalls ?? 0}; {slotRouteRead}\n" +
         $"roleButtonRead={roleButtonRead}";
@@ -54,21 +54,27 @@ internal sealed unsafe partial class ListingRefreshHost
         if (!edit.MatchesOriginal(target) || Visible("LookingForGroupSelectRole")) return false;
         if (!ListingSlotRoute.TryCreate(target.Slots, edit.Position, out var route))
         { slotCheck = "unsupported_slot_layout"; return false; }
-        if (!ListingRoleButtons.TryPlan(edit.Rules, edit.Selected, out var sequence, out error))
+        RoleButtonSequence sequence;
+        var planned = route.Layout == RecruitmentSlotLayout.FriendlyMatch
+            ? ListingRoleButtons.TryPlanChanges(edit.Rules, target.Slots.Slots[edit.Position - 1].SlotFlags, edit.Selected, out sequence, out error)
+            : ListingRoleButtons.TryPlan(edit.Rules, edit.Selected, out sequence, out error);
+        if (!planned)
         { slotCheck = "job_button_plan_unavailable"; return false; }
         if (!ValidateEditor(target, out var addon, out var agent, out error)) return false;
         ref var draft = ref agent->StoredRecruitmentInfo;
         slotRouteRead = $"slotLayout={route.Layout}; slotGroup={(char)('A' + route.GroupIndex)}; slotMember={route.MemberIndex + 1}; " +
+            $"slotDisplayPosition={edit.Position}; slotNativeIndex={route.NativeIndex}; " +
             $"slotOpenNode={route.OpenNodeId}; slotOpenParam={route.OpenParam?.ToString() ?? "registered"}; " +
             $"slotMemberNode={route.MemberNodeId}; slotMemberParam={route.MemberParam}; " +
             $"editorGroups={draft.NumberOfGroups}; editorMainPartySlots={draft.NumberOfSlotsInMainParty}";
         if (!route.MatchesEditorShape(draft.NumberOfGroups, draft.NumberOfSlotsInMainParty) ||
-            !draft.MemberContentIds[..target.TotalSlots].SequenceEqual(target.Slots.Slots.Select(s => s.MemberContentId).ToArray()))
+            !target.Slots.MatchesMembers(draft.MemberContentIds))
         { slotCheck = "editor_members_or_shape_changed"; error = "모집 수정 창의 인원 또는 파티 구성이 달라 중단했습니다."; return false; }
-        if (!TryEventNode((AtkUnitBase*)addon, route.OpenNodeId, out var node, out var component, out var reason))
+        if (!TryEventNode((AtkUnitBase*)addon, route.OpenNodeId, out var node, out var component, out var reason,
+            route.Layout == RecruitmentSlotLayout.FriendlyMatch))
         { slotCheck = $"slot_button_unavailable; reason={reason}"; error = "선택한 빈자리의 게임 버튼을 확인하지 못했습니다."; return false; }
         var openParam = route.OpenParam ?? 0;
-        // Use the verified normal/48p constants directly, like PFRemote.
+        // Use the verified normal/48p/friendly constants directly, like PFRemote.
         // Only 24p lacks a supplied Param and needs registration lookup.
         if (route.OpenParam == null &&
             !TryRegisteredClickParam((AtkUnitBase*)addon, node, out openParam, out reason))
@@ -77,7 +83,7 @@ internal sealed unsafe partial class ListingRefreshHost
         slotEdit = new(target, edit, route, DraftInvariant(agent), draft.SlotFlags.ToArray(), sequence,
             Interlocked.Read(ref roleOpenedRevision), Interlocked.Read(ref roleClosedRevision));
         slotCheck = "opening_slot";
-        // Normal / 24p: a slot button. 48p: a party button, followed by a
+        // Normal / 24p / friendly: a slot button. 48p: a party button, followed by a
         // member selector only after the new role window is ready.
         if (!route.SelectMember) FireNode((AtkUnitBase*)addon, node, component, AtkEventType.MouseOver, openParam);
         FireNode((AtkUnitBase*)addon, node, component, AtkEventType.ButtonClick, openParam);
@@ -117,7 +123,7 @@ internal sealed unsafe partial class ListingRefreshHost
                 return now - session.ConfirmedAt <= 3000 ? SlotEditProgress.Waiting : SlotEditProgress.Failed;
             }
             session.ConfirmedTarget = session.Edit.Expected(session.Original,
-                agent->StoredRecruitmentInfo.SlotFlags[session.Edit.Position - 1]);
+                agent->StoredRecruitmentInfo.SlotFlags[session.Route.NativeIndex]);
             editingTarget = session.ConfirmedTarget;
             if (!ValidateEditor(session.ConfirmedTarget, out _, out _, out error)) return SlotEditProgress.Failed;
             session.Completed = true; session.Phase = "complete"; slotCheck = "slot_change_verified";
@@ -151,7 +157,7 @@ internal sealed unsafe partial class ListingRefreshHost
                 FireNode(role, memberNode, memberComponent, AtkEventType.ButtonClick, session.Route.MemberParam);
                 return SlotEditProgress.Waiting;
             }
-            if (!CheckRoleNodes(role, session.Sequence, out error))
+            if (!CheckRoleNodes(role, session.Sequence, out error, session.Route.Layout == RecruitmentSlotLayout.FriendlyMatch))
                 return now - session.Started <= 3000 ? SlotEditProgress.Waiting : SlotEditProgress.Failed;
             session.Phase = "selecting";
         }
@@ -164,7 +170,8 @@ internal sealed unsafe partial class ListingRefreshHost
         }
         foreach (var next in session.Sequence.TakeBatch(now))
         {
-            if (!TryEventNode(role, next.NodeId, out var node, out var component, out var reason))
+            if (!TryEventNode(role, next.NodeId, out var node, out var component, out var reason,
+                session.Route.Layout == RecruitmentSlotLayout.FriendlyMatch))
             {
                 slotCheck = $"role_button_unavailable; nodeId={next.NodeId}; reason={reason}";
                 error = "직업 선택창의 버튼을 확인하지 못했습니다.";
@@ -173,6 +180,7 @@ internal sealed unsafe partial class ListingRefreshHost
             switch (next.Kind)
             {
                 case RoleButtonActionKind.Anyone: session.ResetCalls++; break;
+                case RoleButtonActionKind.IncludeJob:
                 case RoleButtonActionKind.ExcludeJob: session.ToggleCalls++; break;
                 case RoleButtonActionKind.Confirm:
                     session.ConfirmCalls++;
@@ -186,13 +194,13 @@ internal sealed unsafe partial class ListingRefreshHost
         return SlotEditProgress.Waiting;
     }
 
-    private bool CheckRoleNodes(AtkUnitBase* role, RoleButtonSequence sequence, out string error)
+    private bool CheckRoleNodes(AtkUnitBase* role, RoleButtonSequence sequence, out string error, bool requireEnabled = false)
     {
         error = "";
         var reads = new List<string>();
         foreach (var action in sequence.Actions)
         {
-            var available = TryEventNode(role, action.NodeId, out _, out _, out var reason);
+            var available = TryEventNode(role, action.NodeId, out _, out _, out var reason, requireEnabled);
             reads.Add($"{action.NodeId}:{reason}");
             if (!available) error = "게임 직업 선택창의 버튼이 준비되지 않았습니다. 진단 정보를 확인해 주세요.";
         }
@@ -208,7 +216,7 @@ internal sealed unsafe partial class ListingRefreshHost
         var flags = agent->StoredRecruitmentInfo.SlotFlags;
         for (var i = 0; i < flags.Length; i++)
         {
-            if (i == session.Edit.Position - 1)
+            if (i == session.Route.NativeIndex)
             {
                 if (!final) continue;
                 if (!session.Edit.MatchesSelectedFlags(flags[i]))
@@ -222,8 +230,8 @@ internal sealed unsafe partial class ListingRefreshHost
             }
             // Once the game draft has been verified, pin its exact raw value
             // until Submit. Unedited slots are always compared byte for byte.
-            var expected = i == session.Edit.Position - 1 ?
-                session.ConfirmedTarget!.Slots.Slots[i].SlotFlags : session.AllFlags[i];
+            var expected = i == session.Route.NativeIndex ?
+                session.ConfirmedTarget!.Slots.Slots[session.Edit.Position - 1].SlotFlags : session.AllFlags[i];
             if (flags[i] != expected)
             {
                 slotCheck = $"editor_slot_mismatch; position={i + 1}; expectedFlags={expected:X16}; actualFlags={flags[i]:X16}";
@@ -248,7 +256,7 @@ internal sealed unsafe partial class ListingRefreshHost
     }
 
     private static bool TryEventNode(AtkUnitBase* addon, uint id, out AtkResNode* node,
-        out AtkComponentBase* component, out string reason)
+        out AtkComponentBase* component, out string reason, bool requireEnabled = false)
     {
         node = null; component = null; reason = "addon_not_ready";
         if (!NativeReadGuard.Readable(addon, (nuint)sizeof(AtkUnitBase)) || !addon->IsVisible || !addon->IsReady) return false;
@@ -257,6 +265,8 @@ internal sealed unsafe partial class ListingRefreshHost
         if (!NativeReadGuard.Readable(node, (nuint)sizeof(AtkResNode))) return false;
         reason = "node_hidden";
         if (!node->IsVisible()) return false;
+        reason = "node_disabled";
+        if (requireEnabled && (node->NodeFlags & NodeFlags.Enabled) == 0) return false;
         reason = "component_node_unreadable";
         var componentNode = node->GetAsAtkComponentNode();
         if (!NativeReadGuard.Readable(componentNode, (nuint)sizeof(AtkComponentNode))) return false;
