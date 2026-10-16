@@ -10,6 +10,7 @@
     <Compile Include="../src/ListingDescription.cs" Link="ListingDescription.cs" />
     <Compile Include="../src/ListingDescriptionEdit.cs" Link="ListingDescriptionEdit.cs" />
     <Compile Include="../src/ListingObjectiveEdit.cs" Link="ListingObjectiveEdit.cs" />
+    <Compile Include="../src/ListingBeginnerEdit.cs" Link="ListingBeginnerEdit.cs" />
     <Compile Include="../src/ListingObjectiveUi.cs" Link="ListingObjectiveUi.cs" />
     <Compile Include="../src/ObjectiveTraceBuffer.cs" Link="ObjectiveTraceBuffer.cs" />
     <Compile Include="../src/ListingSlots.cs" Link="ListingSlots.cs" />

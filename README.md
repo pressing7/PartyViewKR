@@ -1,6 +1,6 @@
 # PartyViewKR
 
-한섭 파티원·모집글 조회, **내 모집글 수동 갱신 및 목적·소개말·빈자리 허용 직업 수정** 플러그인입니다. `/pvkr`로 엽니다.
+한섭 파티원·모집글 조회, **내 모집글 수동 갱신 및 초보자 환영·목적·소개말·빈자리 허용 직업 수정** 플러그인입니다. `/pvkr`로 엽니다.
 콘텐츠·파티 유형 등 전체 조건의 편집과 새 모집 시작은 이후 단계입니다.
 
 ## 설치와 업데이트
@@ -14,6 +14,22 @@ https://raw.githubusercontent.com/pressing7/PartyViewKR/main/pluginmaster.json
 플러그인 설치기에서 **Party View KR**을 설치하거나 업데이트합니다.
 배포 파일은 [Releases](https://github.com/pressing7/PartyViewKR/releases)의 `PartyViewKR.zip`입니다.
 저장소 루트에 남아 있는 이전 수동 업로드 DLL/JSON은 최신 배포 파일이 아닙니다.
+
+## 0.3.19의 초행 및 초보자 환영 설정
+
+모집 상세의 `BeginnerFriendly`를 읽어 **초행 및 초보자 환영: 켬/끔**을 표시합니다. 알 수 없는 값은 꺼짐으로 간주하지 않고 **확인 불가**로 표시합니다.
+
+1. **내 모집글 조회 → 초보자 환영 설정**을 엽니다. 현재 상태로 체크박스를 채웁니다.
+2. 켜거나 끈 뒤 **변경 적용 및 갱신**을 누릅니다. 상태가 같으면 적용 버튼은 비활성화됩니다.
+3. 최신 내 모집글을 확인한 뒤 게임 수정창의 체크박스를 한 번 처리합니다. 화면 체크 상태와 저장값이 요청과 일치하면 갱신하고, 새로 조회한 모집글에서도 결과를 확인합니다.
+
+사용자가 제공한 스크린샷과 수동 켜기·끄기 기록에서 `BeginnersWelcomeCheckBox` **노드 17 / ButtonClick(25) / Param 21 / 수신자 모집 수정창**을 확인했습니다. 게임이 생성한 콜백은 켤 때 `18 / 0 / 1`, 끌 때 `19 / 0 / 1`이었습니다. PVKR은 체크박스의 `SetChecked(원하는 상태)`와 실제 등록된 클릭 이벤트를 사용하며, 이 콜백을 직접 만들거나 모집 설정 메모리에 값을 쓰지 않습니다. 기록의 `checked`/`storedValue`는 목적 드롭다운의 값이었으므로 초보자 환영 확인에 사용하지 않습니다.
+
+일반 4·8인 및 연합 24·48인의 기존 모집에서 지원합니다. 본인 여부, 새 조회 응답, 수정창 연결과 갱신 모드를 확인합니다. 목적·소개말·직업 제한·참가자와 나머지 조건이 바뀌면 중단합니다. 화면만 바뀌고 저장값이 반영되지 않으면 갱신하지 않으며, 실패한 클릭을 다시 보내거나 다른 방식으로 재시도하지 않습니다.
+
+진단에 `listingBeginnerRaw/Readable`, `refreshBeginnerEdit`, `beginnerEditCheck/Phase`, `beginnerCheckCalls/ClickCalls`, `beginnerUiChecked`, `beginnerStoredValue`, `beginnerResultExpected/Actual/ContentsAgree`를 추가했습니다. `beginnerDirectCallbackCalls=0`은 PVKR이 초보자 환영 콜백을 직접 생성하지 않는다는 뜻입니다. 전후 표시 시간이 모두 60분인 경우 설정 반영 확인과 시간 초기화 확인을 구분합니다.
+
+**새 체크박스 자동 적용은 인게임 확인이 필요합니다. 기존 목적 수정은 0.3.18 사용자 기록에서 요청값과 재조회 값이 일치했습니다. Actions 빌드·배포는 사용자가 직접 실행합니다.**
 
 ## 0.3.18의 게임 드롭다운을 통한 목적 수정
 

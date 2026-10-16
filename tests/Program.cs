@@ -242,6 +242,7 @@ ListingJobEditTests.Run(Test, Check);
 ListingSlotRouteTests.Run(Test, Check);
 ListingDescriptionEditTests.Run(Test, Check);
 ListingObjectiveEditTests.Run(Test, Check);
+ListingBeginnerEditTests.Run(Test, Check);
 CompatibilityTests.Run(Test, Check);
 Console.WriteLine($"All {passed} tests passed. Native game interaction still requires in-game validation.");
 
@@ -269,6 +270,9 @@ sealed class FakeHost : IListingRefreshHost
     public int ObjectiveEditCalls;
     public bool ObjectiveEditAllowed = true, ObjectiveEditComplete = true, ObjectiveEditFailed, ThrowOnObjectiveEdit;
     public RefreshTarget? ObjectiveExpected;
+    public int BeginnerEditCalls;
+    public bool BeginnerEditAllowed = true, BeginnerEditComplete = true, BeginnerEditFailed, ThrowOnBeginnerEdit;
+    public RefreshTarget? BeginnerExpected;
     public RefreshTarget Target = new(10, 1, 123, "기존 모집 문구", "same", 1800, 8);
     public void QueryOwn() { QueryCalls++; QueryBusy = true; QuerySucceeded = false; }
     public void FinishQuery() { QueryBusy = false; QuerySucceeded = true; DetailRevision++; }
@@ -321,5 +325,18 @@ sealed class FakeHost : IListingRefreshHost
     {
         expected = ObjectiveExpected!; error = "목적 반영 확인 실패";
         return ObjectiveEditFailed ? SlotEditProgress.Failed : ObjectiveEditComplete ? SlotEditProgress.Complete : SlotEditProgress.Waiting;
+    }
+    public bool BeginBeginnerEdit(RefreshTarget target, ListingBeginnerEdit edit, out string error)
+    {
+        BeginnerEditCalls++; error = "초보자 환영 설정 실패";
+        if (ThrowOnBeginnerEdit) throw new InvalidOperationException("simulated beginner failure");
+        // The fake validates the managed refresh flow, not native event behavior.
+        BeginnerExpected = edit.Expected(target);
+        return BeginnerEditAllowed;
+    }
+    public SlotEditProgress UpdateBeginnerEdit(out RefreshTarget expected, out string error)
+    {
+        expected = BeginnerExpected!; error = "초보자 환영 반영 확인 실패";
+        return BeginnerEditFailed ? SlotEditProgress.Failed : BeginnerEditComplete ? SlotEditProgress.Complete : SlotEditProgress.Waiting;
     }
 }

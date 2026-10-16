@@ -160,11 +160,11 @@ internal sealed unsafe partial class ListingRefreshHost
         dropdown = addon->ObjectiveDropDown; state = default;
         error = "현재 게임 수정창에서 목적을 선택할 수 없습니다.";
         if (!NativeReadGuard.Readable(dropdown, (nuint)sizeof(AtkComponentDropDownList)) ||
-            !ObjectiveNode((AtkComponentBase*)dropdown, 16) || !dropdown->OwnerNode->IsVisible() ||
+            !ComponentOwnsNode((AtkComponentBase*)dropdown, 16) || !dropdown->OwnerNode->IsVisible() ||
             !NativeReadGuard.Readable(dropdown->Checkbox, (nuint)sizeof(AtkComponentCheckBox)) ||
-            !ObjectiveNode((AtkComponentBase*)dropdown->Checkbox, 2) || !dropdown->Checkbox->IsEnabled ||
+            !ComponentOwnsNode((AtkComponentBase*)dropdown->Checkbox, 2) || !dropdown->Checkbox->IsEnabled ||
             !NativeReadGuard.Readable(dropdown->List, (nuint)sizeof(AtkComponentList)) ||
-            !ObjectiveNode((AtkComponentBase*)dropdown->List, 3) ||
+            !ComponentOwnsNode((AtkComponentBase*)dropdown->List, 3) ||
             !NativeReadGuard.Readable(dropdown->List->VirtualTable, (nuint)sizeof(AtkComponentList.AtkComponentListVirtualTable)))
         { objectiveCheck = "objective_controls_unavailable"; return false; }
         if (selected is < 0 or > 3 || dropdown->List->ListLength != 4 || dropdown->List->GetItemDisabledState(selected))
@@ -175,23 +175,23 @@ internal sealed unsafe partial class ListingRefreshHost
         return true;
     }
 
-    private static bool ObjectiveNode(AtkComponentBase* component, uint id) =>
+    private static bool ComponentOwnsNode(AtkComponentBase* component, uint id) =>
         NativeReadGuard.Readable(component->OwnerNode, (nuint)sizeof(AtkComponentNode)) &&
         component->OwnerNode->NodeId == id && component->OwnerNode->Component == component;
 
     private bool ReadObjectiveRoutes(AddonLookingForGroupCondition* addon, AtkComponentDropDownList* dropdown, out AtkEvent openEvent, out string error)
     {
         error = "목적 드롭다운의 이벤트 연결이 수동 기록과 달라 중단했습니다.";
-        if (!ObjectiveEvent((AtkResNode*)dropdown->Checkbox->OwnerNode, (AtkEventListener*)dropdown, AtkEventType.ButtonClick, 2, out openEvent) ||
-            !ObjectiveEvent((AtkResNode*)dropdown->List->OwnerNode, (AtkEventListener*)dropdown, AtkEventType.ListItemClick, 1, out _) ||
-            !ObjectiveEvent((AtkResNode*)dropdown->List->OwnerNode, (AtkEventListener*)dropdown, AtkEventType.ListItemHighlight, 1, out _) ||
-            !ObjectiveEvent((AtkResNode*)dropdown->OwnerNode, (AtkEventListener*)addon, AtkEventType.ListItemHighlight, 20, out _))
+        if (!ReadRegisteredUiEvent((AtkResNode*)dropdown->Checkbox->OwnerNode, (AtkEventListener*)dropdown, AtkEventType.ButtonClick, 2, out openEvent) ||
+            !ReadRegisteredUiEvent((AtkResNode*)dropdown->List->OwnerNode, (AtkEventListener*)dropdown, AtkEventType.ListItemClick, 1, out _) ||
+            !ReadRegisteredUiEvent((AtkResNode*)dropdown->List->OwnerNode, (AtkEventListener*)dropdown, AtkEventType.ListItemHighlight, 1, out _) ||
+            !ReadRegisteredUiEvent((AtkResNode*)dropdown->OwnerNode, (AtkEventListener*)addon, AtkEventType.ListItemHighlight, 20, out _))
         { objectiveCheck = "objective_event_route_mismatch"; return false; }
         error = "";
         return true;
     }
 
-    private static bool ObjectiveEvent(AtkResNode* node, AtkEventListener* listener, AtkEventType type, uint param, out AtkEvent value)
+    private static bool ReadRegisteredUiEvent(AtkResNode* node, AtkEventListener* listener, AtkEventType type, uint param, out AtkEvent value)
     {
         value = default; var matches = 0; var seen = new HashSet<nuint>();
         if (!NativeReadGuard.Readable(listener->VirtualTable, (nuint)sizeof(AtkEventListener.AtkEventListenerVirtualTable))) return false;

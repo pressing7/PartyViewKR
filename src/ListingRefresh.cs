@@ -34,12 +34,14 @@ internal interface IListingRefreshHost
     SlotEditProgress UpdateDescriptionEdit(out RefreshTarget expected, out string error);
     bool BeginObjectiveEdit(RefreshTarget target, ListingObjectiveEdit edit, out string error);
     SlotEditProgress UpdateObjectiveEdit(out RefreshTarget expected, out string error);
+    bool BeginBeginnerEdit(RefreshTarget target, ListingBeginnerEdit edit, out string error);
+    SlotEditProgress UpdateBeginnerEdit(out RefreshTarget expected, out string error);
     // null keeps the existing button route; an empty string explicitly clears
     // the introduction and must still be carried in the final submission.
     bool Submit(RefreshTarget target, string? description, out string error);
 }
 
-internal enum RefreshStage { Idle, Queued, ReadingOwn, OpeningEditor, EditingSlot, EditingDescription, EditingObjective, WaitingResult, Verifying, Completed, Unconfirmed, Stopped }
+internal enum RefreshStage { Idle, Queued, ReadingOwn, OpeningEditor, EditingSlot, EditingDescription, EditingObjective, EditingBeginner, WaitingResult, Verifying, Completed, Unconfirmed, Stopped }
 
 // No timers/tasks or automatic retries: every run comes from one button press.
 // Advancing the stage BEFORE dispatch also prevents a thrown callback being retried.
@@ -47,16 +49,17 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
 {
     internal RefreshStage Stage { get; private set; }
     internal bool Busy => Stage is RefreshStage.Queued or RefreshStage.ReadingOwn or
-        RefreshStage.OpeningEditor or RefreshStage.EditingSlot or RefreshStage.EditingDescription or RefreshStage.EditingObjective or RefreshStage.WaitingResult or RefreshStage.Verifying;
+        RefreshStage.OpeningEditor or RefreshStage.EditingSlot or RefreshStage.EditingDescription or RefreshStage.EditingObjective or RefreshStage.EditingBeginner or RefreshStage.WaitingResult or RefreshStage.Verifying;
     internal ListingJobEdit? JobEdit { get; private set; }
     internal ListingDescriptionEdit? DescriptionEdit { get; private set; }
     internal ListingObjectiveEdit? ObjectiveEdit { get; private set; }
+    internal ListingBeginnerEdit? BeginnerEdit { get; private set; }
     internal string Status { get; private set; } = "버튼을 누르면 현재 모집 조건으로 한 번 갱신합니다.";
     internal bool CoolingDown(long now) => now < cooldownUntil;
     internal string Diagnostic => $"refreshStage={Stage}; refreshEditCalls={editCalls}; refreshSubmitCalls={submitCalls}; " +
         $"refreshBeforeSeconds={target?.RemainingSeconds?.ToString() ?? "unknown"}; refreshAfterSeconds={afterSeconds?.ToString() ?? "unknown"}; " +
         $"refreshOwnWaitChecks={ownWaitChecks}; refreshEditorMode={editorMode}; refreshJobSlot={JobEdit?.Position ?? 0}; " +
-        $"refreshDescriptionEdit={DescriptionEdit != null}; refreshObjectiveEdit={ObjectiveEdit != null}\nrefreshResult={result}\n{descriptionVerification}\n{objectiveVerification}";
+        $"refreshDescriptionEdit={DescriptionEdit != null}; refreshObjectiveEdit={ObjectiveEdit != null}; refreshBeginnerEdit={BeginnerEdit != null}\nrefreshResult={result}\n{descriptionVerification}\n{objectiveVerification}\n{beginnerVerification}";
 
     private RefreshTarget? target;
     private ulong self;
@@ -67,22 +70,27 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
     private string ownWaitReason = "";
     private string descriptionVerification = "descriptionResultCheck=not_started";
     private string objectiveVerification = "objectiveResultCheck=not_started";
+    private string beginnerVerification = "beginnerResultCheck=not_started";
     private RecruitmentEditorMode editorMode;
 
     internal void Request(long now, ListingJobEdit? edit = null, ListingDescriptionEdit? descriptionEdit = null,
-        ListingObjectiveEdit? objectiveEdit = null)
+        ListingObjectiveEdit? objectiveEdit = null, ListingBeginnerEdit? beginnerEdit = null)
     {
         if (Busy || CoolingDown(now)) return;
         JobEdit = edit;
         DescriptionEdit = descriptionEdit;
         ObjectiveEdit = objectiveEdit;
+        BeginnerEdit = beginnerEdit;
         target = null;
         editCalls = submitCalls = ownWaitChecks = 0;
         ownWaitReason = "";
         descriptionVerification = "descriptionResultCheck=not_started";
         objectiveVerification = "objectiveResultCheck=not_started";
+        beginnerVerification = "beginnerResultCheck=not_started";
         editorMode = RecruitmentEditorMode.Unknown;
         afterSeconds = null;
+        if (beginnerEdit != null && (edit != null || descriptionEdit != null || objectiveEdit != null || !beginnerEdit.Valid))
+        { Stop("변경할 초행 및 초보자 환영 설정을 다시 확인해 주세요.", "invalid_beginner_edit"); return; }
         if (objectiveEdit != null && (edit != null || descriptionEdit != null || !objectiveEdit.Valid))
         { Stop("변경할 모집 목적을 다시 확인해 주세요.", "invalid_objective_edit"); return; }
         if (descriptionEdit != null && (edit != null || !descriptionEdit.Valid))
@@ -126,6 +134,8 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
                 { Stop("편집 중 모집글 또는 참가자가 바뀌었습니다. 다시 조회한 뒤 소개말을 수정해 주세요.", "description_edit_stale"); return; }
                 if (ObjectiveEdit != null && !ObjectiveEdit.MatchesOriginal(own))
                 { Stop("편집 중 모집글 또는 참가자가 바뀌었습니다. 다시 조회한 뒤 목적을 수정해 주세요.", "objective_edit_stale"); return; }
+                if (BeginnerEdit != null && !BeginnerEdit.MatchesOriginal(own))
+                { Stop("편집 중 모집글 또는 참가자가 바뀌었습니다. 다시 조회한 뒤 초보자 환영 설정을 수정해 주세요.", "beginner_edit_stale"); return; }
                 if (host.EditorVisible) { Stop("모집 조건 창이 따로 열려 있어 중단했습니다.", "editor_opened_elsewhere"); return; }
                 target = own;
                 ownWaitReason = "";
@@ -167,6 +177,12 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
                     SetStage(RefreshStage.EditingObjective, now, "모집 목적 반영 중");
                     if (!host.BeginObjectiveEdit(target!, ObjectiveEdit, out var objectiveError))
                         Stop(objectiveError, "objective_edit_start_failed");
+                }
+                else if (BeginnerEdit != null)
+                {
+                    SetStage(RefreshStage.EditingBeginner, now, "초행 및 초보자 환영 설정 중");
+                    if (!host.BeginBeginnerEdit(target!, BeginnerEdit, out var beginnerError))
+                        Stop(beginnerError, "beginner_edit_start_failed");
                 }
                 else Submit(now);
                 break;
@@ -213,6 +229,20 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
                 Submit(now);
                 break;
 
+            case RefreshStage.EditingBeginner:
+                if (host.EditorClosedRevision != editorClosedRevision || !host.EditorVisible)
+                { Stop("모집 수정 창이 닫혀 초보자 환영 수정을 중단했습니다.", "beginner_editor_closed"); return; }
+                if (now - stageTick > 8000)
+                { Stop("초보자 환영 설정이 게임 수정창에 반영됐는지 확인하지 못했습니다.", "beginner_edit_timeout"); return; }
+                var beginnerProgress = host.UpdateBeginnerEdit(out var beginnerExpected, out var beginnerReadError);
+                if (beginnerProgress == SlotEditProgress.Failed) { Stop(beginnerReadError, "beginner_edit_failed"); return; }
+                if (beginnerProgress == SlotEditProgress.Waiting) return;
+                if (!BeginnerEdit!.MatchesResult(target!, beginnerExpected))
+                { Stop("초보자 환영 또는 다른 모집 조건이 요청한 내용과 다릅니다.", "beginner_edit_result_mismatch"); return; }
+                target = beginnerExpected;
+                Submit(now);
+                break;
+
             case RefreshStage.WaitingResult:
                 if (now - stageTick > 10000)
                 { Stop("등록 화면이 닫히지 않았습니다. 게임에 표시된 메시지를 확인해 주세요.", "submit_response_timeout"); return; }
@@ -241,9 +271,15 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
                         $"objectiveResultExpected={ObjectiveEdit.Value}; objectiveResultActual={ListingObjectives.Read(after.Criteria)?.ToString() ?? "unknown"}; " +
                         $"objectiveResultSlotsAgree={ListingJobEdit.SameSlots(target!.Slots, after.Slots)}; " +
                         $"objectiveResultContentsAgree={ObjectiveEdit.MatchesResult(target, after)}";
+                if (BeginnerEdit != null)
+                    beginnerVerification = $"beginnerResultCheck=read; " +
+                        $"beginnerResultExpected={BeginnerEdit.Enabled}; beginnerResultActual={ListingBeginners.Read(after.Criteria)?.ToString() ?? "unknown"}; " +
+                        $"beginnerResultSlotsAgree={ListingJobEdit.SameSlots(target!.Slots, after.Slots)}; " +
+                        $"beginnerResultContentsAgree={BeginnerEdit.MatchesResult(target, after)}";
                 var contentsAgree = JobEdit != null ? JobEdit.MatchesResult(target!, after) :
                     DescriptionEdit != null ? DescriptionEdit.MatchesResult(target!, after) :
-                    ObjectiveEdit != null ? ObjectiveEdit.MatchesResult(target!, after) : RefreshEvidence.SameRecruitment(target!, after);
+                    ObjectiveEdit != null ? ObjectiveEdit.MatchesResult(target!, after) :
+                    BeginnerEdit != null ? BeginnerEdit.MatchesResult(target!, after) : RefreshEvidence.SameRecruitment(target!, after);
                 if (!contentsAgree)
                 { Stop("등록 후 모집 내용 또는 조건이 다르게 보입니다. 게임에서 확인해 주세요.", "verify_contents_changed"); return; }
                 var confirmed = after.ListingId != target!.ListingId ||
@@ -251,8 +287,10 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
                 result = confirmed ? "confirmed_by_new_listing_or_timer" : "own_listing_seen_timer_unconfirmed";
                 SetStage(confirmed ? RefreshStage.Completed : RefreshStage.Unconfirmed, now,
                     confirmed ? (JobEdit != null ? "직업 변경 및 갱신 확인 — 내 모집글을 다시 조회했습니다." :
+                        BeginnerEdit != null ? "초보자 환영 변경 및 갱신 확인 — 내 모집글을 다시 조회했습니다." :
                         ObjectiveEdit != null ? "목적 변경 및 갱신 확인 — 내 모집글을 다시 조회했습니다." :
                         DescriptionEdit != null ? "소개말 변경 및 갱신 확인 — 내 모집글을 다시 조회했습니다." : "갱신 확인 — 재등록 후 내 모집글을 다시 조회했습니다.") :
+                    BeginnerEdit != null ? "초보자 환영 설정이 반영된 것을 확인했습니다. 남은 시간 초기화 여부는 게임에서 확인해 주세요." :
                     ObjectiveEdit != null ? "수정한 목적이 등록된 것을 확인했습니다. 남은 시간 초기화 여부는 게임에서 확인해 주세요." :
                     DescriptionEdit != null ? "수정한 소개말이 등록된 것을 확인했습니다. 남은 시간 초기화 여부는 게임에서 확인해 주세요." :
                     "재등록 요청 후 내 모집글을 확인했습니다. 남은 시간 초기화 여부는 게임에서 확인해 주세요.");
