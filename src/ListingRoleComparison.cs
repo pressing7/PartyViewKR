@@ -1,11 +1,9 @@
-using System.Buffers.Binary;
 using System.Text;
 
 namespace PartyViewKR;
 
-// Read-only diagnostics for a listing/editor mismatch. Do not normalize flags
-// here: unknown high bits, occupied slots and unregistered tails may differ for
-// different reasons, and a live capture is needed before accepting any of them.
+// Always report raw differences, including the verified friendly padding case.
+// ListingEditorCriteria separately decides which differences may be accepted.
 internal static class ListingRoleComparison
 {
     internal static string Describe(RefreshTarget target, string draftCriteria,
@@ -13,7 +11,8 @@ internal static class ListingRoleComparison
     {
         var count = target.Slots.NativeSlotCount;
         if (count is < 1 or > 48 || !target.Slots.MappingValid ||
-            !TryFlags(target.Criteria, count, out var expected) || !TryFlags(draftCriteria, count, out var actual))
+            !ListingEditorCriteria.TryReadFlags(target.Criteria, count, out var expected) ||
+            !ListingEditorCriteria.TryReadFlags(draftCriteria, count, out var actual))
             return "editorRoleCheck=unavailable; editorRoleReason=invalid_mapping_or_criteria";
 
         var slots = target.Slots;
@@ -38,7 +37,7 @@ internal static class ListingRoleComparison
             var added = known ? string.Join(",", slots.JobRules.Choices.Where(j => (expected[i] & j.Flag) == 0 && (actual[i] & j.Flag) != 0).Select(j => j.Id)) : "unknown";
             var removed = known ? string.Join(",", slots.JobRules.Choices.Where(j => (expected[i] & j.Flag) != 0 && (actual[i] & j.Flag) == 0).Select(j => j.Id)) : "unknown";
             text.Append($"\neditorRoleDifferenceIndex={i}; position={slot?.Position ?? 0}; group={(char)('A' + i / 8)}; member={i % 8 + 1}; " +
-                $"kind={(slot == null ? "unregistered" : slot.HasMember ? "occupied" : "vacant")}; " +
+                $"kind={(slot == null ? ListingEditorCriteria.IsFriendlyPadding(slots, i) ? "unused_friendly_padding" : "unregistered" : slot.HasMember ? "occupied" : "vacant")}; " +
                 $"expected={expected[i]:X16}; actual={actual[i]:X16}; xor={expected[i] ^ actual[i]:X16}; " +
                 $"knownJobsAgree={(known ? ((expected[i] & mask) == (actual[i] & mask)).ToString() : "unknown")}; " +
                 $"addedJobIds={added}; removedJobIds={removed}");
@@ -46,16 +45,4 @@ internal static class ListingRoleComparison
         return text.ToString();
     }
 
-    private static bool TryFlags(string criteria, int count, out ulong[] flags)
-    {
-        flags = [];
-        var fields = criteria.Split('/');
-        if (fields.Length != 9 || fields[^1].Length != count * sizeof(ulong) * 2) return false;
-        byte[] bytes;
-        try { bytes = Convert.FromHexString(fields[^1]); }
-        catch (FormatException) { return false; }
-        flags = new ulong[count];
-        for (var i = 0; i < count; i++) flags[i] = BinaryPrimitives.ReadUInt64LittleEndian(bytes.AsSpan(i * sizeof(ulong)));
-        return true;
-    }
 }

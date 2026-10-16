@@ -226,11 +226,14 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
         var storedCommentAgrees = NativeReadGuard.FixedText(draft.Comment, out var storedComment) &&
             ListingIdentity.SameText(storedComment, target.Description);
         var draftCriteria = DraftCriteria(ref draft, target.Slots.NativeSlotCount);
-        // Report the exact two role arrays used below; diagnostics never authorize
-        // differing flags or change the target, draft, or existing equality check.
+        // Preserve raw diagnostics even when the verified friendly padding
+        // representation is accepted. All member/shape checks above still apply.
         editorRoleDiagnostic = ListingRoleComparison.Describe(target, draftCriteria,
             draft.NumberOfGroups, draft.NumberOfSlotsInMainParty, plugin.Refresh.JobEdit?.Position ?? 0);
-        if (!storedCommentAgrees || draftCriteria != target.Criteria)
+        var criteriaAgree = ListingEditorCriteria.Matches(target, draftCriteria,
+            draft.NumberOfGroups, draft.NumberOfSlotsInMainParty, out var acceptedPadding);
+        editorRoleDiagnostic += $"\neditorRoleCriteriaMatch={criteriaAgree}; editorRolePaddingAcceptedIndices={string.Join(",", acceptedPadding)}";
+        if (!storedCommentAgrees || !criteriaAgree)
         {
             check = $"stored_criteria_mismatch; draftCommentAgrees={storedCommentAgrees}; " +
                 $"draftDutyAgrees={draft.SelectedDutyId == target.DutyId}; draftDifferentFields={DifferentCriteria(target.Criteria, draftCriteria)}";

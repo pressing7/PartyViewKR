@@ -31,7 +31,7 @@ static class ListingRoleComparisonTests
             var lines = diagnostic.Split('\n');
             check(lines.Single(l => l.StartsWith("editorRoleDifferenceIndex=1;")).Contains("knownJobsAgree=True"), "unknown high bit reported as a job change");
             check(lines.Single(l => l.StartsWith("editorRoleDifferenceIndex=4;")).Contains("removedJobIds=19"), "wrong job flag decoding");
-            check(lines.Single(l => l.StartsWith("editorRoleDifferenceIndex=7;")).Contains("kind=unregistered"), "tail misidentified as a visible row");
+            check(lines.Single(l => l.StartsWith("editorRoleDifferenceIndex=7;")).Contains("kind=unused_friendly_padding"), "fixed padding misidentified as a visible row");
             check(lines.Single(l => l.StartsWith("editorRoleDifferenceIndex=23;")).Contains("position=18; group=C; member=8"), "final spectator missing");
             check(diagnostic.Contains("actual=80000000FDFFFFFE"), "raw value lost its bit order");
         });
