@@ -1,10 +1,15 @@
 "use strict";
 (() => {
   const byId = id => document.getElementById(id);
-  const connection = byId("connection"), notice = byId("notice"), queryButton = byId("query");
+  const connection = byId("connection"), notice = byId("notice"), queryButton = byId("query"), refreshButton = byId("refresh");
   let key = "", state = null, online = false, posting = false, authFailed = false, actionMessage = "";
   let groupsSignature = "", settingsSignature = "", session = "";
   const storageKey = "pvkr.connection";
+  const operationKey = "pvkr.operation";
+  let pendingWrite = null, operationSignature = "";
+  try { const saved = JSON.parse(sessionStorage.getItem(operationKey) || "null");
+    if (saved && /^[0-9a-f-]{36}$/.test(saved.id) && typeof saved.session === "string" && Number.isFinite(saved.sentAt)) pendingWrite = saved;
+  } catch { /* Never store form values or passwords. */ }
   try {
     const fragmentKey = new URLSearchParams(location.hash.slice(1)).get("key");
     history.replaceState(null, "", location.pathname);
@@ -21,6 +26,12 @@
     if (value !== undefined) node.textContent = value;
     return node;
   }
+  const editor = window.PvkrEditor.create({ byId, el, current: () => state, changed: renderStatus, submit: applyChanges });
+  const active = operation => ["queued", "running"].includes(operation?.state);
+  function savePending(value) {
+    pendingWrite = value;
+    try { if (value) sessionStorage.setItem(operationKey, JSON.stringify(value)); else sessionStorage.removeItem(operationKey); } catch { /* Keep the request ID in memory. */ }
+  }
   function badge(value, tone) { connection.textContent = value; connection.dataset.tone = tone; }
   function stale() { return !state || !Number.isFinite(Date.parse(state.updatedAt)) || Date.now() - Date.parse(state.updatedAt) > 5000; }
   function time(value) {
@@ -28,8 +39,13 @@
     return value && Number.isFinite(date.getTime()) ? date.toLocaleTimeString("ko-KR", { hour12: false }) : "확인 불가";
   }
   function renderStatus() {
-    const old = stale(), busy = posting || ["queued", "running"].includes(state?.query?.state);
+    const old = stale(), busy = posting || active(state?.query) || active(state?.operation) || !!pendingWrite;
     queryButton.disabled = !key || !online || old || busy || !state?.canQuery || authFailed;
+    const available = !!key && online && !old && !authFailed && !!state?.canRefresh;
+    refreshButton.disabled = !available || busy || editor.result().dirty;
+    refreshButton.title = editor.result().dirty ? "편집 중인 변경사항은 수정 화면의 적용 버튼으로 갱신해 주세요." : state?.refreshReason || "현재 모집 조건으로 한 번 갱신합니다.";
+    text("refresh-reason", state?.refreshReason || "");
+    editor.update(available, busy, !online ? "연결을 기다리는 중입니다." : old ? "게임 응답을 기다리는 중입니다." : state?.refreshReason || "");
     if (!key || authFailed) badge("연결 필요", "warning");
     else if (!online) badge("연결 끊김", "warning");
     else if (old) badge("게임 응답 대기", "warning");
@@ -39,7 +55,8 @@
     if (!key || authFailed) message = "게임의 /pvkr → 브라우저 조회에서 접속 링크를 복사해 다시 열어 주세요.";
     else if (!online) message = "PVKR에 연결할 수 없습니다. 게임에서 브라우저 조회가 켜져 있는지 확인해 주세요. 마지막으로 받은 정보는 아래에 남아 있습니다.";
     else if (old) message = "게임의 응답을 기다리는 중입니다. 표시된 내용은 마지막 조회 결과입니다.";
-    else if (posting) message = "게임에 조회를 요청하는 중입니다.";
+    else if (posting) message = "게임에 요청을 전달하는 중입니다.";
+    else if (pendingWrite) message = "갱신 요청의 처리 결과를 확인하는 중입니다. 같은 요청은 다시 보내지 않습니다.";
     else if (actionMessage) message = actionMessage;
     else if (state?.reason) message = state.reason;
     else if (state?.query?.message) message = state.query.message;
@@ -53,9 +70,14 @@
     }
   }
   function render(view) {
-    if (view.apiVersion !== 1) throw new Error("PVKR와 브라우저의 연결 버전이 다릅니다. 새 접속 링크로 열어 주세요.");
-    if (session !== view.session) { session = view.session; groupsSignature = ""; settingsSignature = ""; actionMessage = ""; }
+    if (view.apiVersion !== 2) throw new Error("PVKR와 브라우저의 연결 버전이 다릅니다. 새 접속 링크로 열어 주세요.");
+    if (session !== view.session) {
+      session = view.session; groupsSignature = ""; settingsSignature = ""; actionMessage = ""; editor.clear();
+      if (pendingWrite && pendingWrite.session !== session) savePending(null);
+    }
     state = view;
+    acceptOperation(view.operation);
+    renderOperation();
     text("version", view.version);
     const listing = view.listing;
     byId("listing").hidden = !listing;
@@ -116,7 +138,7 @@
     const response = await fetch(path, { ...options, cache: "no-store", credentials: "omit", redirect: "error",
       signal: AbortSignal.timeout(3500), headers: { "Authorization": "Bearer " + key, ...options.headers } });
     if (response.status === 401) {
-      authFailed = true; key = ""; state = null;
+      authFailed = true; key = ""; state = null; editor.clear(); savePending(null);
       try { sessionStorage.removeItem(storageKey); } catch { /* Browser storage may be disabled. */ }
       byId("listing").hidden = true; byId("empty").hidden = false;
       text("empty-title", "새 접속 링크가 필요합니다"); text("empty-text", "PVKR에서 접속 링크를 다시 복사해 주세요.");
@@ -124,9 +146,41 @@
       throw new Error("접속 링크를 다시 열어 주세요.");
     }
     const body = await response.json();
-    if (!response.ok) throw new Error(body.error || "요청을 처리하지 못했습니다.");
+    if (!response.ok) { const error = new Error(body.error || "요청을 처리하지 못했습니다."); error.status = response.status; throw error; }
     return body;
   }
+  function acceptOperation(operation) {
+    if (!operation || !pendingWrite || operation.id !== pendingWrite.id) return;
+    editor.clear();
+    if (!active(operation)) savePending(null);
+  }
+  function renderOperation() {
+    const operation = state?.operation, signature = JSON.stringify(operation);
+    if (operationSignature === signature) return;
+    operationSignature = signature; byId("operation").hidden = !operation;
+    if (!operation) { byId("operation-results").replaceChildren(); return; }
+    const labels = { queued: "대기 중", running: "진행 중", complete: "완료", partial: "일부 미반영", unconfirmed: "결과 확인 필요", failed: "중단", unknown: "결과 확인 필요" };
+    text("operation-state", labels[operation.state] || "확인 중");
+    byId("operation-state").dataset.tone = operation.state === "complete" ? "good" : active(operation) ? "muted" : "warning";
+    text("operation-message", operation.message);
+    byId("operation-results").replaceChildren(...operation.results.map(result => {
+      const row = el("li", "", result.message); row.dataset.tone = result.applied === true ? "good" : result.applied === false ? "warning" : "muted"; return row;
+    }));
+  }
+  async function applyChanges(revision, changes) {
+    if (posting || pendingWrite || !state?.canRefresh || !online || stale() || active(state?.operation)) return;
+    const request = { id: crypto.randomUUID(), session: state.session, sentAt: Date.now() };
+    savePending(request); posting = true; actionMessage = ""; renderStatus();
+    try {
+      const operation = await api("/api/apply", { method: "POST", headers: { "Content-Type": "application/json",
+        "X-PVKR-Request-Id": request.id, "X-PVKR-Session": request.session }, body: JSON.stringify({ revision, changes }) });
+      if (state?.session === request.session) { state.operation = operation; acceptOperation(operation); renderOperation(); }
+    } catch (error) {
+      if (error.status) savePending(null);
+      actionMessage = error.status ? error.message : "응답이 끊겨 요청 결과를 확인하고 있습니다. 갱신을 다시 전송하지 않습니다.";
+    } finally { editor.clearPassword(); posting = false; renderStatus(); }
+  }
+  refreshButton.addEventListener("click", () => { if (!refreshButton.disabled && state?.editor) applyChanges(state.editor.revision, []); });
   queryButton.addEventListener("click", async () => {
     if (queryButton.disabled || !state) return;
     posting = true; actionMessage = ""; renderStatus();
@@ -140,7 +194,21 @@
   });
   async function poll() {
     if (!key || authFailed) { renderStatus(); return; }
-    try { const view = await api("/api/state"); online = true; render(view); }
+    try {
+      const view = await api("/api/state"); online = true; render(view);
+      if (pendingWrite && !posting) {
+        const request = pendingWrite;
+        try {
+          const operation = await api("/api/operations/" + request.id);
+          if (state?.session === request.session) { state.operation = operation; actionMessage = ""; acceptOperation(operation); renderOperation(); }
+        } catch (error) {
+          if (error.status === 409 || error.status === 404 && Date.now() - request.sentAt > 10000) {
+            savePending(null); actionMessage = "요청 결과를 확인하지 못했습니다. 내 모집글을 다시 조회한 뒤 확인해 주세요.";
+          }
+        }
+      }
+      renderStatus();
+    }
     catch { online = false; renderStatus(); }
     if (key && !authFailed) setTimeout(poll, document.hidden ? 4000 : 1000);
   }

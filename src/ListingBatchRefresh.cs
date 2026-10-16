@@ -29,6 +29,8 @@ internal sealed class ListingBatchRefresh(IListingBatchHost host, ListingChange[
     internal string Status { get; private set; } = "일괄 수정 준비 중";
     internal IReadOnlyList<ListingChangeResult> Results => results;
     internal long CooldownUntil { get; private set; }
+    internal bool EditorStarted => editCalls > 0;
+    internal bool Submitted => submitCalls > 0;
     internal string Diagnostic => $"batchStage={Stage}; batchPhase={phase}; batchItems={results.Length}; batchIndex={index}; " +
         $"batchEditCalls={editCalls}; batchSubmitCalls={submitCalls}; batchQueryCalls={queryCalls}; batchResult={result}\n" +
         string.Join("\n", results.Select((r, i) => $"batchItem={i + 1}; key={r.Change.Key}; editorVerified={r.EditorVerified}; applied={r.Applied?.ToString() ?? "unknown"}; error={r.Error}"));

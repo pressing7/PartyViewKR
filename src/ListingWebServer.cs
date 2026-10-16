@@ -9,7 +9,7 @@ using System.Text.Json;
 namespace PartyViewKR;
 
 // A deliberately small loopback-only HTTP/1.1 endpoint, with one request per
-// connection and no request bodies, uploads, arbitrary paths, or proxy support.
+// connection and one bounded JSON mutation route; no uploads or proxy support.
 // TcpListener avoids Windows HTTP.sys URL reservations and extra runtime DLLs.
 // Do not expose this listener on a LAN/public interface without a separate design.
 internal sealed class ListingWebServer : IDisposable
@@ -39,6 +39,7 @@ internal sealed class ListingWebServer : IDisposable
         assets = new() {
             ["/"] = ("text/html; charset=utf-8", Asset("index.html")),
             ["/app.js"] = ("text/javascript; charset=utf-8", Asset("app.js")),
+            ["/editor.js"] = ("text/javascript; charset=utf-8", Asset("editor.js")),
             ["/style.css"] = ("text/css; charset=utf-8", Asset("style.css"))
         };
         var key = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
@@ -118,7 +119,7 @@ internal sealed class ListingWebServer : IDisposable
             end = buffer.AsSpan(0, count).IndexOf("\r\n\r\n"u8);
             if (end >= 0) break;
         }
-        if (end < 0 || end + 4 != count || !TryParse(buffer.AsSpan(0, end), out var request))
+        if (end < 0 || !TryParse(buffer.AsSpan(0, end), out var request) || count - end - 4 > request.BodyLength)
         { await Reply(stream, ListingWebBridge.Error(400, "지원하지 않는 요청 형식입니다."), token); return; }
         if (!request.Headers.TryGetValue("Host", out var host) || !string.Equals(host, authority, StringComparison.OrdinalIgnoreCase) ||
             request.Headers.TryGetValue("Origin", out var origin) && origin != BaseUrl ||
@@ -129,10 +130,28 @@ internal sealed class ListingWebServer : IDisposable
             if (!request.Headers.TryGetValue("Authorization", out var header) ||
                 !CryptographicOperations.FixedTimeEquals(authorization, Encoding.ASCII.GetBytes(header)))
             { await Reply(stream, ListingWebBridge.Error(401, "PVKR에서 접속 링크를 다시 복사해 주세요."), token); return; }
+            if (request.Method == "POST" && request.Path == "/api/apply")
+            {
+                // Authenticate before allocating/reading a body. Content-Length
+                // is mandatory, bounded and unambiguous; chunking is rejected.
+                var body = new byte[request.BodyLength];
+                try
+                {
+                    var copied = count - end - 4;
+                    buffer.AsMemory(end + 4, copied).CopyTo(body);
+                    await stream.ReadExactlyAsync(body.AsMemory(copied), token).ConfigureAwait(false);
+                    var reply = Bridge.QueueApply(request.Headers.GetValueOrDefault("X-PVKR-Request-Id", ""),
+                        request.Headers.GetValueOrDefault("X-PVKR-Session", ""), body, Environment.TickCount64);
+                    await Reply(stream, reply, token); return;
+                }
+                finally { CryptographicOperations.ZeroMemory(body); CryptographicOperations.ZeroMemory(buffer); }
+            }
             if (request.Method == "GET" && request.Path == "/api/state")
             { await Send(stream, 200, "application/json; charset=utf-8", Bridge.ReadState(), token); return; }
             if (request.Method == "GET" && request.Path.StartsWith("/api/queries/", StringComparison.Ordinal))
             { await Reply(stream, Bridge.ReadQuery(request.Path[13..]), token); return; }
+            if (request.Method == "GET" && request.Path.StartsWith("/api/operations/", StringComparison.Ordinal))
+            { await Reply(stream, Bridge.ReadOperation(request.Path[16..]), token); return; }
             if (request.Method == "POST" && request.Path == "/api/query")
             {
                 var reply = Bridge.QueueQuery(request.Headers.GetValueOrDefault("X-PVKR-Request-Id", ""),
@@ -145,12 +164,12 @@ internal sealed class ListingWebServer : IDisposable
         await Reply(stream, ListingWebBridge.Error(404, "지원하지 않는 주소입니다."), token);
     }
 
-    internal sealed record Request(string Method, string Path, Dictionary<string, string> Headers);
+    internal sealed record Request(string Method, string Path, Dictionary<string, string> Headers, int BodyLength);
     internal static bool TryParse(ReadOnlySpan<byte> bytes, out Request request)
     {
         request = null!;
         // HTTP header/request lines are ASCII here; reject control characters,
-        // folded/duplicate headers and all body framing instead of guessing.
+        // folded/duplicate headers and ambiguous body framing instead of guessing.
         if (bytes.Length is 0 or > 8188) return false;
         foreach (var b in bytes) if (b > 126 || b < 32 && b is not (13 or 10 or 9)) return false;
         var lines = Encoding.ASCII.GetString(bytes).Split("\r\n", StringSplitOptions.None);
@@ -164,9 +183,18 @@ internal sealed class ListingWebServer : IDisposable
             if (colon <= 0 || line.Any(c => c is '\r' or '\n') || line[..colon].Any(c =>
                 !char.IsAsciiLetterOrDigit(c) && c != '-') || !headers.TryAdd(line[..colon], line[(colon + 1)..].Trim(' ', '\t'))) return false;
         }
-        if (headers.ContainsKey("Transfer-Encoding") || headers.ContainsKey("Expect") ||
-            headers.ContainsKey("Content-Encoding") || headers.TryGetValue("Content-Length", out var length) && length != "0") return false;
-        request = new(first[0], first[1], headers); return true;
+        if (headers.ContainsKey("Transfer-Encoding") || headers.ContainsKey("Expect") || headers.ContainsKey("Content-Encoding")) return false;
+        var bodyLength = 0;
+        if (first[0] == "POST" && first[1] == "/api/apply")
+        {
+            if (!headers.TryGetValue("Content-Length", out var length) || length.Length == 0 || length.Any(c => !char.IsAsciiDigit(c)) ||
+                !int.TryParse(length, NumberStyles.None, CultureInfo.InvariantCulture, out bodyLength) || bodyLength is < 1 or > ListingWebEdit.MaxBodyBytes ||
+                !headers.TryGetValue("Content-Type", out var contentType) ||
+                !string.Equals(contentType, "application/json", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(contentType, "application/json; charset=utf-8", StringComparison.OrdinalIgnoreCase)) return false;
+        }
+        else if (headers.TryGetValue("Content-Length", out var length) && length != "0") return false;
+        request = new(first[0], first[1], headers, bodyLength); return true;
     }
 
     private static Task Reply(NetworkStream stream, WebReply reply, CancellationToken token) =>

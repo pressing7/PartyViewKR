@@ -19,3 +19,20 @@ internal sealed class ListingWebRequestGuard
     }
     internal void Clear() => revision = -1;
 }
+
+// Batch edits can legitimately run longer than a minute. Bound pauses between
+// framework ticks, not total elapsed time, and cancel only this exact run.
+internal sealed class ListingWebRefreshGuard
+{
+    private long revision = -1, lastTick;
+    private ulong self;
+    internal void Started(ulong selfId, long serial, long now) { self = selfId; revision = serial; lastTick = now; }
+    internal bool Owns(long serial, bool busy) => revision >= 0 && serial == revision && busy;
+    internal bool BeforeRead(ulong selfId, long serial, bool busy, bool enabled, bool queued, long now)
+    {
+        if (!Owns(serial, busy)) return false;
+        var cancel = !enabled || selfId == 0 || selfId != self || now - lastTick > (queued ? 5000 : 15000);
+        lastTick = now; return cancel;
+    }
+    internal void Clear() => revision = -1;
+}

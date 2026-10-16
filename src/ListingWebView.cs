@@ -11,7 +11,13 @@ internal sealed record WebListing(string Leader, string Duty, string Description
     WebSetting[] Settings, WebGroup[] Groups);
 internal sealed record WebQuery(string Id, string State, string Message);
 internal sealed record WebView(int ApiVersion, string Version, string Session, bool LoggedIn, bool CanQuery,
-    string Reason, string Status, DateTimeOffset UpdatedAt, WebListing? Listing, WebQuery? Query);
+    string Reason, string Status, DateTimeOffset UpdatedAt, WebListing? Listing, WebQuery? Query)
+{
+    public bool CanRefresh { get; init; }
+    public string RefreshReason { get; init; } = "내 모집글을 조회해 주세요.";
+    public WebEditModel? Editor { get; init; }
+    public WebOperation? Operation { get; init; }
+}
 
 internal static class ListingWebView
 {

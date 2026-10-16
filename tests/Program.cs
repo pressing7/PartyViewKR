@@ -257,6 +257,7 @@ ListingRuleEditTests.Run(Test, Check);
 ListingBatchTests.Run(Test, Check);
 ListingDescriptionRecoveryTests.Run(Test, Check);
 ListingWebTests.Run(Test, Check);
+ListingWebEditTests.Run(Test, Check);
 CompatibilityTests.Run(Test, Check);
 Console.WriteLine($"All {passed} tests passed. Native game interaction still requires in-game validation.");
 

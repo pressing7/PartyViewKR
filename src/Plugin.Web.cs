@@ -41,7 +41,7 @@ public sealed partial class Plugin
             var version = typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "unknown";
             webServer = new ListingWebServer(new ListingWebBridge(version));
             webHost ??= new WebHost(this);
-            webStatus = "연결 준비됨 · 같은 PC의 브라우저에서 내 모집글을 조회할 수 있습니다.";
+            webStatus = "연결 준비됨 · 같은 PC의 브라우저에서 내 모집글을 조회·수정·갱신할 수 있습니다.";
             RequestRead();
         }
         catch (Exception ex)
@@ -55,7 +55,7 @@ public sealed partial class Plugin
     {
         var server = Interlocked.Exchange(ref webServer, null);
         server?.Dispose();
-        if (server != null) webHost?.CancelOwnedQuery();
+        if (server != null) { webHost?.CancelOwnedQuery(); webHost?.CancelOwnedRefresh(); }
         webStatus = "브라우저 조회가 꺼져 있습니다.";
     }
 
@@ -67,15 +67,41 @@ public sealed partial class Plugin
         catch (Exception) { server.Bridge.PublicationFailed(); }
     }
 
-    private sealed class WebHost(Plugin plugin) : IListingWebHost
+    private sealed class WebHost(Plugin plugin) : IListingWebEditHost
     {
         private readonly ListingWebRequestGuard ownedQuery = new();
+        private readonly ListingWebRefreshGuard ownedRefresh = new();
+        private long refreshRevision = -1;
         public ulong SelfId => ClientState.IsLoggedIn && PlayerState.IsLoaded ? PlayerState.ContentId : 0;
         public string? QueryBlockReason => plugin.QueryUnavailableReason;
         public bool QueryBusy => plugin.listingReader.Busy;
         public bool QuerySucceeded => plugin.listingReader.LastOwnRequestSucceeded;
         public long DetailRevision => plugin.listingReader.DetailRevision;
         public ListingSnapshot Listing => plugin.Listing;
+        public string? RefreshBlockReason => plugin.QueryUnavailableReason ??
+            (plugin.PendingChanges.Items.Count > 0 ? "PVKR에 적용 대기 중인 변경사항을 먼저 처리해 주세요." :
+            plugin.Refresh.CoolingDown(Environment.TickCount64) ? "잠시 후 다시 갱신해 주세요." : null);
+        public RefreshTarget? CaptureEditTarget()
+        {
+            if (plugin.Refresh.Busy || QueryBusy || plugin.refreshHost.BlockReason != null ||
+                !Listing.IsLive || Listing.Owner != ListingOwner.Self || Listing.ViewerContentId != SelfId) return null;
+            return plugin.refreshHost.CaptureOwn();
+        }
+        public bool StartRefresh(RefreshTarget source, ListingChange[] changes, out string error)
+        {
+            error = RefreshBlockReason ?? "";
+            if (error.Length > 0) return false;
+            if (SelfId == 0 || source.SelfId != SelfId) { error = "게임 접속 상태가 바뀌었습니다."; return false; }
+            var before = plugin.Refresh.RequestRevision;
+            if (changes.Length == 0) plugin.Refresh.Request(Environment.TickCount64, source: source);
+            else plugin.Refresh.RequestBatch(Environment.TickCount64, changes);
+            if (plugin.Refresh.RequestRevision == before) { error = "갱신을 시작하지 못했습니다. 잠시 후 다시 확인해 주세요."; return false; }
+            refreshRevision = plugin.Refresh.RequestRevision;
+            ownedRefresh.Started(SelfId, refreshRevision, Environment.TickCount64);
+            plugin.RequestRead(); return true;
+        }
+        public WebRefreshProgress? ReadRefresh() => refreshRevision == plugin.Refresh.RequestRevision
+            ? WebRefreshProgress.From(plugin.Refresh) : null;
         public bool RequestQuery(out string error)
         {
             if (!plugin.TryQueryOwnListing(out error)) return false;
@@ -83,6 +109,8 @@ public sealed partial class Plugin
         }
         internal void BeforeRead(long now)
         {
+            if (ownedRefresh.BeforeRead(SelfId, plugin.Refresh.RequestRevision, plugin.Refresh.Busy,
+                plugin.WebEnabled, plugin.Refresh.Stage == RefreshStage.Queued, now)) CancelOwnedRefresh();
             // RequestOwn sets a flag; native dispatch happens in a later Read.
             // Recheck then too, especially if the character/editor changed in
             // the intervening frame. Never cancel a newer local request.
@@ -97,6 +125,11 @@ public sealed partial class Plugin
             if (ownedQuery.Owns(plugin.listingReader.RequestRevision, plugin.listingReader.Busy))
                 plugin.listingReader.FailRequest();
             ownedQuery.Clear();
+        }
+        internal void CancelOwnedRefresh()
+        {
+            if (ownedRefresh.Owns(plugin.Refresh.RequestRevision, plugin.Refresh.Busy)) plugin.Refresh.Cancel();
+            ownedRefresh.Clear();
         }
     }
 }

@@ -49,7 +49,7 @@ internal sealed class PartyWindow : Window
 
     private void DrawBrowser()
     {
-        if (!ImGui.CollapsingHeader("브라우저 조회")) return;
+        if (!ImGui.CollapsingHeader("브라우저 조회·수정")) return;
         ImGui.TextWrapped(plugin.WebStatus);
         if (plugin.WebEnabled)
         {
@@ -59,7 +59,7 @@ internal sealed class PartyWindow : Window
             if (ImGui.Button("브라우저 조회 끄기")) plugin.StopWeb();
         }
         else if (ImGui.Button("브라우저 조회 켜기")) plugin.StartWeb();
-        ImGui.TextWrapped("접속 링크를 같은 PC의 브라우저 주소창에 붙여넣으세요. 내 모집글과 등록된 직업·모집 조건을 확인할 수 있습니다.");
+        ImGui.TextWrapped("접속 링크를 같은 PC의 브라우저 주소창에 붙여넣으세요. 내 모집글을 조회하고 소개말·직업 제한·모집 조건을 한 번에 수정·갱신할 수 있습니다.");
     }
 
     private void DrawCurrentParty()

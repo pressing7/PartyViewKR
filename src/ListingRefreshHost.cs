@@ -48,6 +48,15 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
     public void QueryOwn() => reader.RequestOwn();
     public void CancelQuery() => reader.FailRequest();
 
+    // Publishing an editable browser snapshot must not overwrite the most
+    // recent refresh failure's diagnostic with a passive "own_verified" read.
+    internal RefreshTarget? CaptureOwn()
+    {
+        var previousCheck = check;
+        try { return TryGetOwn(out var target, out _) ? target : null; }
+        finally { check = previousCheck; }
+    }
+
     public bool TryGetOwn(out RefreshTarget target, out string error)
     {
         target = null!;

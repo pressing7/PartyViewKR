@@ -62,6 +62,10 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
     internal RefreshStage Stage { get => batch?.Stage ?? singleStage; private set => singleStage = value; }
     internal IReadOnlyList<ListingChangeResult> BatchResults => batch?.Results ?? [];
     internal bool IsBatch => batch != null;
+    internal long RequestRevision { get; private set; }
+    internal bool EditorStarted => batch?.EditorStarted ?? editCalls > 0;
+    internal bool Submitted => batch?.Submitted ?? submitCalls > 0;
+    private RefreshTarget? boundSource;
     internal bool Busy => batch?.Busy ?? (Stage is RefreshStage.Queued or RefreshStage.ReadingOwn or
         RefreshStage.OpeningEditor or RefreshStage.EditingSlot or RefreshStage.EditingDescription or RefreshStage.EditingObjective or RefreshStage.EditingBeginner or RefreshStage.EditingUniqueJobs or RefreshStage.EditingPrivate or RefreshStage.EditingCompletion or RefreshStage.EditingItemLevel or RefreshStage.EditingRule or RefreshStage.WaitingResult or RefreshStage.Verifying);
     internal ListingJobEdit? JobEdit { get; private set; }
@@ -109,15 +113,17 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
     private void RequestBatch(long now, ListingChange[] changes, Action? editorStarting)
     {
         if (Busy || CoolingDown(now) || host is not IListingBatchHost batchHost) return;
+        RequestRevision++; boundSource = null;
         JobEdit = null; DescriptionEdit = null; ObjectiveEdit = null; BeginnerEdit = null;
         UniqueJobsEdit = null; PrivateEdit = null; CompletionEdit = null; ItemLevelEdit = null; RuleEdit = null;
         batch = new(batchHost, changes, now, editorStarting);
     }
 
     internal void Request(long now, ListingJobEdit? edit = null, ListingDescriptionEdit? descriptionEdit = null,
-        ListingObjectiveEdit? objectiveEdit = null, ListingBeginnerEdit? beginnerEdit = null, ListingUniqueJobsEdit? uniqueJobsEdit = null, ListingPrivateEdit? privateEdit = null, ListingCompletionEdit? completionEdit = null, ListingItemLevelEdit? itemLevelEdit = null, ListingRuleEdit? ruleEdit = null)
+        ListingObjectiveEdit? objectiveEdit = null, ListingBeginnerEdit? beginnerEdit = null, ListingUniqueJobsEdit? uniqueJobsEdit = null, ListingPrivateEdit? privateEdit = null, ListingCompletionEdit? completionEdit = null, ListingItemLevelEdit? itemLevelEdit = null, ListingRuleEdit? ruleEdit = null, RefreshTarget? source = null)
     {
         if (Busy || CoolingDown(now)) return;
+        RequestRevision++; boundSource = source;
         batch = null;
         JobEdit = edit;
         DescriptionEdit = descriptionEdit;
@@ -191,6 +197,8 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
                 if (!host.TryGetOwn(out var own, out var ownError))
                 { WaitForOwn(ownError, false); return; }
                 if (own.SelfId != self) { Stop("모집자가 변경되어 중단했습니다.", "owner_changed"); return; }
+                if (boundSource != null && !ListingPendingChanges.SameSource(boundSource, own))
+                { Stop("브라우저에서 확인한 뒤 모집글 또는 참가자가 바뀌었습니다. 새 모집글에서 다시 확인해 주세요.", "web_source_changed"); return; }
                 if (JobEdit != null && !JobEdit.MatchesOriginal(own))
                 { Stop("편집 중 참가자 또는 모집 조건이 바뀌었습니다. 새 모집글에서 다시 선택해 주세요.", "job_edit_stale"); return; }
                 if (DescriptionEdit != null && !DescriptionEdit.MatchesOriginal(own))

@@ -6,6 +6,7 @@
   <meta name="color-scheme" content="dark">
   <title>PVKR · 내 모집글</title>
   <link rel="stylesheet" href="/style.css">
+  <script src="/editor.js" defer></script>
   <script src="/app.js" defer></script>
 </head>
 <body>
@@ -16,22 +17,34 @@
     </header>
     <main>
       <section class="page-heading">
-        <div><p class="eyebrow">PARTY FINDER</p><h1>내 모집글</h1><p class="subtle">게임에 등록된 모집 정보를 한눈에 확인하세요.</p></div>
-        <div class="query-action"><button id="query" type="button" disabled>내 모집글 조회 <span aria-hidden="true">↻</span></button><small>게임에서 모집 상세창을 엽니다.</small></div>
+        <div><p class="eyebrow">PARTY FINDER</p><h1>내 모집글</h1><p class="subtle">모집 정보를 확인하고 한 번에 수정·갱신하세요.</p></div>
+        <div class="query-action"><div class="action-buttons"><button id="query" class="secondary" type="button" disabled>내 모집글 조회</button><button id="refresh" type="button" disabled>내 모집글 갱신</button></div><small>갱신은 현재 모집 조건을 유지합니다.</small></div>
       </section>
       <div class="notice" id="notice" role="status" aria-live="polite">PVKR 연결을 확인하는 중입니다.</div>
+      <section class="panel operation" id="operation" hidden aria-labelledby="operation-heading">
+        <div class="section-heading"><h2 id="operation-heading">갱신 진행 및 결과</h2><span class="badge" id="operation-state"></span></div>
+        <p id="operation-message" role="status" aria-live="polite"></p><ul id="operation-results"></ul>
+      </section>
+      <section class="panel" id="editor" hidden aria-labelledby="editor-heading">
+        <div class="section-heading"><h2 id="editor-heading">모집 내용 수정</h2><button id="reload-editor" class="secondary small" type="button">현재 정보로 다시 편집</button></div>
+        <p class="subtle edit-help">소개말·모집 조건·빈자리 직업 제한을 함께 바꿀 수 있습니다. 선택한 콘텐츠에서 지원하지 않는 설정은 건너뛰고 갱신한 뒤 알려드립니다.</p>
+        <form id="edit-form" autocomplete="off" novalidate><fieldset id="editor-fields"></fieldset>
+          <div class="edit-submit"><p class="subtle" id="edit-note" role="status"></p><button id="apply" type="submit" disabled>변경사항 적용 및 갱신</button></div>
+        </form>
+      </section>
       <div class="empty panel" id="empty"><span class="empty-mark" aria-hidden="true">◇</span><h2 id="empty-title">모집글을 불러오세요</h2><p id="empty-text">위의 조회 버튼을 눌러 현재 내 모집글을 확인할 수 있습니다.</p></div>
       <div id="listing" hidden>
         <section class="panel overview" aria-labelledby="duty">
           <div class="overview-title"><div><p class="eyebrow">모집 대상</p><h2 id="duty"></h2><p class="leader">모집자 <strong id="leader"></strong></p></div><span class="badge" id="freshness"></span></div>
           <dl class="stats"><div><dt>모집 인원</dt><dd id="members"></dd></div><div><dt id="remaining-label">확인한 남은 시간</dt><dd id="remaining"></dd></div><div><dt>내용을 읽은 시각</dt><dd id="read-at"></dd></div></dl>
           <div class="description"><h3>모집 소개말</h3><p id="description"></p></div>
+          <div class="edit-action"><button id="edit" class="secondary" type="button" disabled>모집 내용 수정</button><small id="refresh-reason" class="subtle"></small></div>
         </section>
         <section class="panel" aria-labelledby="settings-heading"><div class="section-heading"><h2 id="settings-heading">모집 조건</h2><span class="subtle">등록된 설정</span></div><dl id="settings" class="settings"></dl></section>
         <section class="composition" aria-labelledby="slots-heading"><div class="section-heading"><h2 id="slots-heading">파티 구성</h2><span class="subtle">모집글에 등록된 직업 기준</span></div><p class="subtle hint">직업 제한에 마우스를 올리거나 눌러 허용 직업을 확인할 수 있습니다.</p><p id="slot-note" class="notice" hidden></p><div id="groups" class="groups"></div></section>
       </div>
     </main>
-    <footer><span>PVKR <span id="version"></span> · 브라우저 조회</span><span>연결 관리는 게임의 /pvkr에서</span></footer>
+    <footer><span>PVKR <span id="version"></span> · 브라우저 조회·수정</span><span>연결 관리는 게임의 /pvkr에서</span></footer>
   </div>
 </body>
 </html>
