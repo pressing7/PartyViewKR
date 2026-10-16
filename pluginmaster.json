@@ -3,8 +3,8 @@
     "Author": "Local build",
     "Name": "Party View KR",
     "InternalName": "PartyViewKR",
-    "AssemblyVersion": "0.3.31.0",
-    "Description": "한섭 파티원·모집글 조회와 내 모집글 수동 갱신. /pvkr에서 확인하고 일반 4·8인 및 연합 24·48인 모집의 제한 해제, 최저 아이템 레벨로 참가, 초월하는 힘 무효화, 전리품 규칙, 평균 아이템 레벨, 완료조건, 비공개 설정과 네 자리 비밀번호, 잡 중복 없음, 초행 및 초보자 환영, 목적, 소개말과 빈자리 허용 직업을 수정할 수 있습니다. 여러 변경을 모아 한 번에 갱신하고, 적용하지 못한 항목은 갱신 후 실제 모집글 조회와 함께 안내합니다. 같은 PC의 브라우저에서 내 모집글과 등록된 직업·모집 조건을 조회할 수 있습니다.",
+    "AssemblyVersion": "0.3.32.0",
+    "Description": "한섭 파티원·모집글 조회와 내 모집글 수동 갱신. /pvkr에서 확인하고 일반 4·8인, 연합 24·48인 및 친선경기 모집의 소개말, 빈자리 허용 직업과 모집 조건을 수정할 수 있습니다. 여러 변경을 모아 한 번에 갱신하고, 적용하지 못한 항목은 갱신 후 실제 모집글 조회와 함께 안내합니다. 같은 PC의 브라우저에서도 내 모집글을 조회하고 소개말·직업 제한·모집 조건을 함께 수정·갱신할 수 있습니다.",
     "Punchline": "모집글 조회·수동 갱신과 모집 조건·소개말·허용 직업 수정",
     "ApplicableVersion": "any",
     "DalamudApiLevel": 15,
@@ -13,9 +13,9 @@
       "korean"
     ],
     "RepoUrl": "https://github.com/pressing7/PartyViewKR",
-    "LastUpdate": 1792180793,
-    "DownloadLinkInstall": "https://github.com/pressing7/PartyViewKR/releases/download/0.3.31/PartyViewKR.zip",
-    "DownloadLinkUpdate": "https://github.com/pressing7/PartyViewKR/releases/download/0.3.31/PartyViewKR.zip",
-    "DownloadLinkTesting": "https://github.com/pressing7/PartyViewKR/releases/download/0.3.31/PartyViewKR.zip"
+    "LastUpdate": 1792182944,
+    "DownloadLinkInstall": "https://github.com/pressing7/PartyViewKR/releases/download/0.3.32/PartyViewKR.zip",
+    "DownloadLinkUpdate": "https://github.com/pressing7/PartyViewKR/releases/download/0.3.32/PartyViewKR.zip",
+    "DownloadLinkTesting": "https://github.com/pressing7/PartyViewKR/releases/download/0.3.32/PartyViewKR.zip"
   }
 ]
