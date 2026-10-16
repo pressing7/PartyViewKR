@@ -22,7 +22,7 @@ internal sealed class ListingChangeResult(ListingChange change)
 
 // One editor, sequential item operations, one submit, one fresh result query.
 // Item errors are collected. They never retry a click or abort the remaining items.
-internal sealed class ListingBatchRefresh(IListingBatchHost host, ListingChange[] changes, long now)
+internal sealed class ListingBatchRefresh(IListingBatchHost host, ListingChange[] changes, long now, Action? editorStarting = null)
 {
     internal RefreshStage Stage { get; private set; } = RefreshStage.Queued;
     internal bool Busy => Stage is not (RefreshStage.Completed or RefreshStage.Unconfirmed or RefreshStage.Stopped);
@@ -64,6 +64,9 @@ internal sealed class ListingBatchRefresh(IListingBatchHost host, ListingChange[
                 revision = host.EditorRevision; closedRevision = host.EditorClosedRevision;
                 Set(RefreshStage.OpeningEditor, tick, "기존 모집 수정창 여는 중");
                 editCalls++;
+                // Preflight failures keep the user's queue. Consume it only
+                // when entering the first native edit attempt, never on retry.
+                editorStarting?.Invoke();
                 if (!host.OpenEditor(own, out var openError)) Stop(openError, "open_failed");
                 break;
             case RefreshStage.OpeningEditor:

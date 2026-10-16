@@ -98,12 +98,20 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
     private string ruleVerification = "ruleResultCheck=not_started";
     private RecruitmentEditorMode editorMode;
 
-    internal void RequestBatch(long now, ListingChange[] changes)
+    internal void RequestBatch(long now, ListingPendingChanges pending)
+    {
+        var changes = pending.Items.ToArray();
+        RequestBatch(now, changes, () => pending.Consume(changes));
+    }
+
+    internal void RequestBatch(long now, ListingChange[] changes) => RequestBatch(now, changes, null);
+
+    private void RequestBatch(long now, ListingChange[] changes, Action? editorStarting)
     {
         if (Busy || CoolingDown(now) || host is not IListingBatchHost batchHost) return;
         JobEdit = null; DescriptionEdit = null; ObjectiveEdit = null; BeginnerEdit = null;
         UniqueJobsEdit = null; PrivateEdit = null; CompletionEdit = null; ItemLevelEdit = null; RuleEdit = null;
-        batch = new(batchHost, changes, now);
+        batch = new(batchHost, changes, now, editorStarting);
     }
 
     internal void Request(long now, ListingJobEdit? edit = null, ListingDescriptionEdit? descriptionEdit = null,

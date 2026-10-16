@@ -9,6 +9,7 @@
     <Compile Include="../src/ListingIdentity.cs" Link="ListingIdentity.cs" />
     <Compile Include="../src/ListingDescription.cs" Link="ListingDescription.cs" />
     <Compile Include="../src/ListingDescriptionEdit.cs" Link="ListingDescriptionEdit.cs" />
+    <Compile Include="../src/ListingDescriptionRecovery.cs" Link="ListingDescriptionRecovery.cs" />
     <Compile Include="../src/ListingObjectiveEdit.cs" Link="ListingObjectiveEdit.cs" />
     <Compile Include="../src/ListingBeginnerEdit.cs" Link="ListingBeginnerEdit.cs" />
     <Compile Include="../src/ListingCheckboxUi.cs" Link="ListingCheckboxUi.cs" />

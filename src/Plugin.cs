@@ -108,10 +108,7 @@ public sealed class Plugin : IDalamudPlugin
             JobDraft != null || DescriptionDraft != null || ObjectiveDraft != null || BeginnerDraft != null || UniqueJobsDraft != null ||
             PrivateDraft != null || CompletionDraft != null || ItemLevelDraft != null || RuleDraft != null) return;
         if (PendingChanges.Items.Count > 0)
-        {
-            Refresh.RequestBatch(Environment.TickCount64, PendingChanges.Items.ToArray());
-            if (Refresh.IsBatch && Refresh.Busy) PendingChanges.Clear();
-        }
+            Refresh.RequestBatch(Environment.TickCount64, PendingChanges);
         else Refresh.Request(Environment.TickCount64);
         PendingStatus = "";
         RequestRead();

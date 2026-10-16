@@ -253,6 +253,7 @@ ListingCompletionEditTests.Run(Test, Check);
 ListingItemLevelEditTests.Run(Test, Check);
 ListingRuleEditTests.Run(Test, Check);
 ListingBatchTests.Run(Test, Check);
+ListingDescriptionRecoveryTests.Run(Test, Check);
 CompatibilityTests.Run(Test, Check);
 Console.WriteLine($"All {passed} tests passed. Native game interaction still requires in-game validation.");
 
@@ -268,7 +269,7 @@ class FakeHost : IListingRefreshHost
     public RecruitmentEditorMode EditorActionMode { get; set; } = RecruitmentEditorMode.Refresh;
     public long EditorRevision { get; set; }
     public long EditorClosedRevision { get; set; }
-    public bool OwnVerified = true, SubmitAllowed = true, KeepEditorOpen, ThrowOnSubmit;
+    public bool OwnVerified = true, SubmitAllowed = true, KeepEditorOpen, ThrowOnSubmit, ThrowOnOpen;
     public int QueryCalls, EditCalls, SubmitCalls;
     public string? SubmittedDescription, SubmittedDescriptionArgument;
     public RefreshTarget? SubmittedTarget, EditExpected;
@@ -304,7 +305,11 @@ class FakeHost : IListingRefreshHost
     public void CancelQuery() => QueryBusy = false;
     public bool TryGetOwn(out RefreshTarget target, out string error) { target = Target; error = "작성자 확인 실패"; return OwnVerified; }
     public bool OpenEditor(RefreshTarget target, out string error)
-    { EditCalls++; EditorVisible = EditorReady = true; EditorRevision++; error = ""; return true; }
+    {
+        EditCalls++; EditorVisible = EditorReady = true; EditorRevision++; error = "";
+        if (ThrowOnOpen) throw new InvalidOperationException("editor opened before dispatch threw");
+        return true;
+    }
     public bool Submit(RefreshTarget target, string? description, out string error)
     {
         SubmitCalls++; SubmittedTarget = target; SubmittedDescription = target.Description; error = "조건 확인 실패";

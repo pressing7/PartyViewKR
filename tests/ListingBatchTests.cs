@@ -49,6 +49,69 @@ static class ListingBatchTests
             check(!q.Queue(new(new ListingPrivateEdit(t, true, "123")), out _) && q.Items.Count == 1, "invalid PIN queued");
             check(!q.Queue(Rule(t with { ListingId = 99 }), out var error) && error.Length > 0 && q.Items.Count == 0, "mixed listing queue");
         });
+        test("preflight failure and cancellation preserve every queued input including PIN", () => {
+            foreach (var reason in new[] { "open_editor", "busy_query", "blocked", "query_failed", "query_timeout", "stale", "cancel", "exception" })
+            {
+                var t = Target(); var q = new ListingPendingChanges();
+                q.Queue(Description(t), out _); q.Queue(new(new ListingPrivateEdit(t, true, "0000")), out _);
+                var saved = q.Items.ToArray(); var h = new BatchFakeHost { Target = t }; var f = new ListingRefresh(h);
+                if (reason == "open_editor") h.EditorVisible = true;
+                if (reason == "busy_query") h.QueryBusy = true;
+                if (reason == "blocked") h.BlockReason = "not ready";
+                f.RequestBatch(1000, q);
+                check(q.Items.SequenceEqual(saved), "request prematurely consumed queue");
+                f.Update(1000);
+                switch (reason)
+                {
+                    case "query_failed": h.QueryBusy = false; f.Update(1500); break;
+                    case "query_timeout": f.Update(17000); break;
+                    case "stale": h.Target = t with { ListingId = 999 }; h.FinishQuery(); f.Update(1500); break;
+                    case "cancel": f.Cancel(); break;
+                    case "exception": f.Fail("query exception"); break;
+                }
+                check(!f.Busy && h.EditCalls == 0 && h.SubmitCalls == 0 && q.Items.SequenceEqual(saved), "preflight lost queue: " + reason);
+            }
+        });
+        test("retained changes can be retried and are consumed once when the editor attempt starts", () => {
+            var t = Target(); var q = new ListingPendingChanges(); q.Queue(Description(t), out _);
+            var h = new BatchFakeHost { Target = t, EditorVisible = true }; var f = new ListingRefresh(h);
+            f.RequestBatch(1000, q); f.Update(1000);
+            h.EditorVisible = false;
+            f.RequestBatch(1500, q); f.Update(1500);
+            check(q.Items.Count == 1 && h.EditCalls == 0, "query consumed queue");
+            h.FinishQuery(); f.Update(2000);
+            check(q.Items.Count == 0 && h.EditCalls == 1, "editor attempt did not consume queue");
+            f.Update(2500); var tick = RunToSubmit(h, f, 3000); Verify(h, f, tick);
+            q.Queue(Description(h.Target, "다음 수정"), out _); f.Update(tick + 3000);
+            check(q.Items.Count == 1 && h.SubmitCalls == 1, "completed run consumed a later queue or replayed");
+        });
+        test("blocked batch requests and later replacements cannot clear the pending queue", () => {
+            var t = Target(); var q = new ListingPendingChanges(); q.Queue(Description(t), out _);
+            var h = new BatchFakeHost { Target = t }; var f = new ListingRefresh(h);
+            f.RequestBatch(1000, q); f.Update(1000);
+            q.Queue(Description(t, "이후 입력"), out _); q.Queue(Rule(t), out _);
+            f.RequestBatch(1100, q); // ignored while the first request is busy
+            h.FinishQuery(); f.Update(1500);
+            check(h.EditCalls == 1 && q.Items.Count == 2 && q.Items[0].ValueLabel == "이후 입력", "consumed replacement or unrelated input");
+            f.Cancel(); f.Update(2000);
+            check(q.Items.Count == 2 && h.SubmitCalls == 0, "cancel replayed or consumed new input");
+        });
+        test("cancelling after an editor attempt never restores potentially applied changes", () => {
+            var t = Target(); var q = new ListingPendingChanges(); q.Queue(Description(t), out _);
+            var h = new BatchFakeHost { Target = t }; var f = new ListingRefresh(h);
+            f.RequestBatch(1000, q); f.Update(1000); h.FinishQuery(); f.Update(1500);
+            f.Cancel(); f.Update(2000);
+            check(q.Items.Count == 0 && h.EditCalls == 1 && h.SubmitCalls == 0, "attempted edit was requeued");
+        });
+        test("an editor dispatch exception consumes the queue and never retries the native attempt", () => {
+            var t = Target(); var q = new ListingPendingChanges(); q.Queue(Description(t), out _);
+            var h = new BatchFakeHost { Target = t, ThrowOnOpen = true }; var f = new ListingRefresh(h);
+            f.RequestBatch(1000, q); f.Update(1000); h.FinishQuery();
+            try { f.Update(1500); }
+            catch (InvalidOperationException) { f.Fail("editor dispatch exception"); }
+            f.Update(2000);
+            check(!f.Busy && q.Items.Count == 0 && h.EditCalls == 1 && h.SubmitCalls == 0, "native attempt retained or replayed");
+        });
         test("all edit kinds and multiple slots share one cumulative editor and one submit", () => {
             foreach (var count in new[] { 4, 8, 24, 48 })
             {

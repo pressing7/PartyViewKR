@@ -18,15 +18,19 @@ internal sealed unsafe partial class ListingRefreshHost
         $"descriptionSubmitCallbackCalls={descriptionSession?.SubmitCallbackCalls ?? 0}; " +
         $"descriptionSubmitCallbackReturned={descriptionSession?.SubmitCallbackReturned?.ToString() ?? "unknown"}; " +
         $"descriptionRequestedBytes={descriptionSession?.Edit.ByteCount ?? 0}; descriptionVisibleChars={descriptionVisibleChars}; " +
-        $"descriptionStoredChars={descriptionStoredChars}; descriptionMaxByte={descriptionMaxByte}; descriptionMaxChar={descriptionMaxChar}";
+        $"descriptionStoredChars={descriptionStoredChars}; descriptionMaxByte={descriptionMaxByte}; descriptionMaxChar={descriptionMaxChar}; " +
+        $"descriptionRecoveryCheck={descriptionSession?.Recovery.Check ?? "not_started"}; descriptionRecoveryInputCalls={descriptionSession?.Recovery.InputCalls ?? 0}";
 
-    private sealed class DescriptionSession(RefreshTarget original, ListingDescriptionEdit edit, string invariant)
+    private sealed class DescriptionSession(RefreshTarget original, ListingDescriptionEdit edit, string invariant, nint input)
     {
         internal readonly RefreshTarget Original = original;
         internal readonly ListingDescriptionEdit Edit = edit;
         internal readonly RefreshTarget Expected = edit.Expected(original);
         internal readonly string Invariant = invariant;
         internal readonly long Started = Environment.TickCount64;
+        internal readonly nint Input = input;
+        internal readonly ListingDescriptionRecovery Recovery = new();
+        internal string InputText = edit.Value;
         internal string Phase = "input";
         internal int InputCalls, CallbackCalls, SubmitCallbackCalls;
         internal bool? SubmitCallbackReturned;
@@ -56,10 +60,12 @@ internal sealed unsafe partial class ListingRefreshHost
 
         // SetText applies the game's input limits and formatting. Do not write
         // directly into StoredRecruitmentInfo or bypass the visible text input.
-        descriptionSession = new(target, edit, DescriptionInvariant(agent));
+        descriptionSession = new(target, edit, DescriptionInvariant(agent), (nint)input);
         descriptionSession.InputCalls++;
         descriptionCheck = "setting_input_once";
         input->SetText(edit.Value);
+        if (NativeReadGuard.Readable(input, (nuint)sizeof(AtkComponentTextInput)) &&
+            NativeReadGuard.Text(&input->EvaluatedString, out var visible)) descriptionSession.InputText = visible;
         error = "";
         return true;
     }

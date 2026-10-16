@@ -44,7 +44,8 @@ internal sealed record NativeContract(int Schema, int ApiLevel, string AssemblyN
                 var field = md.GetFieldDefinition(fh);
                 var fieldName = md.GetString(field.Name);
                 // Only enum constants used by the plugin are part of the contract.
-                if (name.EndsWith(".AtkEventType") && fieldName is not ("value__" or "ButtonClick" or "MouseOver" or "MouseOut")) continue;
+                if (name.EndsWith(".AtkEventType") && fieldName is not ("value__" or "ButtonClick" or "MouseOver" or "MouseOut" or
+                    "ValueUpdate" or "ListItemClick" or "ListItemHighlight" or "MouseMove" or "ListItemRollOver" or "ListItemSelect")) continue;
                 if (name.EndsWith(".NodeType") && fieldName is not ("value__" or "Text")) continue;
                 if (name.EndsWith("+DutyCategory") && fieldName is not ("value__" or "PvP")) continue;
                 var signature = field.DecodeSignature(names, (object?)null);

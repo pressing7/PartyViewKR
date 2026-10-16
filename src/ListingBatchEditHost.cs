@@ -74,7 +74,40 @@ internal sealed unsafe partial class ListingRefreshHost : IListingBatchHost
             (remaining->IsOpen || remaining->OpenStateChangePending))
         { error = "선택 목록 닫힘 대기"; return SlotEditProgress.Waiting; }
         if (!ReadBatchDraft(identity, out current, out error)) return SlotEditProgress.Failed;
+        var descriptionRecovery = RecoverBatchDescription(addon, current, out error);
+        if (descriptionRecovery != SlotEditProgress.Complete) return descriptionRecovery;
         editingTarget = current;
+        return SlotEditProgress.Complete;
+    }
+
+    private SlotEditProgress RecoverBatchDescription(AddonLookingForGroupCondition* addon, RefreshTarget current, out string error)
+    {
+        error = "";
+        if (descriptionSession is not { InputCalls: > 0, Completed: false } session) return SlotEditProgress.Complete;
+        var input = addon->CommentTextInput;
+        if ((nint)input != session.Input || !NativeReadGuard.Readable(input, (nuint)sizeof(AtkComponentTextInput)) ||
+            !OwnsComponent((AtkComponentBase*)input) || !input->Enabled ||
+            !NativeReadGuard.Text(&input->EvaluatedString, out var visible))
+        { error = "소개말 입력칸을 다시 확인하지 못했습니다."; return SlotEditProgress.Failed; }
+        // ReadBatchDraft has already verified the owned editor and read the
+        // actual stored comment. Restore the UI only, never the requested text
+        // or other draft fields, so later items can keep their normal guards.
+        var action = session.Recovery.Next(visible, current.Description, session.Edit.Value, Environment.TickCount64, session.InputText);
+        if (action == DescriptionRecoveryAction.RestoreInput)
+        {
+            try { input->SetText(current.Description); }
+            catch (Exception)
+            {
+                // SetText may have taken effect before throwing. Observe once
+                // more on the next update without dispatching another input.
+                error = "소개말 입력칸 정리 결과 확인 중";
+                return SlotEditProgress.Waiting;
+            }
+        }
+        if (action is DescriptionRecoveryAction.RestoreInput or DescriptionRecoveryAction.Wait)
+        { error = "소개말 입력칸 정리 결과 확인 중"; return SlotEditProgress.Waiting; }
+        if (action == DescriptionRecoveryAction.Failed)
+        { error = "소개말 입력칸과 저장된 내용이 일치하지 않아 정리를 확인하지 못했습니다."; return SlotEditProgress.Failed; }
         return SlotEditProgress.Complete;
     }
 

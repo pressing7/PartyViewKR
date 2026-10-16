@@ -118,6 +118,8 @@ internal sealed class ListingPendingChanges
         error = ""; return true;
     }
     internal ListingChange[] Take() { var result = items.ToArray(); items.Clear(); return result; }
+    // Remove only this run's exact entries, never a later replacement or a new item.
+    internal void Consume(ListingChange[] submitted) => items.RemoveAll(item => submitted.Any(c => ReferenceEquals(c, item)));
     internal void Clear() => items.Clear();
     internal static bool SameSource(RefreshTarget a, RefreshTarget b) => a.ListingId == b.ListingId &&
         RefreshEvidence.SameRecruitment(a, b) && ListingJobEdit.SameSlots(a.Slots, b.Slots);
