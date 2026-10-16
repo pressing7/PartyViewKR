@@ -26,6 +26,7 @@ if (args[0].StartsWith("capture", StringComparison.Ordinal))
         [ui + "Agent.AgentLookingForGroup+RecruitmentSub"] = ["get_SlotFlags", "get_Comment", "get_MemberContentIds"],
         [ui + "Agent.AgentLookingForGroup+DutyCategory"] = [],
         [ui + "Agent.AgentLookingForGroup+Objective"] = [],
+        [ui + "Agent.AgentLookingForGroup+CompletionStatus"] = [],
         [ui + "Agent.AgentLookingForGroup+JoinCondition"] = [],
         [ui + "Agent.AgentInterface"] = ["Show"],
         [ui + "AddonLookingForGroupDetail"] = ["get_IsVisible", "get_IsReady"],

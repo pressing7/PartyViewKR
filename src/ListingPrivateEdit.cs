@@ -5,7 +5,8 @@ namespace PartyViewKR;
 internal static class ListingPrivate
 {
     internal const byte Flag = 0x02;
-    // RecruitmentSub.Password: 10000 = public; 0 = private, password unset.
+    // 10000 is public. KR manual ValueUpdate(27), Param 29 accepts numeric 0.
+    // Require an explicit four-digit draft; never infer an entered PIN from 0 alone.
     internal const ushort PublicPassword = 10000;
     internal static bool FromFlags(byte flags) => (flags & Flag) != 0;
     internal static bool? Read(string extraCriteria) => ListingUniqueJobs.TryFlags(extraCriteria, out var flags) ? FromFlags(flags) : null;
@@ -15,7 +16,7 @@ internal static class ListingPrivate
         value = 0;
         if (text.Length != 4 || text.Any(c => c is < '0' or > '9')) return false;
         value = int.Parse(text, CultureInfo.InvariantCulture);
-        return value is >= 1 and <= 9999;
+        return value is >= 0 and <= 9999;
     }
     internal static string WithEnabled(string extraCriteria, bool enabled)
     {
@@ -57,7 +58,7 @@ internal readonly record struct PrivateUiState(bool Checked, ushort StoredPasswo
 {
     internal bool? StoredEnabled => ListingPrivate.StoredEnabled(StoredPassword);
     internal bool Matches(bool enabled, int password) => Checked == enabled && StoredEnabled == enabled &&
-        (!enabled || password is >= 1 and <= 9999 && InputReady && NumericValue == password && StoredPassword == password);
+        (!enabled || password is >= 0 and <= 9999 && InputReady && NumericValue == password && StoredPassword == password);
     public override string ToString() => $"PrivateUiState {{ Checked = {Checked}, InputReady = {InputReady}, Password = redacted }}";
 }
 
@@ -73,7 +74,7 @@ internal sealed class ListingPrivateUi(bool original, bool enabled, int password
     internal PrivateUiAction Next(PrivateUiState state, long now)
     {
         if (Phase == "failed") return PrivateUiAction.Failed;
-        if (!state.StoredEnabled.HasValue || enabled && password is < 1 or > 9999) return Fail("private_state_unknown");
+        if (!state.StoredEnabled.HasValue || enabled && password is < 0 or > 9999) return Fail("private_state_unknown");
         if (Phase == "ready")
         {
             if (state.Checked != original || state.StoredEnabled != original) return Fail("private_original_mismatch");

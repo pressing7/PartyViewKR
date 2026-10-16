@@ -27,18 +27,34 @@ static class ListingPrivateEditTests
             return (h, f);
         }
         test("private PIN requires exactly four ASCII digits and keeps leading zeroes", () => {
-            foreach (var pin in new[] { "0001", "0123", "1234", "5678", "9999" })
+            foreach (var pin in new[] { "0000", "0001", "0123", "1234", "5678", "9999" })
             {
                 var d = new ListingPrivateDraft(Target()) { Enabled = true, Password = pin };
                 check(d.Request.Valid && d.Request.Password == pin && d.Request.PasswordValue.ToString("D4") == pin, "four-digit PIN lost");
                 check(!d.Request.ToString().Contains(pin), "PIN leaked in record formatting");
             }
-            foreach (var pin in new[] { "", "1", "123", "12345", "1234 ", " 1234", "-123", "+123", "1.23", "１２３４", "١٢٣٤", "0000", "12\n3" })
+            foreach (var pin in new[] { "", "1", "123", "12345", "1234 ", " 1234", "-123", "+123", "1.23", "１２３４", "١٢٣٤", "0", "00", "000", "12\n3" })
             {
                 var h = new FakeHost { Target = Target() }; var f = new ListingRefresh(h);
                 f.Request(1000, privateEdit: new(h.Target, true, pin)); f.Update(1000);
                 check(f.Stage == RefreshStage.Stopped && h.QueryCalls + h.EditCalls + h.SubmitCalls == 0, "invalid PIN began editing");
             }
+        });
+        test("explicit 0000 is distinct from blank input and still requires numeric dispatch and verification", () => {
+            var draft = new ListingPrivateDraft(Target()) { Enabled = true };
+            check(!draft.Request.Valid, "blank draft became a zero PIN");
+            draft.Password = "0000";
+            check(draft.Request.Valid && draft.Request.PasswordValue == 0, "four zeroes rejected");
+            var ui = new ListingPrivateUi(false, true, 0);
+            check(ui.Next(new(false, 10000, 0, false), 1000) == PrivateUiAction.Toggle, "enable missing");
+            check(ui.Next(new(true, 0, 0, true), 1500) == PrivateUiAction.Input, "zero skipped explicit numeric dispatch");
+            check(ui.Next(new(true, 0, 0, true), 1501) == PrivateUiAction.Wait, "no settle interval");
+            check(ui.Next(new(true, 0, 0, true), 2000) == PrivateUiAction.Complete, "zero storage not verified");
+            check(ui.Next(new(true, 1234, 0, true), 2500) == PrivateUiAction.Failed, "mismatched zero storage accepted");
+            ui = new ListingPrivateUi(true, true, 0);
+            check(ui.Next(new(true, 1234, 1234, true), 1000) == PrivateUiAction.Input, "existing private PIN not changed");
+            check(ui.Next(new(true, 1234, 0, true), 1500) == PrivateUiAction.Wait, "UI zero alone confirmed");
+            check(ui.Next(new(true, 0, 0, true), 2000) == PrivateUiAction.Complete, "changed zero not confirmed");
         });
         test("private flag matches native metadata and preserves all unrelated join bits", () => {
             using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "native-contract.json"));

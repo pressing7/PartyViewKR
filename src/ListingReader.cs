@@ -10,6 +10,7 @@ internal sealed record ListingSnapshot(string Status, ListingOwner Owner, string
 {
     internal ListingSlots Slots { get; init; } = ListingSlots.Unavailable("not_read");
     internal byte? Objective { get; init; }
+    internal byte? Completion { get; init; }
     internal bool? BeginnerFriendly { get; init; }
     internal bool? UniqueJobs { get; init; }
     internal bool? Private { get; init; }
@@ -100,6 +101,7 @@ internal sealed class ListingReader
 
         var owner = ListingOwner.Unknown;
         byte? objective = null;
+        byte? completion = null;
         bool? beginnerFriendly = null;
         bool? uniqueJobs = null;
         bool? privateListing = null;
@@ -124,6 +126,7 @@ internal sealed class ListingReader
                 objective = (byte)detail.Objective;
             if (shapePlausible && nameAgrees && commentAgrees)
             {
+                if (ListingCompletions.Supported((byte)detail.CompletionStatus) || (byte)detail.CompletionStatus == 8) completion = (byte)detail.CompletionStatus;
                 beginnerFriendly = ListingBeginners.Decode(detail.BeginnerFriendly);
                 uniqueJobs = ListingUniqueJobs.FromFlags((byte)detail.JoinConditionFlags);
                 privateListing = ListingPrivate.FromFlags((byte)detail.JoinConditionFlags);
@@ -139,6 +142,7 @@ internal sealed class ListingReader
                 $"leaderNameAgrees={nameAgrees}; commentAgrees={commentAgrees}; " +
                 $"nativeCommentReadable={nativeCommentRead}; nativeCommentChars={nativeComment.Length}; " +
                 $"nativeSlots={detail.SlotsFilled}/{detail.TotalSlots}; nativeTimeRaw={detail.TimeLeft}; " +
+                $"listingCompletionRaw={(byte)detail.CompletionStatus}; listingCompletionReadable={completion.HasValue}; " +
                 $"listingObjectiveRaw={(byte)detail.Objective}; listingObjectiveReadable={objective.HasValue}; " +
                 $"listingBeginnerRaw={detail.BeginnerFriendly}; listingBeginnerReadable={beginnerFriendly.HasValue}; " +
                 $"listingJoinConditionFlags={(byte)detail.JoinConditionFlags}; listingUniqueJobs={uniqueJobs?.ToString() ?? "unknown"}; listingPrivate={privateListing?.ToString() ?? "unknown"}";
@@ -160,7 +164,7 @@ internal sealed class ListingReader
         if (owner == ListingOwner.Unknown)
             note = (note + " 현재 열린 상세 창의 내용입니다. 내 모집글인지 여부는 아직 확인되지 않았습니다.").Trim();
         return new("상세 창에서 읽은 모집글", owner, leader, duty, description.Text,
-            remaining, DateTime.Now, true, note, diagnostic) { Slots = slots, Objective = objective, BeginnerFriendly = beginnerFriendly, UniqueJobs = uniqueJobs, Private = privateListing };
+            remaining, DateTime.Now, true, note, diagnostic) { Slots = slots, Objective = objective, Completion = completion, BeginnerFriendly = beginnerFriendly, UniqueJobs = uniqueJobs, Private = privateListing };
     }
 
     private unsafe void HandleRequest()

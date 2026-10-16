@@ -245,6 +245,7 @@ ListingObjectiveEditTests.Run(Test, Check);
 ListingBeginnerEditTests.Run(Test, Check);
 ListingUniqueJobsEditTests.Run(Test, Check);
 ListingPrivateEditTests.Run(Test, Check);
+ListingCompletionEditTests.Run(Test, Check);
 CompatibilityTests.Run(Test, Check);
 Console.WriteLine($"All {passed} tests passed. Native game interaction still requires in-game validation.");
 
@@ -281,6 +282,9 @@ sealed class FakeHost : IListingRefreshHost
     public int PrivateEditCalls;
     public bool PrivateEditAllowed = true, PrivateEditComplete = true, PrivateEditFailed, ThrowOnPrivateEdit;
     public RefreshTarget? PrivateExpected;
+    public int CompletionEditCalls;
+    public bool CompletionEditAllowed = true, CompletionEditComplete = true, CompletionEditFailed, ThrowOnCompletionEdit;
+    public RefreshTarget? CompletionExpected;
     public RefreshTarget Target = new(10, 1, 123, "기존 모집 문구", "same", 1800, 8);
     public void QueryOwn() { QueryCalls++; QueryBusy = true; QuerySucceeded = false; }
     public void FinishQuery() { QueryBusy = false; QuerySucceeded = true; DetailRevision++; }
@@ -372,5 +376,18 @@ sealed class FakeHost : IListingRefreshHost
     {
         expected = PrivateExpected!; error = "비공개 반영 확인 실패";
         return PrivateEditFailed ? SlotEditProgress.Failed : PrivateEditComplete ? SlotEditProgress.Complete : SlotEditProgress.Waiting;
+    }
+    public bool BeginCompletionEdit(RefreshTarget target, ListingCompletionEdit edit, out string error)
+    {
+        CompletionEditCalls++; error = "완료조건 설정 실패";
+        if (ThrowOnCompletionEdit) throw new InvalidOperationException("simulated completion failure");
+        // This fake exercises the managed flow, not the native click route.
+        CompletionExpected = edit.Expected(target);
+        return CompletionEditAllowed;
+    }
+    public SlotEditProgress UpdateCompletionEdit(out RefreshTarget expected, out string error)
+    {
+        expected = CompletionExpected!; error = "완료조건 반영 확인 실패";
+        return CompletionEditFailed ? SlotEditProgress.Failed : CompletionEditComplete ? SlotEditProgress.Complete : SlotEditProgress.Waiting;
     }
 }

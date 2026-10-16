@@ -34,6 +34,7 @@
     ],
     "FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDutyCategory": [],
     "FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BObjective": [],
+    "FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BCompletionStatus": [],
     "FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BJoinCondition": [],
     "FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentInterface": [
       "Show"
@@ -296,6 +297,11 @@
     "field:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentInterface.StructSize": "Int32;offset=-1;flags=32854;constant=Int32:28000000;",
     "field:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentInterface.UIModuleInterface": "FFXIVClientStructs.FFXIV.Client.UI.UIModuleInterface*;offset=16;flags=6;",
     "field:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentInterface.VirtualTable": "FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentInterface\u002BAgentInterfaceVirtualTable*;offset=0;flags=6;",
+    "field:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BCompletionStatus.DutyComplete": "FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BCompletionStatus;offset=-1;flags=32854;constant=Byte:02;",
+    "field:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BCompletionStatus.DutyCompleteWeeklyUnclaimed": "FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BCompletionStatus;offset=-1;flags=32854;constant=Byte:08;",
+    "field:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BCompletionStatus.DutyIncomplete": "FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BCompletionStatus;offset=-1;flags=32854;constant=Byte:04;",
+    "field:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BCompletionStatus.None": "FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BCompletionStatus;offset=-1;flags=32854;constant=Byte:01;",
+    "field:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BCompletionStatus.value__": "Byte;offset=-1;flags=1542;",
     "field:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDetailed.AvgItemLv": "UInt16;offset=80;flags=6;",
     "field:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDetailed.BeginnerFriendly": "Byte;offset=57;flags=6;",
     "field:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDetailed.Category": "FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDutyCategory;offset=36;flags=6;",
@@ -1138,6 +1144,7 @@
     "type:FFXIVClientStructs.FFXIV.Client.UI.AddonLookingForGroupDetail": "size=1024;pack=0;layout=ExplicitLayout;InteropGenerator.Runtime.Attributes.InheritsAttribute\u00601\u003CFFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase\u003E:0100000000000000",
     "type:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentInterface": "size=40;pack=0;layout=ExplicitLayout;InteropGenerator.Runtime.Attributes.InheritsAttribute\u00601\u003CFFXIVClientStructs.FFXIV.Component.GUI.AtkModuleInterface\u002BAtkEventInterface\u003E:0100000000000000",
     "type:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup": "size=14040;pack=0;layout=ExplicitLayout;InteropGenerator.Runtime.Attributes.InheritsAttribute\u00601\u003CFFXIVClientStructs.FFXIV.Client.UI.Agent.AgentInterface\u003E:0100000000000000;InteropGenerator.Runtime.Attributes.InheritsAttribute\u00601\u003CFFXIVClientStructs.FFXIV.Component.Text.TextChecker\u002BExecNonMacroFunc\u003E:0100000000000000",
+    "type:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BCompletionStatus": "size=0;pack=0;layout=NotPublic;",
     "type:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDetailed": "size=1144;pack=0;layout=ExplicitLayout;",
     "type:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BDutyCategory": "size=0;pack=0;layout=NotPublic;",
     "type:FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup\u002BJoinCondition": "size=0;pack=0;layout=NotPublic;",

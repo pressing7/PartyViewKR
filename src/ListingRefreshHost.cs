@@ -17,7 +17,7 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
     private string check = "not_started";
     internal string Diagnostic => $"refreshNativeCheck={check}; refreshEditorRevision={EditorRevision}; refreshEditorClosedRevision={EditorClosedRevision}\n" +
         $"refreshButtonMode={buttonMode}; refreshButtonTextReadable={buttonTextReadable}; refreshButtonEnabled={buttonEnabled}; refreshButtonTextChars={buttonTextChars}\n" +
-        SlotEditDiagnostic + "\n" + DescriptionEditDiagnostic + "\n" + ObjectiveEditDiagnostic + "\n" + BeginnerEditDiagnostic + "\n" + UniqueJobsEditDiagnostic + "\n" + PrivateEditDiagnostic;
+        SlotEditDiagnostic + "\n" + DescriptionEditDiagnostic + "\n" + ObjectiveEditDiagnostic + "\n" + BeginnerEditDiagnostic + "\n" + UniqueJobsEditDiagnostic + "\n" + PrivateEditDiagnostic + "\n" + CompletionEditDiagnostic;
     public ulong SelfId => Plugin.PlayerState.IsLoaded ? Plugin.PlayerState.ContentId : 0;
     public bool QueryBusy => reader.Busy;
     public bool QuerySucceeded => reader.LastOwnRequestSucceeded;
@@ -95,9 +95,11 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
         privateSession = null;
         privateCheck = "not_started";
         privateControlRead = "not_started";
+        completionSession = null;
+        completionCheck = completionControls = "not_started";
         if (!TryGetOwn(out var current, out error)) return false;
         if (current.ListingId != target.ListingId || !RefreshEvidence.SameRecruitment(target, current) ||
-            (plugin.Refresh.JobEdit != null || plugin.Refresh.DescriptionEdit != null || plugin.Refresh.ObjectiveEdit != null || plugin.Refresh.BeginnerEdit != null || plugin.Refresh.UniqueJobsEdit != null || plugin.Refresh.PrivateEdit != null) &&
+            (plugin.Refresh.JobEdit != null || plugin.Refresh.DescriptionEdit != null || plugin.Refresh.ObjectiveEdit != null || plugin.Refresh.BeginnerEdit != null || plugin.Refresh.UniqueJobsEdit != null || plugin.Refresh.PrivateEdit != null || plugin.Refresh.CompletionEdit != null) &&
                 !ListingJobEdit.SameSlots(target.Slots, current.Slots))
         { check = "detail_changed_before_edit"; error = "조회한 모집글이 변경되어 중단했습니다."; return false; }
         var detail = Plugin.GameGui.GetAddonByName<AtkUnitBase>("LookingForGroupDetail", 1);
@@ -123,6 +125,9 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
         if ((plugin.Refresh.ObjectiveEdit != null) != (objectiveSession != null))
         { error = "목적 수정 요청과 게임 수정창의 연결이 달라 중단했습니다."; return false; }
         if (objectiveSession != null && (!objectiveSession.Completed || !ValidateObjectiveGuard(addon, agent, objectiveSession, true, out error))) return false;
+        if ((plugin.Refresh.CompletionEdit != null) != (completionSession != null))
+        { error = "완료조건 수정 요청과 게임 수정창의 연결이 달라 중단했습니다."; return false; }
+        if (completionSession != null && (!completionSession.Completed || !ValidateCompletionGuard(addon, agent, completionSession, true, out error))) return false;
         if ((plugin.Refresh.BeginnerEdit != null) != (beginnerSession != null))
         { error = "초보자 환영 수정 요청과 게임 수정창의 연결이 달라 중단했습니다."; return false; }
         if (beginnerSession != null && (!beginnerSession.Completed || !ValidateBeginnerGuard(addon, agent, beginnerSession, true, out _, out error))) return false;
