@@ -54,7 +54,8 @@
       "get_IsReady",
       "ReceiveEvent",
       "GetNodeById",
-      "FireCallback"
+      "FireCallback",
+      "Close"
     ],
     "FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase\u002BAtkUnitBaseVirtualTable": [],
     "FFXIVClientStructs.FFXIV.Component.GUI.AtkEventListener": [
@@ -1145,6 +1146,7 @@
     "method:FFXIVClientStructs.FFXIV.Component.GUI.AtkResNode.GetAsAtkComponentNode()": "FFXIVClientStructs.FFXIV.Component.GUI.AtkComponentNode*;header=32;generic=0;",
     "method:FFXIVClientStructs.FFXIV.Component.GUI.AtkResNode.IsVisible()": "Boolean;header=32;generic=0;",
     "method:FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase\u002BDelegates\u002BFireCallback.Invoke(FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase*,UInt32,FFXIVClientStructs.FFXIV.Component.GUI.AtkValue*,Boolean)": "Boolean;header=32;generic=0;",
+    "method:FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.Close(Boolean)": "Boolean;header=32;generic=0;InteropGenerator.Runtime.Attributes.VirtualFunctionAttribute:0100040000000000",
     "method:FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback(UInt32,FFXIVClientStructs.FFXIV.Component.GUI.AtkValue*,Boolean)": "Boolean;header=32;generic=0;",
     "method:FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.GetNodeById(UInt32)": "FFXIVClientStructs.FFXIV.Component.GUI.AtkResNode*;header=32;generic=0;",
     "method:FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent(FFXIVClientStructs.FFXIV.Component.GUI.AtkEventType,Int32,FFXIVClientStructs.FFXIV.Component.GUI.AtkEvent*,FFXIVClientStructs.FFXIV.Component.GUI.AtkEventData*)": "Void;header=32;generic=0;",

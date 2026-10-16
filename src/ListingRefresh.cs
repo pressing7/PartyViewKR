@@ -51,15 +51,19 @@ internal interface IListingRefreshHost
     bool Submit(RefreshTarget target, string? description, out string error);
 }
 
-internal enum RefreshStage { Idle, Queued, ReadingOwn, OpeningEditor, EditingSlot, EditingDescription, EditingObjective, EditingBeginner, EditingUniqueJobs, EditingPrivate, EditingCompletion, EditingItemLevel, EditingRule, WaitingResult, Verifying, Completed, Unconfirmed, Stopped }
+internal enum RefreshStage { Idle, Queued, ReadingOwn, OpeningEditor, EditingSlot, EditingDescription, EditingObjective, EditingBeginner, EditingUniqueJobs, EditingPrivate, EditingCompletion, EditingItemLevel, EditingRule, EditingBatch, WaitingResult, Verifying, Completed, Unconfirmed, Stopped }
 
 // No timers/tasks or automatic retries: every run comes from one button press.
 // Advancing the stage BEFORE dispatch also prevents a thrown callback being retried.
 internal sealed class ListingRefresh(IListingRefreshHost host)
 {
-    internal RefreshStage Stage { get; private set; }
-    internal bool Busy => Stage is RefreshStage.Queued or RefreshStage.ReadingOwn or
-        RefreshStage.OpeningEditor or RefreshStage.EditingSlot or RefreshStage.EditingDescription or RefreshStage.EditingObjective or RefreshStage.EditingBeginner or RefreshStage.EditingUniqueJobs or RefreshStage.EditingPrivate or RefreshStage.EditingCompletion or RefreshStage.EditingItemLevel or RefreshStage.EditingRule or RefreshStage.WaitingResult or RefreshStage.Verifying;
+    private RefreshStage singleStage;
+    private ListingBatchRefresh? batch;
+    internal RefreshStage Stage { get => batch?.Stage ?? singleStage; private set => singleStage = value; }
+    internal IReadOnlyList<ListingChangeResult> BatchResults => batch?.Results ?? [];
+    internal bool IsBatch => batch != null;
+    internal bool Busy => batch?.Busy ?? (Stage is RefreshStage.Queued or RefreshStage.ReadingOwn or
+        RefreshStage.OpeningEditor or RefreshStage.EditingSlot or RefreshStage.EditingDescription or RefreshStage.EditingObjective or RefreshStage.EditingBeginner or RefreshStage.EditingUniqueJobs or RefreshStage.EditingPrivate or RefreshStage.EditingCompletion or RefreshStage.EditingItemLevel or RefreshStage.EditingRule or RefreshStage.WaitingResult or RefreshStage.Verifying);
     internal ListingJobEdit? JobEdit { get; private set; }
     internal ListingDescriptionEdit? DescriptionEdit { get; private set; }
     internal ListingObjectiveEdit? ObjectiveEdit { get; private set; }
@@ -69,9 +73,10 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
     internal ListingCompletionEdit? CompletionEdit { get; private set; }
     internal ListingItemLevelEdit? ItemLevelEdit { get; private set; }
     internal ListingRuleEdit? RuleEdit { get; private set; }
-    internal string Status { get; private set; } = "버튼을 누르면 현재 모집 조건으로 한 번 갱신합니다.";
-    internal bool CoolingDown(long now) => now < cooldownUntil;
-    internal string Diagnostic => $"refreshStage={Stage}; refreshEditCalls={editCalls}; refreshSubmitCalls={submitCalls}; " +
+    private string singleStatus = "버튼을 누르면 현재 모집 조건으로 한 번 갱신합니다.";
+    internal string Status { get => batch?.Status ?? singleStatus; private set => singleStatus = value; }
+    internal bool CoolingDown(long now) => now < Math.Max(cooldownUntil, batch?.CooldownUntil ?? 0);
+    internal string Diagnostic => batch?.Diagnostic ?? $"refreshStage={Stage}; refreshEditCalls={editCalls}; refreshSubmitCalls={submitCalls}; " +
         $"refreshBeforeSeconds={target?.RemainingSeconds?.ToString() ?? "unknown"}; refreshAfterSeconds={afterSeconds?.ToString() ?? "unknown"}; " +
         $"refreshOwnWaitChecks={ownWaitChecks}; refreshEditorMode={editorMode}; refreshJobSlot={JobEdit?.Position ?? 0}; " +
         $"refreshDescriptionEdit={DescriptionEdit != null}; refreshObjectiveEdit={ObjectiveEdit != null}; refreshBeginnerEdit={BeginnerEdit != null}; refreshUniqueJobsEdit={UniqueJobsEdit != null}; refreshPrivateEdit={PrivateEdit != null}; refreshCompletionEdit={CompletionEdit != null}; refreshItemLevelEdit={ItemLevelEdit != null}; refreshRuleEdit={RuleEdit?.Kind.ToString() ?? "none"}\nrefreshResult={result}\n{descriptionVerification}\n{objectiveVerification}\n{beginnerVerification}\n{uniqueJobsVerification}\n{privateVerification}\n{completionVerification}\n{itemLevelVerification}\n{ruleVerification}";
@@ -93,10 +98,19 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
     private string ruleVerification = "ruleResultCheck=not_started";
     private RecruitmentEditorMode editorMode;
 
+    internal void RequestBatch(long now, ListingChange[] changes)
+    {
+        if (Busy || CoolingDown(now) || host is not IListingBatchHost batchHost) return;
+        JobEdit = null; DescriptionEdit = null; ObjectiveEdit = null; BeginnerEdit = null;
+        UniqueJobsEdit = null; PrivateEdit = null; CompletionEdit = null; ItemLevelEdit = null; RuleEdit = null;
+        batch = new(batchHost, changes, now);
+    }
+
     internal void Request(long now, ListingJobEdit? edit = null, ListingDescriptionEdit? descriptionEdit = null,
         ListingObjectiveEdit? objectiveEdit = null, ListingBeginnerEdit? beginnerEdit = null, ListingUniqueJobsEdit? uniqueJobsEdit = null, ListingPrivateEdit? privateEdit = null, ListingCompletionEdit? completionEdit = null, ListingItemLevelEdit? itemLevelEdit = null, ListingRuleEdit? ruleEdit = null)
     {
         if (Busy || CoolingDown(now)) return;
+        batch = null;
         JobEdit = edit;
         DescriptionEdit = descriptionEdit;
         ObjectiveEdit = objectiveEdit;
@@ -142,6 +156,7 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
 
     internal void Update(long now)
     {
+        if (batch != null) { batch.Update(now); return; }
         if (!Busy) return;
         if (host.BlockReason is { } blocked) { Stop(blocked, "blocked"); return; }
         if (Stage != RefreshStage.Queued && self != host.SelfId)
@@ -489,10 +504,12 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
 
     internal void Cancel()
     {
+        if (batch != null) { batch.Cancel(); return; }
         if (Busy) Stop("사용자가 진행을 중단했습니다.", "cancelled");
     }
 
-    internal void Fail(string message) => Stop("갱신 오류: " + message, "exception");
+    internal void Fail(string message)
+    { if (batch != null) batch.Fail(message); else Stop("갱신 오류: " + message, "exception"); }
 
     private void Submit(long now)
     {

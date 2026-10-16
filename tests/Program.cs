@@ -252,10 +252,11 @@ ListingPrivateEditTests.Run(Test, Check);
 ListingCompletionEditTests.Run(Test, Check);
 ListingItemLevelEditTests.Run(Test, Check);
 ListingRuleEditTests.Run(Test, Check);
+ListingBatchTests.Run(Test, Check);
 CompatibilityTests.Run(Test, Check);
 Console.WriteLine($"All {passed} tests passed. Native game interaction still requires in-game validation.");
 
-sealed class FakeHost : IListingRefreshHost
+class FakeHost : IListingRefreshHost
 {
     public ulong SelfId { get; set; } = 10;
     public string? BlockReason { get; set; }

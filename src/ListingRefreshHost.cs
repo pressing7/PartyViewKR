@@ -93,6 +93,7 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
     public bool OpenEditor(RefreshTarget target, out string error)
     {
         editingTarget = null;
+        batchSubmitSent = batchCleanupSent = false;
         editorRoleDiagnostic = "editorRoleCheck=not_started";
         slotEdit = null;
         descriptionSession = null;
@@ -113,7 +114,7 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
         itemLevelCheck = itemLevelControlRead = "not_started";
         if (!TryGetOwn(out var current, out error)) return false;
         if (current.ListingId != target.ListingId || !RefreshEvidence.SameRecruitment(target, current) ||
-            (plugin.Refresh.JobEdit != null || plugin.Refresh.DescriptionEdit != null || plugin.Refresh.ObjectiveEdit != null || plugin.Refresh.BeginnerEdit != null || plugin.Refresh.UniqueJobsEdit != null || plugin.Refresh.PrivateEdit != null || plugin.Refresh.CompletionEdit != null || plugin.Refresh.ItemLevelEdit != null || plugin.Refresh.RuleEdit != null) &&
+            (plugin.Refresh.IsBatch || plugin.Refresh.JobEdit != null || plugin.Refresh.DescriptionEdit != null || plugin.Refresh.ObjectiveEdit != null || plugin.Refresh.BeginnerEdit != null || plugin.Refresh.UniqueJobsEdit != null || plugin.Refresh.PrivateEdit != null || plugin.Refresh.CompletionEdit != null || plugin.Refresh.ItemLevelEdit != null || plugin.Refresh.RuleEdit != null) &&
                 !ListingJobEdit.SameSlots(target.Slots, current.Slots))
         { check = "detail_changed_before_edit"; error = "조회한 모집글이 변경되어 중단했습니다."; return false; }
         var detail = Plugin.GameGui.GetAddonByName<AtkUnitBase>("LookingForGroupDetail", 1);

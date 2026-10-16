@@ -88,7 +88,7 @@ internal sealed class PartyWindow : Window
         ImGui.SameLine();
         ImGui.BeginDisabled(plugin.ObjectiveTrace.Busy || plugin.ListingBusy || plugin.Refresh.Busy || plugin.Refresh.CoolingDown(Environment.TickCount64) ||
             !Plugin.ClientState.IsLoggedIn || !Plugin.PlayerState.IsLoaded);
-        if (ImGui.Button("내 모집글 갱신")) plugin.RefreshOwnListing();
+        if (ImGui.Button(plugin.PendingChanges.Items.Count > 0 ? $"변경사항 적용 및 갱신 ({plugin.PendingChanges.Items.Count})" : "내 모집글 갱신")) plugin.RefreshOwnListing();
         ImGui.EndDisabled();
         if (plugin.Refresh.Busy)
         {
@@ -98,6 +98,22 @@ internal sealed class PartyWindow : Window
         ImGui.PushTextWrapPos(0);
         ImGui.TextUnformatted(plugin.Refresh.Status);
         ImGui.PopTextWrapPos();
+        if (plugin.PendingStatus.Length > 0) ImGui.TextWrapped(plugin.PendingStatus);
+        if (plugin.PendingChanges.Items.Count > 0)
+        {
+            ImGui.TextUnformatted($"적용 대기: {plugin.PendingChanges.Items.Count}개 · 위 버튼을 누르면 한 번에 갱신합니다.");
+            foreach (var change in plugin.PendingChanges.Items)
+            {
+                ImGui.TextWrapped($"· {change.Title}: {change.ValueLabel}");
+                if (change.Edit is ListingJobEdit jobs && ImGui.IsItemHovered())
+                    ImGui.SetTooltip(string.Join(" · ", jobs.Rules.Describe(jobs.Selected).Names));
+            }
+        }
+        if (!plugin.Refresh.Busy && plugin.Refresh.BatchResults.Count > 0)
+        {
+            ImGui.TextUnformatted("최근 일괄 수정 결과");
+            foreach (var item in plugin.Refresh.BatchResults) ImGui.TextWrapped("· " + item.Text);
+        }
         if (plugin.JobDraftStatus.Length > 0) ImGui.TextWrapped(plugin.JobDraftStatus);
         if (plugin.DescriptionDraftStatus.Length > 0) ImGui.TextWrapped(plugin.DescriptionDraftStatus);
         if (plugin.ObjectiveDraftStatus.Length > 0) ImGui.TextWrapped(plugin.ObjectiveDraftStatus);
@@ -194,9 +210,9 @@ internal sealed class PartyWindow : Window
             else if (!edit.Changed) ImGui.TextDisabled("내용을 변경하면 적용할 수 있습니다.");
             else if (edit.Value.Length == 0) ImGui.TextUnformatted("적용 후 소개말이 비워집니다.");
             ImGui.Separator();
-            ImGui.TextWrapped("적용하면 게임 수정창에 내용을 반영하고 모집을 갱신합니다.");
-            ImGui.BeginDisabled(!edit.Valid || plugin.Refresh.Busy || plugin.ListingBusy || plugin.Refresh.CoolingDown(Environment.TickCount64));
-            if (ImGui.Button("변경 적용 및 갱신", new Vector2(-1, 0)) && plugin.ApplyDescriptionDraft()) ImGui.CloseCurrentPopup();
+            ImGui.TextWrapped("변경 목록에 저장한 뒤 메인 창에서 한 번에 적용합니다.");
+            ImGui.BeginDisabled(!plugin.CanQueue(edit) || plugin.Refresh.Busy || plugin.ListingBusy || plugin.Refresh.CoolingDown(Environment.TickCount64));
+            if (ImGui.Button("변경 목록에 저장", new Vector2(-1, 0)) && plugin.ApplyDescriptionDraft()) ImGui.CloseCurrentPopup();
             ImGui.EndDisabled();
             ImGui.EndPopup();
         }
@@ -294,9 +310,9 @@ internal sealed class PartyWindow : Window
             var edit = draft.Request;
             if (!edit.Changed) ImGui.TextDisabled("체크 상태를 변경하면 적용할 수 있습니다.");
             ImGui.Separator();
-            ImGui.TextUnformatted("적용하면 선택한 설정으로 모집을 갱신합니다.");
-            ImGui.BeginDisabled(!edit.Valid || plugin.Refresh.Busy || plugin.ListingBusy || plugin.Refresh.CoolingDown(Environment.TickCount64));
-            if (ImGui.Button("변경 적용 및 갱신", new Vector2(340, 0)) && plugin.ApplyBeginnerDraft()) ImGui.CloseCurrentPopup();
+            ImGui.TextUnformatted("변경 목록에 저장한 뒤 메인 창에서 한 번에 적용합니다.");
+            ImGui.BeginDisabled(!plugin.CanQueue(edit) || plugin.Refresh.Busy || plugin.ListingBusy || plugin.Refresh.CoolingDown(Environment.TickCount64));
+            if (ImGui.Button("변경 목록에 저장", new Vector2(340, 0)) && plugin.ApplyBeginnerDraft()) ImGui.CloseCurrentPopup();
             ImGui.EndDisabled();
             ImGui.EndPopup();
         }
@@ -339,9 +355,9 @@ internal sealed class PartyWindow : Window
             var edit = draft.Request;
             if (!edit.Changed) ImGui.TextDisabled("체크 상태를 변경하면 적용할 수 있습니다.");
             ImGui.Separator();
-            ImGui.TextUnformatted("적용하면 선택한 설정으로 모집을 갱신합니다.");
-            ImGui.BeginDisabled(!edit.Valid || plugin.Refresh.Busy || plugin.ListingBusy || plugin.Refresh.CoolingDown(Environment.TickCount64));
-            if (ImGui.Button("변경 적용 및 갱신", new Vector2(340, 0)) && plugin.ApplyUniqueJobsDraft()) ImGui.CloseCurrentPopup();
+            ImGui.TextUnformatted("변경 목록에 저장한 뒤 메인 창에서 한 번에 적용합니다.");
+            ImGui.BeginDisabled(!plugin.CanQueue(edit) || plugin.Refresh.Busy || plugin.ListingBusy || plugin.Refresh.CoolingDown(Environment.TickCount64));
+            if (ImGui.Button("변경 목록에 저장", new Vector2(340, 0)) && plugin.ApplyUniqueJobsDraft()) ImGui.CloseCurrentPopup();
             ImGui.EndDisabled();
             ImGui.EndPopup();
         }
@@ -396,9 +412,9 @@ internal sealed class PartyWindow : Window
             else ImGui.TextUnformatted("비공개를 끄면 비밀번호 없이 참가할 수 있습니다.");
             var edit = draft.Request;
             ImGui.Separator();
-            ImGui.TextUnformatted("적용하면 선택한 설정으로 모집을 갱신합니다.");
-            ImGui.BeginDisabled(!edit.Valid || plugin.Refresh.Busy || plugin.ListingBusy || plugin.Refresh.CoolingDown(Environment.TickCount64));
-            if (ImGui.Button("변경 적용 및 갱신", new Vector2(400, 0)) && plugin.ApplyPrivateDraft()) ImGui.CloseCurrentPopup();
+            ImGui.TextUnformatted("변경 목록에 저장한 뒤 메인 창에서 한 번에 적용합니다.");
+            ImGui.BeginDisabled(!plugin.CanQueue(edit) || plugin.Refresh.Busy || plugin.ListingBusy || plugin.Refresh.CoolingDown(Environment.TickCount64));
+            if (ImGui.Button("변경 목록에 저장", new Vector2(400, 0)) && plugin.ApplyPrivateDraft()) ImGui.CloseCurrentPopup();
             ImGui.EndDisabled();
             ImGui.EndPopup();
         }
@@ -456,9 +472,9 @@ internal sealed class PartyWindow : Window
             if (!draft.Enabled) ImGui.TextUnformatted("완료 여부에 제한을 두지 않습니다.");
             if (!edit.Changed) ImGui.TextDisabled("체크 상태나 완료조건을 변경하면 적용할 수 있습니다.");
             ImGui.Separator();
-            ImGui.TextUnformatted("적용하면 선택한 완료조건으로 모집을 갱신합니다.");
-            ImGui.BeginDisabled(!edit.Valid || plugin.Refresh.Busy || plugin.ListingBusy || plugin.Refresh.CoolingDown(Environment.TickCount64));
-            if (ImGui.Button("변경 적용 및 갱신", new Vector2(400, 0)) && plugin.ApplyCompletionDraft()) ImGui.CloseCurrentPopup();
+            ImGui.TextUnformatted("변경 목록에 저장한 뒤 메인 창에서 한 번에 적용합니다.");
+            ImGui.BeginDisabled(!plugin.CanQueue(edit) || plugin.Refresh.Busy || plugin.ListingBusy || plugin.Refresh.CoolingDown(Environment.TickCount64));
+            if (ImGui.Button("변경 목록에 저장", new Vector2(400, 0)) && plugin.ApplyCompletionDraft()) ImGui.CloseCurrentPopup();
             ImGui.EndDisabled();
             ImGui.EndPopup();
         }
@@ -511,9 +527,9 @@ internal sealed class PartyWindow : Window
             var edit = draft.Request;
             if (edit.Value.HasValue && !edit.Changed) ImGui.TextDisabled("체크 상태나 숫자를 변경하면 적용할 수 있습니다.");
             ImGui.Separator();
-            ImGui.TextUnformatted("적용하면 선택한 아이템 레벨 조건으로 모집을 갱신합니다.");
-            ImGui.BeginDisabled(!edit.Valid || plugin.Refresh.Busy || plugin.ListingBusy || plugin.Refresh.CoolingDown(Environment.TickCount64));
-            if (ImGui.Button("변경 적용 및 갱신", new Vector2(420, 0)) && plugin.ApplyItemLevelDraft()) ImGui.CloseCurrentPopup();
+            ImGui.TextUnformatted("변경 목록에 저장한 뒤 메인 창에서 한 번에 적용합니다.");
+            ImGui.BeginDisabled(!plugin.CanQueue(edit) || plugin.Refresh.Busy || plugin.ListingBusy || plugin.Refresh.CoolingDown(Environment.TickCount64));
+            if (ImGui.Button("변경 목록에 저장", new Vector2(420, 0)) && plugin.ApplyItemLevelDraft()) ImGui.CloseCurrentPopup();
             ImGui.EndDisabled();
             ImGui.EndPopup();
         }
@@ -569,9 +585,9 @@ internal sealed class PartyWindow : Window
             if (!edit.Changed) ImGui.TextDisabled("설정을 변경하면 적용할 수 있습니다.");
             ImGui.TextUnformatted("게임 수정창에서 선택할 수 있는 항목만 적용합니다.");
             ImGui.Separator();
-            ImGui.TextUnformatted("적용하면 선택한 규칙으로 모집을 갱신합니다.");
-            ImGui.BeginDisabled(!edit.Valid || plugin.Refresh.Busy || plugin.ListingBusy || plugin.Refresh.CoolingDown(Environment.TickCount64));
-            if (ImGui.Button("변경 적용 및 갱신", new Vector2(420, 0)) && plugin.ApplyRuleDraft()) ImGui.CloseCurrentPopup();
+            ImGui.TextUnformatted("변경 목록에 저장한 뒤 메인 창에서 한 번에 적용합니다.");
+            ImGui.BeginDisabled(!plugin.CanQueue(edit) || plugin.Refresh.Busy || plugin.ListingBusy || plugin.Refresh.CoolingDown(Environment.TickCount64));
+            if (ImGui.Button("변경 목록에 저장", new Vector2(420, 0)) && plugin.ApplyRuleDraft()) ImGui.CloseCurrentPopup();
             ImGui.EndDisabled();
             ImGui.EndPopup();
         }
@@ -630,9 +646,9 @@ internal sealed class PartyWindow : Window
             var edit = draft.Request;
             if (!edit.Changed) ImGui.TextDisabled("다른 목적을 선택하면 적용할 수 있습니다.");
             ImGui.Separator();
-            ImGui.TextUnformatted("적용하면 선택한 목적으로 모집을 갱신합니다.");
-            ImGui.BeginDisabled(!ListingObjectives.AutomaticEditingAvailable || !edit.Valid || plugin.Refresh.Busy || plugin.ListingBusy || plugin.Refresh.CoolingDown(Environment.TickCount64));
-            if (ImGui.Button("변경 적용 및 갱신", new Vector2(340, 0)) && plugin.ApplyObjectiveDraft()) ImGui.CloseCurrentPopup();
+            ImGui.TextUnformatted("변경 목록에 저장한 뒤 메인 창에서 한 번에 적용합니다.");
+            ImGui.BeginDisabled(!ListingObjectives.AutomaticEditingAvailable || !plugin.CanQueue(edit) || plugin.Refresh.Busy || plugin.ListingBusy || plugin.Refresh.CoolingDown(Environment.TickCount64));
+            if (ImGui.Button("변경 목록에 저장", new Vector2(340, 0)) && plugin.ApplyObjectiveDraft()) ImGui.CloseCurrentPopup();
             ImGui.EndDisabled();
             ImGui.EndPopup();
         }
@@ -698,7 +714,7 @@ internal sealed class PartyWindow : Window
         if (ImGui.BeginPopupModal(popup, ref open, ImGuiWindowFlags.AlwaysAutoResize))
         {
             ImGui.TextUnformatted($"{draft.Original.Slots.PositionLabel(draft.Original.Slots.Slots[draft.Position - 1])}번 빈자리 · {(draft.Changed ? "변경 예정" : "현재 허용 직업")}");
-            ImGui.TextUnformatted("적용 버튼을 누르면 모집글을 다시 조회한 뒤 변경하고 갱신합니다.");
+            ImGui.TextUnformatted("변경 목록에 저장한 뒤 메인 창에서 한 번에 적용합니다.");
             if (ImGui.Button("전체 선택")) draft.Selected = draft.Rules.AllFlags;
             ImGui.SameLine();
             if (ImGui.Button("전체 해제")) draft.Selected = 0;
@@ -718,8 +734,8 @@ internal sealed class PartyWindow : Window
             }
             ImGui.Separator();
             if (draft.Selected == 0) ImGui.TextUnformatted("직업을 하나 이상 선택해 주세요.");
-            ImGui.BeginDisabled(!draft.Request.Valid || plugin.Refresh.Busy || plugin.ListingBusy || plugin.Refresh.CoolingDown(Environment.TickCount64));
-            if (ImGui.Button("변경 적용 및 갱신") && plugin.ApplyJobDraft()) ImGui.CloseCurrentPopup();
+            ImGui.BeginDisabled(!plugin.CanQueue(draft.Request) || plugin.Refresh.Busy || plugin.ListingBusy || plugin.Refresh.CoolingDown(Environment.TickCount64));
+            if (ImGui.Button("변경 목록에 저장") && plugin.ApplyJobDraft()) ImGui.CloseCurrentPopup();
             ImGui.EndDisabled();
             ImGui.EndPopup();
         }

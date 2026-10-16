@@ -27,6 +27,9 @@
     <Compile Include="../src/ListingSlotRoute.cs" Link="ListingSlotRoute.cs" />
     <Compile Include="../src/ListingRoleComparison.cs" Link="ListingRoleComparison.cs" />
     <Compile Include="../src/ListingEditorCriteria.cs" Link="ListingEditorCriteria.cs" />
+    <Compile Include="../src/ListingChange.cs" Link="ListingChange.cs" />
+    <Compile Include="../src/ListingBatchRefresh.cs" Link="ListingBatchRefresh.cs" />
+    <Compile Include="../src/ListingBatchSnapshot.cs" Link="ListingBatchSnapshot.cs" />
     <Compile Include="../src/ListingRefresh.cs" Link="ListingRefresh.cs" />
   </ItemGroup>
 </Project>

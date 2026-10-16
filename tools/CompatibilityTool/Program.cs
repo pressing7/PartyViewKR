@@ -33,7 +33,7 @@ if (args[0].StartsWith("capture", StringComparison.Ordinal))
         [ui + "Agent.AgentInterface"] = ["Show"],
         [ui + "AddonLookingForGroupDetail"] = ["get_IsVisible", "get_IsReady"],
         [ui + "AddonLookingForGroupCondition"] = ["get_IsVisible", "get_IsReady"],
-        [gui + "AtkUnitBase"] = ["get_IsVisible", "get_IsReady", "ReceiveEvent", "GetNodeById", "FireCallback"],
+        [gui + "AtkUnitBase"] = ["get_IsVisible", "get_IsReady", "ReceiveEvent", "GetNodeById", "FireCallback", "Close"],
         [gui + "AtkUnitBase+AtkUnitBaseVirtualTable"] = [],
         [gui + "AtkEventListener"] = ["ReceiveEvent"],
         [gui + "AtkEventListener+AtkEventListenerVirtualTable"] = [],
