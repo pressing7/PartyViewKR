@@ -47,7 +47,7 @@ internal sealed unsafe partial class ListingRefreshHost
         if (!ReadCompletionControls(addon, agent, edit, out var state, out error)) return false;
         if (!ListingSlotRoute.TryCreate(target.Slots, 1, out var route) ||
             !route.MatchesEditorShape(agent->StoredRecruitmentInfo.NumberOfGroups, agent->StoredRecruitmentInfo.NumberOfSlotsInMainParty) ||
-            !agent->StoredRecruitmentInfo.MemberContentIds[..target.TotalSlots].SequenceEqual(target.Slots.Slots.Select(s => s.MemberContentId).ToArray()))
+            !target.Slots.MatchesMembers(agent->StoredRecruitmentInfo.MemberContentIds))
         { completionCheck = "members_or_shape_changed"; error = "모집 수정창의 파티 구성이 달라 중단했습니다."; return false; }
         if (!ReadCompletionRoutes(addon, out _, out _, out error)) return false;
         var session = completionSession = new(target, edit, CompletionInvariant(agent), addon, agent) { State = state };

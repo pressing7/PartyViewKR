@@ -42,7 +42,7 @@ internal sealed unsafe partial class ListingRefreshHost
         if (!ReadItemLevelControls(addon, agent, out var checkbox, out var input, out var state, out _, out error)) return false;
         if (!ListingSlotRoute.TryCreate(target.Slots, 1, out var route) ||
             !route.MatchesEditorShape(agent->StoredRecruitmentInfo.NumberOfGroups, agent->StoredRecruitmentInfo.NumberOfSlotsInMainParty) ||
-            !agent->StoredRecruitmentInfo.MemberContentIds[..target.TotalSlots].SequenceEqual(target.Slots.Slots.Select(s => s.MemberContentId).ToArray()))
+            !target.Slots.MatchesMembers(agent->StoredRecruitmentInfo.MemberContentIds))
         { itemLevelCheck = "members_or_shape_changed"; error = "모집 수정창의 파티 구성이 달라 중단했습니다."; return false; }
         var session = itemLevelSession = new(target, edit, ItemLevelInvariant(agent), addon, agent, checkbox, input) { State = state };
         return AdvanceItemLevelEdit(addon, agent, session, out _, out error);

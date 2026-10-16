@@ -22,7 +22,7 @@ static class ListingFriendlyMatchTests
             return (jobs, members, flags);
         }
         ListingSlots Read(byte[] jobs, ulong[] members, ulong[] flags, int filled = 1) =>
-            ListingSlots.Read(true, 18, filled, 3, true, jobs, members, flags, id => id.ToString(), rules);
+            ListingSlots.Read(true, 18, filled, 3, true, jobs, members, flags, id => id.ToString(), rules, 0x13);
         RefreshTarget Target()
         {
             var a = Arrays();
@@ -65,7 +65,7 @@ static class ListingFriendlyMatchTests
                 if (field == 0) a.jobs[index] = 25;
                 if (field == 1) a.members[index] = 91;
                 if (field == 2) a.flags[index] = 0x100;
-                check(!Read(a.jobs, a.members, a.flags).Readable, "unexpected native slot silently hidden");
+                check(!Read(a.jobs, a.members, a.flags).MappingValid, "unexpected native slot silently hidden");
             }
         });
         test("every friendly visible row routes to the traced group button and param 8", () => {
@@ -75,19 +75,19 @@ static class ListingFriendlyMatchTests
                 check(ListingSlotRoute.TryCreate(slots, i + 1, out var route), "friendly route missing");
                 check(route.Layout == RecruitmentSlotLayout.FriendlyMatch && route.NativeIndex == NativeIndices[i] &&
                     route.OpenNodeId == Nodes[i] && route.OpenParam == 8 && !route.SelectMember, "wrong friendly button");
-                check(route.MatchesEditorShape(3, 5) && !route.MatchesEditorShape(3, 8) &&
+                check(route.MatchesEditorShape(3, 5) && route.MatchesEditorShape(3, 8) && !route.MatchesEditorShape(3, 7) &&
                     !route.MatchesEditorShape(6, 5) && !route.MatchesEditorShape(1, 5), "editor shape mismatch admitted");
             }
             check(!ListingSlotRoute.TryCreate(slots, 0, out _) && !ListingSlotRoute.TryCreate(slots, 19, out _), "out of range");
         });
-        test("friendly edits reject a packed mapping and retain the settings feature boundary", () => {
+        test("friendly edits reject a packed mapping and allow the shared settings path", () => {
             var target = Target();
             var packed = target.Slots with { Slots = target.Slots.Slots.Select((s, i) => s with { NativeIndex = i }).ToArray() };
             check(ListingSlotRoute.Classify(packed) == RecruitmentSlotLayout.Unknown, "packed friendly mapping accepted");
-            foreach (var changed in new[] { target.Slots with { IsAlliance = false }, target.Slots with { NumberOfParties = 1 },
+            foreach (var changed in new[] { target.Slots with { IsAlliance = false, JoinConditionFlags = 0 }, target.Slots with { NumberOfParties = 1 },
                 target.Slots with { SlotsFilled = 2 } })
                 check(ListingSlotRoute.Classify(changed) == RecruitmentSlotLayout.Unknown, "unknown friendly shape accepted");
-            check(ListingJobEdit.Supports(target) && !ListingJobEdit.SupportsSettings(target), "unexpected settings scope");
+            check(ListingJobEdit.Supports(target) && ListingJobEdit.SupportsSettings(target), "unexpected settings scope");
             check(!new ListingJobEdit(target, 1, 0x100, rules).Valid &&
                 !new ListingJobEdit(target with { JobEditingAllowed = false }, 2, 0x100, rules).Valid, "occupied or blocked target accepted");
         });

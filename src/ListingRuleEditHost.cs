@@ -53,7 +53,7 @@ internal sealed unsafe partial class ListingRefreshHost
         if (!ReadRuleControl(addon, agent, edit, out var state, out _, out error)) return false;
         if (!ListingSlotRoute.TryCreate(target.Slots, 1, out var route) ||
             !route.MatchesEditorShape(agent->StoredRecruitmentInfo.NumberOfGroups, agent->StoredRecruitmentInfo.NumberOfSlotsInMainParty) ||
-            !agent->StoredRecruitmentInfo.MemberContentIds[..target.TotalSlots].SequenceEqual(target.Slots.Slots.Select(s => s.MemberContentId).ToArray()))
+            !target.Slots.MatchesMembers(agent->StoredRecruitmentInfo.MemberContentIds))
         { ruleCheck = "members_or_shape_changed"; error = "모집 수정창의 파티 구성이 달라 중단했습니다."; return false; }
 
         var session = ruleSession = new(target, edit, RuleInvariant(agent, edit.Kind), addon, agent, state);

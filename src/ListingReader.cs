@@ -143,7 +143,7 @@ internal sealed class ListingReader
             }
             slots = ListingSlots.Read(shapePlausible && nameAgrees && commentAgrees,
                 detail.TotalSlots, detail.SlotsFilled, detail.NumberOfParties, detail.IsAlliance,
-                detail.Jobs, detail.MemberContentIds, detail.SlotFlags, rows.Job, rows.RecruitmentJobs());
+                detail.Jobs, detail.MemberContentIds, detail.SlotFlags, rows.Job, rows.RecruitmentJobs(), (byte)detail.JoinConditionFlags);
             owner = ListingIdentity.Resolve(detail.LeaderContentId, nativeName,
                 shapePlausible && nameAgrees && commentAgrees, Plugin.PlayerState.ContentId,
                 Plugin.PlayerState.CharacterName, party.Members.Select(m => (m.ContentId, m.Name, m.IsLeader)).ToArray());
@@ -151,7 +151,7 @@ internal sealed class ListingReader
                 $"leaderCidIsSelf={detail.LeaderContentId == Plugin.PlayerState.ContentId}; " +
                 $"leaderNameAgrees={nameAgrees}; commentAgrees={commentAgrees}; " +
                 $"nativeCommentReadable={nativeCommentRead}; nativeCommentChars={nativeComment.Length}; " +
-                $"nativeSlots={detail.SlotsFilled}/{detail.TotalSlots}; nativeTimeRaw={detail.TimeLeft}; " +
+                $"nativeSlots={detail.SlotsFilled}/{detail.TotalSlots}; nativeTimeRaw={detail.TimeLeft}; listingCategoryRaw={(uint)detail.Category}; " +
                 $"listingCompletionRaw={(byte)detail.CompletionStatus}; listingCompletionReadable={completion.HasValue}; " +
                 $"listingDutyFlags={(byte)detail.DutyFinderSettingFlags}; listingDutyFlagsReadable={dutyFlags.HasValue}; listingLootRuleRaw={(byte)detail.LootRule}; listingLootRuleReadable={lootRule.HasValue}; " +
                 $"listingItemLevelRaw={detail.AvgItemLv}; listingItemLevelReadable={itemLevel.HasValue}; " +

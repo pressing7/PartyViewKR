@@ -41,7 +41,7 @@ internal sealed unsafe partial class ListingRefreshHost
         if (!ReadObjectiveControl(addon, agent, edit.SelectedIndex, out var dropdown, out var state, out error)) return false;
         if (!ListingSlotRoute.TryCreate(target.Slots, 1, out var route) ||
             !route.MatchesEditorShape(agent->StoredRecruitmentInfo.NumberOfGroups, agent->StoredRecruitmentInfo.NumberOfSlotsInMainParty) ||
-            !agent->StoredRecruitmentInfo.MemberContentIds[..target.TotalSlots].SequenceEqual(target.Slots.Slots.Select(s => s.MemberContentId).ToArray()))
+            !target.Slots.MatchesMembers(agent->StoredRecruitmentInfo.MemberContentIds))
         { objectiveCheck = "members_or_shape_changed"; error = "모집 수정창의 파티 구성이 달라 중단했습니다."; return false; }
         if (!ReadObjectiveRoutes(addon, dropdown, out var openEvent, out error)) return false;
 

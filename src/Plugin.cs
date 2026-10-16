@@ -256,7 +256,7 @@ public sealed class Plugin : IDalamudPlugin
         if (refreshHost.BlockReason is { } reason) { DescriptionDraftStatus = reason; return; }
         if (!refreshHost.TryGetOwn(out var target, out var error)) { DescriptionDraftStatus = error; return; }
         if (!ListingJobEdit.SupportsSettings(target))
-        { DescriptionDraftStatus = "일반 4·8인 및 연합 24·48인 모집 정보를 확인한 뒤 소개말을 수정할 수 있습니다."; return; }
+        { DescriptionDraftStatus = "등록된 자리와 파티 구성을 확인한 뒤 소개말을 수정할 수 있습니다."; return; }
         DescriptionDraft = new(target);
         DescriptionDraftStatus = "";
     }
@@ -271,7 +271,7 @@ public sealed class Plugin : IDalamudPlugin
         if (refreshHost.BlockReason is { } reason) { ObjectiveDraftStatus = reason; return; }
         if (!refreshHost.TryGetOwn(out var target, out var error)) { ObjectiveDraftStatus = error; return; }
         if (!ListingObjectiveEdit.Supports(target))
-        { ObjectiveDraftStatus = "일반 4·8인 및 연합 24·48인 모집의 목적과 파티 구성을 확인한 뒤 수정할 수 있습니다."; return; }
+        { ObjectiveDraftStatus = "현재 모집의 목적과 파티 구성을 확인한 뒤 수정할 수 있습니다."; return; }
         ObjectiveDraft = new(target);
         ObjectiveDraftStatus = "";
     }
@@ -286,7 +286,7 @@ public sealed class Plugin : IDalamudPlugin
         if (refreshHost.BlockReason is { } reason) { BeginnerDraftStatus = reason; return; }
         if (!refreshHost.TryGetOwn(out var target, out var error)) { BeginnerDraftStatus = error; return; }
         if (!ListingBeginnerEdit.Supports(target))
-        { BeginnerDraftStatus = "일반 4·8인 및 연합 24·48인 모집의 초보자 환영 설정과 파티 구성을 확인한 뒤 수정할 수 있습니다."; return; }
+        { BeginnerDraftStatus = "현재 모집의 초보자 환영 설정과 파티 구성을 확인한 뒤 수정할 수 있습니다."; return; }
         BeginnerDraft = new(target);
         BeginnerDraftStatus = "";
     }
@@ -301,7 +301,7 @@ public sealed class Plugin : IDalamudPlugin
         if (refreshHost.BlockReason is { } reason) { UniqueJobsDraftStatus = reason; return; }
         if (!refreshHost.TryGetOwn(out var target, out var error)) { UniqueJobsDraftStatus = error; return; }
         if (!ListingUniqueJobsEdit.Supports(target))
-        { UniqueJobsDraftStatus = "일반 4·8인 및 연합 24·48인 모집의 잡 중복 없음 설정과 파티 구성을 확인한 뒤 수정할 수 있습니다."; return; }
+        { UniqueJobsDraftStatus = "현재 모집의 잡 중복 없음 설정과 파티 구성을 확인한 뒤 수정할 수 있습니다."; return; }
         UniqueJobsDraft = new(target);
         UniqueJobsDraftStatus = "";
     }
@@ -316,7 +316,7 @@ public sealed class Plugin : IDalamudPlugin
         if (refreshHost.BlockReason is { } reason) { PrivateDraftStatus = reason; return; }
         if (!refreshHost.TryGetOwn(out var target, out var error)) { PrivateDraftStatus = error; return; }
         if (!ListingPrivateEdit.Supports(target))
-        { PrivateDraftStatus = "일반 4·8인 및 연합 24·48인 모집의 비공개 설정과 파티 구성을 확인한 뒤 수정할 수 있습니다."; return; }
+        { PrivateDraftStatus = "현재 모집의 비공개 설정과 파티 구성을 확인한 뒤 수정할 수 있습니다."; return; }
         PrivateDraft = new(target);
         PrivateDraftStatus = "";
     }
@@ -331,7 +331,7 @@ public sealed class Plugin : IDalamudPlugin
         if (refreshHost.BlockReason is { } reason) { CompletionDraftStatus = reason; return; }
         if (!refreshHost.TryGetOwn(out var target, out var error)) { CompletionDraftStatus = error; return; }
         if (!ListingCompletionEdit.Supports(target))
-        { CompletionDraftStatus = "일반 4·8인 및 연합 24·48인 모집의 완료조건 설정과 파티 구성을 확인한 뒤 수정할 수 있습니다."; return; }
+        { CompletionDraftStatus = "현재 모집의 완료조건 설정과 파티 구성을 확인한 뒤 수정할 수 있습니다."; return; }
         CompletionDraft = new(target);
         CompletionDraftStatus = "";
     }
@@ -347,7 +347,7 @@ public sealed class Plugin : IDalamudPlugin
         if (refreshHost.BlockReason is { } reason) { ItemLevelDraftStatus = reason; return; }
         if (!refreshHost.TryGetOwn(out var target, out var error)) { ItemLevelDraftStatus = error; return; }
         if (!ListingItemLevelEdit.Supports(target))
-        { ItemLevelDraftStatus = "일반 4·8인 및 연합 24·48인 모집의 평균 아이템 레벨 설정과 파티 구성을 확인한 뒤 수정할 수 있습니다."; return; }
+        { ItemLevelDraftStatus = "현재 모집의 평균 아이템 레벨 설정과 파티 구성을 확인한 뒤 수정할 수 있습니다."; return; }
         ItemLevelDraft = new(target);
         ItemLevelDraftStatus = "";
     }
@@ -363,7 +363,7 @@ public sealed class Plugin : IDalamudPlugin
         if (refreshHost.BlockReason is { } reason) { RuleDraftStatus = reason; return; }
         if (!refreshHost.TryGetOwn(out var target, out var error)) { RuleDraftStatus = error; return; }
         if (!ListingRuleEdit.Supports(target, kind))
-        { RuleDraftStatus = "일반 4·8인 및 연합 24·48인 모집의 규칙과 파티 구성을 확인한 뒤 수정할 수 있습니다."; return; }
+        { RuleDraftStatus = "현재 모집의 규칙과 파티 구성을 확인한 뒤 수정할 수 있습니다."; return; }
         RuleDraft = new(target, kind);
         RuleDraftStatus = "";
     }

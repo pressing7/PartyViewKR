@@ -21,8 +21,9 @@ static class ListingSlotsTests
             foreach (var size in new[] { 1, 4, 8, 10, 24, 48 })
             {
                 var jobs = new byte[48]; var members = new ulong[48]; var flags = new ulong[48];
+                Array.Fill(flags, 0xFFFFFFFFFFFFFFFEul, 0, size);
                 jobs[size - 1] = 21; members[size - 1] = 100;
-                // Data past TotalSlots must never become visible.
+                // Single-party data past TotalSlots must never become visible.
                 if (size < 48) { jobs[size] = 19; members[size] = 200; }
                 var parties = size == 48 ? 6 : size == 24 ? 3 : 1;
                 var snapshot = ListingSlots.Read(true, size, 1, parties, parties > 1, jobs, members, flags, JobName);
@@ -47,7 +48,7 @@ static class ListingSlotsTests
         });
         test("missing and unknown recruitment jobs retain their source values", () => {
             var snapshot = ListingSlots.Read(true, 3, 2, 1, false, new byte[] { 0, 250, 0 },
-                new ulong[] { 100, 200, 0 }, new ulong[3], JobName);
+                new ulong[] { 100, 200, 0 }, new ulong[] { 0, 0, 2 }, JobName);
             check(snapshot.CountsAgree && snapshot.Slots[0].HasMember, "member with missing job became empty");
             check(snapshot.Slots[0].JobId == 0 && snapshot.Slots[0].Job == "", "missing job guessed");
             check(snapshot.Slots[1].JobId == 250 && snapshot.Slots[1].Job == "직업 #250", "unknown job changed");

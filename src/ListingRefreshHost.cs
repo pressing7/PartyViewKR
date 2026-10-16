@@ -69,16 +69,19 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
             !NativeReadGuard.FixedText(detail.Comment, out var comment) || !ListingIdentity.SameText(comment, listing.Description))
         { check = "native_detail_mismatch"; return false; }
         var slots = ListingSlots.Read(true, detail.TotalSlots, detail.SlotsFilled, detail.NumberOfParties, detail.IsAlliance,
-            detail.Jobs, detail.MemberContentIds, detail.SlotFlags, id => id.ToString(), listing.Slots.JobRules);
-        var friendly = ListingSlots.IsFriendlyMatchShape(detail.TotalSlots, detail.NumberOfParties, detail.IsAlliance);
-        if (friendly && (!slots.MappingValid || !slots.CountsAgree))
-        { check = "friendly_slot_mapping_unverified"; error = "친선경기의 자리와 참가자 정보를 확인하지 못했습니다. 다시 조회해 주세요."; return false; }
+            detail.Jobs, detail.MemberContentIds, detail.SlotFlags, id => id.ToString(), listing.Slots.JobRules, (byte)detail.JoinConditionFlags);
+        if (!slots.MappingValid || !slots.CountsAgree)
+        {
+            check = $"slot_mapping_unverified; reportedSlots={detail.TotalSlots}; registeredSlots={slots.Slots.Length}; nativeSlots={slots.NativeSlotCount}; observedMembers={slots.ObservedMembers}";
+            error = "모집 인원수와 등록된 자리 정보가 일치하지 않습니다. 다시 조회해 주세요.";
+            return false;
+        }
         target = new(SelfId, detail.ListingId, detail.DutyId, listing.Description,
-            DetailCriteria(ref detail, friendly ? 24 : detail.TotalSlots), RefreshEvidence.ParseSeconds(listing.Remaining), detail.TotalSlots)
+            DetailCriteria(ref detail, slots.NativeSlotCount), RefreshEvidence.ParseSeconds(listing.Remaining), detail.TotalSlots)
         {
             Slots = slots,
             ExtraCriteria = $"{detail.AvgItemLv}/{(byte)detail.JoinConditionFlags}/{detail.IsAlliance}/{detail.NumberOfParties}",
-            JobEditingAllowed = ((uint)detail.Category & (uint)AgentLookingForGroup.DutyCategory.PvP) == 0 || friendly,
+            JobEditingAllowed = ((uint)detail.Category & (uint)AgentLookingForGroup.DutyCategory.PvP) == 0 || slots.IsFriendlyMatch,
         };
         check = "own_verified";
         error = "";
@@ -209,17 +212,17 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
         if (!inputRead || !ListingIdentity.SameText(text, target.Description))
         { check = $"editor_comment_mismatch; editorTextReadable={inputRead}; editorTextChars={text.Length}"; return false; }
         ref var draft = ref agent->StoredRecruitmentInfo;
-        if (target.Slots.IsFriendlyMatch &&
+        if (ListingSlotRoute.Classify(target.Slots) != RecruitmentSlotLayout.Unknown &&
             (!ListingSlotRoute.TryCreate(target.Slots, 1, out var route) ||
              !route.MatchesEditorShape(draft.NumberOfGroups, draft.NumberOfSlotsInMainParty) ||
              !target.Slots.MatchesMembers(draft.MemberContentIds)))
         {
-            check = $"friendly_editor_shape_or_members_changed; editorGroups={draft.NumberOfGroups}; editorMainPartySlots={draft.NumberOfSlotsInMainParty}";
+            check = $"editor_shape_or_members_changed; editorGroups={draft.NumberOfGroups}; editorMainPartySlots={draft.NumberOfSlotsInMainParty}; registeredMainPartySlots={target.Slots.Slots.Count(s => s.NativeIndex < 8)}";
             return false;
         }
         var storedCommentAgrees = NativeReadGuard.FixedText(draft.Comment, out var storedComment) &&
             ListingIdentity.SameText(storedComment, target.Description);
-        var draftCriteria = DraftCriteria(ref draft, target.Slots.IsFriendlyMatch ? target.Slots.NativeSlotCount : target.TotalSlots);
+        var draftCriteria = DraftCriteria(ref draft, target.Slots.NativeSlotCount);
         if (!storedCommentAgrees || draftCriteria != target.Criteria)
         {
             check = $"stored_criteria_mismatch; draftCommentAgrees={storedCommentAgrees}; " +

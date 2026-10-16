@@ -217,6 +217,8 @@ internal sealed class PartyWindow : Window
         if (slots.NumberOfParties > 1)
             ImGui.TextUnformatted($"모집 파티 수: {slots.NumberOfParties}");
         ImGui.TextUnformatted("모집글에서 받은 직업을 자리 순서대로 표시합니다.");
+        if (slots.UnregisteredNativeIndices.Length > 0)
+            ImGui.TextWrapped("각 파티 뒤쪽의 미등록 자리는 생략하고, 조회된 팀과 자리 번호를 표시합니다.");
         ImGui.TextWrapped("빈자리의 직업 제한에 마우스를 올리면 허용 직업을 볼 수 있습니다.");
         if (listing.Owner == ListingOwner.Self)
             ImGui.TextWrapped("빈자리를 클릭해 허용 직업 수정 · 일반 4·8인 / 연합 24·48인 / 친선경기 5·5·8인 지원");
@@ -228,7 +230,7 @@ internal sealed class PartyWindow : Window
             ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.ScrollY,
             new Vector2(0, height)))
         {
-            ImGui.TableSetupColumn("자리", ImGuiTableColumnFlags.WidthFixed, slots.IsFriendlyMatch ? ImGui.CalcTextSize("그림자팀 8").X + 12 : 40);
+            ImGui.TableSetupColumn("자리", ImGuiTableColumnFlags.WidthFixed, slots.NumberOfParties > 1 ? ImGui.CalcTextSize("그림자팀 8").X + 12 : 40);
             ImGui.TableSetupColumn("상태", ImGuiTableColumnFlags.WidthFixed, 70);
             ImGui.TableSetupColumn("등록 직업 / 모집 조건");
             ImGui.TableSetupScrollFreeze(0, 1);

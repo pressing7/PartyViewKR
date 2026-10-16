@@ -67,7 +67,8 @@ internal sealed record ListingJobEdit(RefreshTarget Original, int Position, ulon
 
     internal static bool SameSlots(ListingSlots a, ListingSlots b) => a.MappingValid && b.MappingValid && a.CountsAgree && b.CountsAgree &&
         a.TotalSlots == b.TotalSlots && a.SlotsFilled == b.SlotsFilled && a.IsAlliance == b.IsAlliance &&
-        a.NumberOfParties == b.NumberOfParties && a.Slots.Length == b.Slots.Length &&
+        a.NumberOfParties == b.NumberOfParties && a.NativeSlotCount == b.NativeSlotCount && a.IsFriendlyMatch == b.IsFriendlyMatch &&
+        a.UnregisteredNativeIndices.SequenceEqual(b.UnregisteredNativeIndices) && a.Slots.Length == b.Slots.Length &&
         a.Slots.Zip(b.Slots).All(pair => pair.First.Position == pair.Second.Position &&
             pair.First.NativeIndex == pair.Second.NativeIndex &&
             pair.First.MemberContentId == pair.Second.MemberContentId && pair.First.JobId == pair.Second.JobId &&
