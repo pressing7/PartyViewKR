@@ -242,6 +242,7 @@ ListingJobEditTests.Run(Test, Check);
 ListingSlotRouteTests.Run(Test, Check);
 ListingFriendlyMatchTests.Run(Test, Check);
 ListingSparseSlotsTests.Run(Test, Check);
+ListingRoleComparisonTests.Run(Test, Check);
 ListingDescriptionEditTests.Run(Test, Check);
 ListingObjectiveEditTests.Run(Test, Check);
 ListingBeginnerEditTests.Run(Test, Check);

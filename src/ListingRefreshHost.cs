@@ -15,9 +15,11 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
     private bool buttonTextReadable, buttonEnabled;
     private int buttonTextChars;
     private string check = "not_started";
+    // Preserve the bound target/editor comparison after the detail window closes.
+    private string editorRoleDiagnostic = "editorRoleCheck=not_started";
     internal string Diagnostic => $"refreshNativeCheck={check}; refreshEditorRevision={EditorRevision}; refreshEditorClosedRevision={EditorClosedRevision}\n" +
         $"refreshButtonMode={buttonMode}; refreshButtonTextReadable={buttonTextReadable}; refreshButtonEnabled={buttonEnabled}; refreshButtonTextChars={buttonTextChars}\n" +
-        SlotEditDiagnostic + "\n" + DescriptionEditDiagnostic + "\n" + ObjectiveEditDiagnostic + "\n" + BeginnerEditDiagnostic + "\n" + UniqueJobsEditDiagnostic + "\n" + PrivateEditDiagnostic + "\n" + CompletionEditDiagnostic + "\n" + ItemLevelEditDiagnostic + "\n" + RuleEditDiagnostic;
+        editorRoleDiagnostic + "\n" + SlotEditDiagnostic + "\n" + DescriptionEditDiagnostic + "\n" + ObjectiveEditDiagnostic + "\n" + BeginnerEditDiagnostic + "\n" + UniqueJobsEditDiagnostic + "\n" + PrivateEditDiagnostic + "\n" + CompletionEditDiagnostic + "\n" + ItemLevelEditDiagnostic + "\n" + RuleEditDiagnostic;
     public ulong SelfId => Plugin.PlayerState.IsLoaded ? Plugin.PlayerState.ContentId : 0;
     public bool QueryBusy => reader.Busy;
     public bool QuerySucceeded => reader.LastOwnRequestSucceeded;
@@ -91,6 +93,7 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
     public bool OpenEditor(RefreshTarget target, out string error)
     {
         editingTarget = null;
+        editorRoleDiagnostic = "editorRoleCheck=not_started";
         slotEdit = null;
         descriptionSession = null;
         objectiveSession = null;
@@ -223,10 +226,16 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
         var storedCommentAgrees = NativeReadGuard.FixedText(draft.Comment, out var storedComment) &&
             ListingIdentity.SameText(storedComment, target.Description);
         var draftCriteria = DraftCriteria(ref draft, target.Slots.NativeSlotCount);
+        // Report the exact two role arrays used below; diagnostics never authorize
+        // differing flags or change the target, draft, or existing equality check.
+        editorRoleDiagnostic = ListingRoleComparison.Describe(target, draftCriteria,
+            draft.NumberOfGroups, draft.NumberOfSlotsInMainParty, plugin.Refresh.JobEdit?.Position ?? 0);
         if (!storedCommentAgrees || draftCriteria != target.Criteria)
         {
             check = $"stored_criteria_mismatch; draftCommentAgrees={storedCommentAgrees}; " +
                 $"draftDutyAgrees={draft.SelectedDutyId == target.DutyId}; draftDifferentFields={DifferentCriteria(target.Criteria, draftCriteria)}";
+            if (storedCommentAgrees && DifferentCriteria(target.Criteria, draftCriteria) == "roles")
+                error = "모집글과 수정창의 직업 제한 값이 달라 중단했습니다. 진단의 editorRole 항목을 보내 주세요.";
             return false;
         }
 
