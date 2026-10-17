@@ -122,12 +122,35 @@ internal sealed class ListingDiscordClient : IDisposable
                 // Buttons omit values; Discord.Net exposes null, unlike select menus.
                 new(component.Id, component.ApplicationId, component.User.Id, "", component.Data.CustomId, component.Data.Values?.ToArray() ?? [], []),
             SocketModal modal when modal.Data.CustomId.StartsWith("pvkr:", StringComparison.Ordinal) =>
-                new(modal.Id, modal.ApplicationId, modal.User.Id, "", modal.Data.CustomId, [], modal.Data.Components.ToDictionary(c => c.CustomId, c => c.Value)),
+                ReadModal(modal),
             _ => null
         };
         // Never block Discord's Gateway dispatch/heartbeat waiting for the game.
         if (input != null) _ = active.Process(input, new Response(interaction, stop.Token));
         return Task.CompletedTask;
+    }
+    private static DiscordInput ReadModal(SocketModal modal)
+    {
+        var result = new DiscordInput(modal.Id, modal.ApplicationId, modal.User.Id, "", modal.Data.CustomId, [], []);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var component in modal.Data.Components) {
+            if (!seen.Add(component.CustomId)) { result.Fields["invalid"] = ""; continue; }
+            switch (component.Type) {
+                case ComponentType.CheckboxGroup:
+                    if (component.Values != null) result.Choices[component.CustomId] = component.Values.ToArray();
+                    else result.Fields["invalid"] = "";
+                    break;
+                case ComponentType.Checkbox:
+                    if (component.BoolValue is { } boolean) result.Checks[component.CustomId] = boolean;
+                    else result.Fields["invalid"] = "";
+                    break;
+                case ComponentType.RadioGroup:
+                case ComponentType.TextInput:
+                    result.Fields[component.CustomId] = component.Value ?? ""; break;
+                default: result.Fields["invalid"] = ""; break;
+            }
+        }
+        return result;
     }
     public void Dispose()
     {
@@ -146,12 +169,15 @@ internal sealed class ListingDiscordClient : IDisposable
         public Task Modal(Modal modal) => interaction.RespondWithModalAsync(modal, Options(true));
         public async Task Screen(DiscordScreen screen, bool replace, bool deferred)
         {
-            void Set(MessageProperties p) { p.Content = screen.Text; p.Components = screen.Components; p.AllowedMentions = AllowedMentions.None; }
+            void Set(MessageProperties p) {
+                p.Content = null!; p.Embeds = Array.Empty<Embed>(); p.Components = screen.Components;
+                p.Flags = MessageFlags.ComponentsV2; p.AllowedMentions = AllowedMentions.None;
+            }
             if (deferred) await interaction.ModifyOriginalResponseAsync(Set, Options());
             else if (replace && interaction is SocketMessageComponent component) await component.UpdateAsync(Set, Options(true));
             else if (replace && interaction is SocketModal { Message: not null } modal) await modal.UpdateAsync(Set, Options(true));
-            else await interaction.RespondAsync(screen.Text, ephemeral: true, allowedMentions: AllowedMentions.None,
-                components: screen.Components, options: Options(true));
+            else await interaction.RespondAsync(ephemeral: true, allowedMentions: AllowedMentions.None,
+                components: screen.Components, flags: MessageFlags.ComponentsV2, options: Options(true));
         }
     }
 }

@@ -21,7 +21,7 @@ internal sealed class ListingDiscordSession(ListingWebBridge bridge, ulong appId
     private readonly Queue<ulong> seenOrder = [];
     private int handling;
     private long Now => clock?.Invoke() ?? Environment.TickCount64;
-    private static DiscordScreen Message(string text) => new(ListingDiscordPanel.Limit(text), new ComponentBuilder().Build());
+    private static DiscordScreen Message(string text) => ListingDiscordCard.Message(text);
 
     internal async Task Process(DiscordInput input, IDiscordResponse response)
     {
@@ -97,7 +97,9 @@ internal sealed class ListingDiscordSession(ListingWebBridge bridge, ulong appId
         if (reply.Body is WebQuery query) return query.Message;
         if (reply.Body is WebOperation operation) {
             var issues = operation.Results.Where(r => r.Applied != true).ToArray();
-            return operation.Message + (issues.Length == 0 ? "" : $"\n적용하지 못한 항목 {issues.Length}개:\n" +
+            var summary = operation.Results.Length == 0 ? "" :
+                $"적용 {operation.Results.Count(r => r.Applied == true)}개 · 미적용 {operation.Results.Count(r => r.Applied == false)}개 · 확인 필요 {operation.Results.Count(r => r.Applied == null)}개\n";
+            return summary + operation.Message + (issues.Length == 0 ? "" : $"\n미적용·확인 필요 {issues.Length}개:\n" +
                 string.Join('\n', issues.Take(5).Select(r => $"{r.Title}: {r.Message}")) + (issues.Length > 5 ? "\n나머지 결과는 게임의 PVKR에서 확인해 주세요." : ""));
         }
         var body = JsonSerializer.SerializeToElement(reply.Body);

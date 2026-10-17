@@ -77,6 +77,7 @@ static partial class ListingDiscordConnectionTests
         internal readonly ConcurrentQueue<(string Method, string Endpoint, JsonElement Body)> Responses = new();
         internal JsonElement? Message;
         private int sequence = 1;
+        private int messageId = 900;
         internal bool RejectCommands, RejectAuth;
         public event Func<string, Task>? TextMessage;
         public event Func<byte[], int, int, Task>? BinaryMessage { add { } remove { } }
@@ -143,7 +144,7 @@ static partial class ListingDiscordConnectionTests
             else if (method == "POST" && endpoint.StartsWith("interactions/") && endpoint.EndsWith("/callback")) {
                 using var parsed = JsonDocument.Parse(json!);
                 var response = parsed.RootElement.Clone();
-                if (response.GetProperty("type").GetInt32() is 4 or 7) MakeMessage(response.GetProperty("data"));
+                if (response.GetProperty("type").GetInt32() is 4 or 7) MakeMessage(response.GetProperty("data"), response.GetProperty("type").GetInt32() == 4);
                 Responses.Enqueue((method, endpoint, response));
                 code = HttpStatusCode.NoContent; body = "";
             }
@@ -156,16 +157,30 @@ static partial class ListingDiscordConnectionTests
             else throw new InvalidOperationException("Unexpected offline REST endpoint: " + method + " " + endpoint);
             return Task.FromResult(new RestResponse(code, [], new MemoryStream(Encoding.UTF8.GetBytes(body))));
         }
-        private JsonElement MakeMessage(JsonElement data)
+        private JsonElement MakeMessage(JsonElement data, bool fresh = false)
         {
+            if (fresh) messageId++;
+            ValidateCard(data);
             Message = JsonSerializer.SerializeToElement(new {
-                id = "900", channel_id = "800", type = 0,
+                id = messageId.ToString(), channel_id = "800", type = 0,
                 author = new { id = "500", username = "PVKR", discriminator = "0", bot = true },
-                timestamp = DateTimeOffset.UtcNow, content = data.TryGetProperty("content", out var text) ? text.GetString() : "",
+                timestamp = DateTimeOffset.UtcNow, content = data.TryGetProperty("content", out var text) ? text.GetString() ?? "" : "",
                 components = data.TryGetProperty("components", out var components) ? components : JsonSerializer.SerializeToElement(Array.Empty<object>()),
+                flags = data.TryGetProperty("flags", out var flags) ? flags.GetInt32() : 0,
                 attachments = Array.Empty<object>(), embeds = Array.Empty<object>(), mentions = Array.Empty<object>(), mention_roles = Array.Empty<object>()
             });
             return Message.Value;
+        }
+        private static void ValidateCard(JsonElement data)
+        {
+            if (!data.TryGetProperty("flags", out var flags) || (flags.GetInt32() & 32768) == 0) throw new Exception("Missing Components V2 flag");
+            if (data.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.String && content.GetString()!.Length > 0)
+                throw new Exception("Legacy content on V2 message");
+            var all = WalkJson(data.GetProperty("components")).ToArray();
+            if (all.Length > 40 || all.Where(c => c.GetProperty("type").GetInt32() == 10).Sum(c => c.GetProperty("content").GetString()!.Length) > 4000)
+                throw new Exception("V2 message exceeds Discord limits");
+            var ids = all.Where(c => c.TryGetProperty("custom_id", out _)).Select(c => c.GetProperty("custom_id").GetString()).ToArray();
+            if (ids.Distinct().Count() != ids.Length) throw new Exception("Duplicate component ID");
         }
     }
 }

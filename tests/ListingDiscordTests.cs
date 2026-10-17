@@ -3,41 +3,66 @@ using System.Text.Json;
 using Discord;
 using PartyViewKR;
 
-static class ListingDiscordTests
+static partial class ListingDiscordTests
 {
     private static ulong serial = 100;
     private const ulong App = 500, Owner = 600;
     private static DiscordInput Input(string custom = "", string[]? values = null, Dictionary<string, string>? fields = null) =>
         new(++serial, App, Owner, "", custom, values ?? [], fields ?? []);
-    private static string Id(DiscordScreen screen, string action) => screen.Components.Components.OfType<ActionRowComponent>()
-        .SelectMany(row => row.Components).Select(c => c switch { ButtonComponent b => b.CustomId, SelectMenuComponent s => s.CustomId, _ => "" })
+    private static string Id(DiscordScreen screen, string action) => ListingDiscordCard.Walk(screen.Components.Components)
+        .Select(c => c switch { ButtonComponent b => b.CustomId, SelectMenuComponent s => s.CustomId, _ => "" })
         .Single(id => id.EndsWith(":" + action, StringComparison.Ordinal));
-    private static SelectMenuComponent Menu(DiscordScreen screen, string action) => screen.Components.Components.OfType<ActionRowComponent>()
-        .SelectMany(row => row.Components).OfType<SelectMenuComponent>().Single(m => m.CustomId.EndsWith(":" + action, StringComparison.Ordinal));
+    private static SelectMenuComponent Menu(DiscordScreen screen, string action) => ListingDiscordCard.Walk(screen.Components.Components)
+        .OfType<SelectMenuComponent>().Single(m => m.CustomId.EndsWith(":" + action, StringComparison.Ordinal));
     private static DiscordScreen Act(ListingDiscordPanel panel, DiscordScreen screen, string action, params string[] values) =>
         panel.Handle(Input(Id(screen, action), values), 1100).Screen!;
     private static DiscordScreen Field(ListingDiscordPanel panel, DiscordScreen screen, string field, string value)
     {
-        screen = Settings(panel, screen); screen = Act(panel, screen, "field", field);
-        return Act(panel, screen, "value", value);
+        screen = Settings(panel, screen);
+        var form = field is "objective" or "completion" or "beginner" or "uniqueJobs" ? "conditions" : "rules";
+        var modal = panel.Handle(Input(Id(screen, "form:" + form)), 1100).Modal!;
+        var input = FormInput(modal);
+        if (field is "beginner" or "uniqueJobs" or "unrestricted" or "minimum_item_level" or "silence_echo") {
+            var selected = input.Choices["toggles"].ToHashSet();
+            if (value == "1") selected.Add(field); else selected.Remove(field);
+            input.Choices["toggles"] = selected.ToArray();
+        } else input.Fields[field] = value;
+        return panel.Handle(input, 1100).Screen!;
     }
     private static DiscordScreen Settings(ListingDiscordPanel panel, DiscordScreen screen) =>
-        screen.Components.Components.OfType<ActionRowComponent>().SelectMany(r => r.Components).OfType<SelectMenuComponent>()
-            .Any(m => m.CustomId.EndsWith(":field", StringComparison.Ordinal)) ? screen : Act(panel, screen, "settings");
+        ListingDiscordCard.Walk(screen.Components.Components).OfType<ButtonComponent>()
+            .Any(m => m.CustomId.EndsWith(":form:conditions", StringComparison.Ordinal)) ? screen : Act(panel, screen, "settings");
     private static DiscordScreen Text(ListingDiscordPanel panel, DiscordScreen screen, string field, string text)
     {
         screen = Settings(panel, screen);
-        var decision = panel.Handle(Input(Id(screen, "field"), [field]), 1100);
-        if (field == "private") decision = panel.Handle(Input(Id(decision.Screen!, "value"), ["1"]), 1100);
-        return panel.Handle(Input(decision.Modal!.CustomId, fields: new() { ["value"] = text }), 1100).Screen!;
+        var form = field == "itemLevel" ? "conditions" : field;
+        var modal = panel.Handle(Input(Id(screen, "form:" + form)), 1100).Modal!;
+        var input = FormInput(modal);
+        input.Fields[field == "private" ? "password" : field == "description" ? "value" : field] = text;
+        if (field == "private") input.Checks["enabled"] = true;
+        return panel.Handle(input, 1100).Screen!;
+    }
+    private static DiscordInput FormInput(Modal modal)
+    {
+        var input = Input(modal.CustomId);
+        foreach (var c in ListingDiscordCard.Walk(modal.Component.Components)) {
+            switch (c) {
+                case TextInputComponent t: input.Fields[t.CustomId] = t.Value ?? ""; break;
+                case RadioGroupComponent r: input.Fields[r.CustomId] = r.Options.FirstOrDefault(o => o.IsDefault == true).Value ?? ""; break;
+                case CheckboxGroupComponent g: input.Choices[g.CustomId] = g.Options.Where(o => o.DefaultState == true).Select(o => o.Value).ToArray(); break;
+                case CheckboxComponent b: input.Checks[b.CustomId] = b.DefaultState == true; break;
+            }
+        }
+        return input;
     }
     internal static void Run(Action<string, Action> test, Action<bool, string> check)
     {
+        RunCardFlow(test, check);
         test("discord rejects wrong owner or app without reading or queuing a game action", () => {
             var (b, h, _) = ListingWebEditTests.Ready(); var p = new ListingDiscordPanel(b, App, Owner);
             foreach (var input in new[] { Input() with { Command = "pvkr", UserId = 7 }, Input() with { Command = "pvkr", ApplicationId = 8 } }) {
                 var result = p.Handle(input, 1100);
-                check(result.Work == null && result.Modal == null && result.Screen!.Components.Components.Count == 0, "unauthorized controls exposed");
+                check(result.Work == null && result.Modal == null && !result.Screen!.HasControls, "unauthorized controls exposed");
             }
             b.Update(h, 1200); check(h.StartCalls == 0 && !h.Native.QueryBusy, "unauthorized game access");
         });
@@ -92,7 +117,7 @@ static class ListingDiscordTests
                 ("itemLevel", "1000"), ("itemLevel", "-1"), ("private", "123"), ("private", "１２３４") }) {
                 var (b, _, _) = ListingWebEditTests.Ready(); var p = new ListingDiscordPanel(b, App, Owner);
                 var screen = Text(p, p.Complete(1000).Screen!, field, value);
-                check(screen.Components.Components.Count == 0 && !screen.Text.Contains(value), "invalid value accepted or echoed");
+                check(!screen.HasControls && !screen.Text.Contains(value), "invalid value accepted or echoed");
             }
             var (bridge, host, view) = ListingWebEditTests.Ready(); var panel = new ListingDiscordPanel(bridge, App, Owner);
             var valid = Text(panel, panel.Complete(1000).Screen!, "description", new string('가', 64));
@@ -142,7 +167,7 @@ static class ListingDiscordTests
         test("discord output fits message/component limits with long 48-slot changes", () => {
             var (b, h, _) = ListingWebEditTests.Ready(); h.Native.Target = WebEditFakeHost.Target(48); b.Update(h, 1001);
             var p = new ListingDiscordPanel(b, App, Owner); var screen = p.Complete(1001, new string('한', 3000)).Screen!;
-            check(screen.Text.Length <= 2000 && screen.Components.Components.Count <= 5, "Discord payload oversized");
+            check(screen.Text.Length <= 4000 && ListingDiscordCard.Walk(screen.Components.Components).Count() <= 40, "Discord payload oversized");
             var cut = ListingDiscordPanel.Limit(new string('x', 1898) + "😀끝");
             check(cut.Length < 1901 && !char.IsHighSurrogate(cut[^2]), "surrogate split");
         });
@@ -202,7 +227,7 @@ static class ListingDiscordTests
                 if (p.Progress(work).Body is WebOperation { State: not ("queued" or "running") }) break;
             }
             var result = p.Progress(work); check(h.Native.SubmitCalls == 1 && h.Native.Target.Description == "반영되는 소개말", "unsupported setting aborted batch");
-            check(ListingDiscordSession.Describe(result).Contains("적용하지 못한 항목 1개"), "partial result missing");
+            check(ListingDiscordSession.Describe(result).Contains("미적용·확인 필요 1개"), "partial result missing");
         });
     }
     private sealed class FakeDiscordResponse : IDiscordResponse
@@ -216,7 +241,7 @@ static class ListingDiscordTests
         public Task Modal(Modal modal) => Task.CompletedTask;
         public Task Screen(DiscordScreen screen, bool replace, bool deferred) {
             Last = screen;
-            if (deferred && screen.Components.Components.Count == 0) OnProgress?.Invoke();
+            if (deferred && !screen.HasControls) OnProgress?.Invoke();
             return Task.CompletedTask;
         }
     }
