@@ -92,15 +92,16 @@ internal sealed class ListingDiscordSession(ListingWebBridge bridge, ulong appId
         try { await response.Screen(screen, false, deferred); } catch (Exception) { }
     }
     private static bool Pending(WebReply reply) => reply.Body is WebQuery { State: "queued" or "running" } or WebOperation { State: "queued" or "running" };
+    internal static string ResultSummary(WebOperation operation) => operation.Results.Length == 0 ? "" :
+        $"적용 {operation.Results.Count(r => r.Applied == true)}개 · 미적용 {operation.Results.Count(r => r.Applied == false)}개 · 확인 필요 {operation.Results.Count(r => r.Applied == null)}개";
     internal static string Describe(WebReply reply)
     {
         if (reply.Body is WebQuery query) return query.Message;
         if (reply.Body is WebOperation operation) {
-            var issues = operation.Results.Where(r => r.Applied != true).ToArray();
-            var summary = operation.Results.Length == 0 ? "" :
-                $"적용 {operation.Results.Count(r => r.Applied == true)}개 · 미적용 {operation.Results.Count(r => r.Applied == false)}개 · 확인 필요 {operation.Results.Count(r => r.Applied == null)}개\n";
-            return summary + operation.Message + (issues.Length == 0 ? "" : $"\n미적용·확인 필요 {issues.Length}개:\n" +
-                string.Join('\n', issues.Take(5).Select(r => $"{r.Title}: {r.Message}")) + (issues.Length > 5 ? "\n나머지 결과는 게임의 PVKR에서 확인해 주세요." : ""));
+            var summary = ResultSummary(operation);
+            return (summary.Length > 0 ? summary + "\n" : "") + operation.Message +
+                (operation.Results.Length == 0 ? "" : "\n\n" + string.Join("\n\n", operation.Results.Select(r =>
+                    $"[{(r.Applied == true ? "적용" : r.Applied == false ? "미적용" : "확인 필요")}] {r.Title}\n{r.Message}")));
         }
         var body = JsonSerializer.SerializeToElement(reply.Body);
         return body.TryGetProperty("error", out var error) ? error.GetString() ?? "요청을 처리하지 못했습니다." : "요청을 처리하지 못했습니다.";

@@ -19,8 +19,7 @@ static partial class ListingDiscordTests
     private static DiscordScreen Field(ListingDiscordPanel panel, DiscordScreen screen, string field, string value)
     {
         screen = Settings(panel, screen);
-        var form = field is "objective" or "completion" or "beginner" or "uniqueJobs" ? "conditions" : "rules";
-        var modal = panel.Handle(Input(Id(screen, "form:" + form)), 1100).Modal!;
+        var modal = panel.Handle(Input(Id(screen, "form:settings")), 1100).Modal!;
         var input = FormInput(modal);
         if (field is "beginner" or "uniqueJobs" or "unrestricted" or "minimum_item_level" or "silence_echo") {
             var selected = input.Choices["toggles"].ToHashSet();
@@ -31,11 +30,11 @@ static partial class ListingDiscordTests
     }
     private static DiscordScreen Settings(ListingDiscordPanel panel, DiscordScreen screen) =>
         ListingDiscordCard.Walk(screen.Components.Components).OfType<ButtonComponent>()
-            .Any(m => m.CustomId.EndsWith(":form:conditions", StringComparison.Ordinal)) ? screen : Act(panel, screen, "settings");
+            .Any(m => m.CustomId.EndsWith(":form:settings", StringComparison.Ordinal)) ? screen : Act(panel, screen, "settings");
     private static DiscordScreen Text(ListingDiscordPanel panel, DiscordScreen screen, string field, string text)
     {
         screen = Settings(panel, screen);
-        var form = field == "itemLevel" ? "conditions" : field;
+        var form = field == "itemLevel" ? "settings" : field;
         var modal = panel.Handle(Input(Id(screen, "form:" + form)), 1100).Modal!;
         var input = FormInput(modal);
         input.Fields[field == "private" ? "password" : field == "description" ? "value" : field] = text;
@@ -59,6 +58,7 @@ static partial class ListingDiscordTests
     {
         RunCardFlow(test, check);
         RunRoster(test, check);
+        RunResults(test, check);
         test("discord rejects wrong owner or app without reading or queuing a game action", () => {
             var (b, h, _) = ListingWebEditTests.Ready(); var p = new ListingDiscordPanel(b, App, Owner);
             foreach (var input in new[] { Input() with { Command = "pvkr", UserId = 7 }, Input() with { Command = "pvkr", ApplicationId = 8 } }) {
@@ -95,12 +95,19 @@ static partial class ListingDiscordTests
         });
         test("discord combines all settings and preserves PIN 0000 without displaying it", () => {
             var (b, h, v) = ListingWebEditTests.Ready(); var p = new ListingDiscordPanel(b, App, Owner);
-            var screen = p.Complete(1000).Screen!;
-            foreach (var pair in new[] { ("objective", "3"), ("beginner", "1"), ("uniqueJobs", "1"), ("completion", "4"),
-                ("unrestricted", "1"), ("minimum_item_level", "1"), ("silence_echo", "1"), ("loot", "2") })
-                screen = Field(p, screen, pair.Item1, pair.Item2);
+            var screen = Settings(p, p.Complete(1000).Screen!);
+            var modal = p.Handle(Input(Id(screen, "form:settings")), 1100).Modal!;
+            check(modal.Component.Components.Count == 5, "unified form exceeds modal limit");
+            var input = FormInput(modal);
+            input.Fields["objective"] = "3"; input.Fields["completion"] = "4";
+            input.Fields["itemLevel"] = "999"; input.Fields["loot"] = "2";
+            input.Choices["toggles"] = ["beginner", "uniqueJobs", "unrestricted", "minimum_item_level", "silence_echo"];
+            screen = p.Handle(input, 1100).Screen!;
+            check(screen.Text.Contains("적용 대기 9개"), "one general form lost fields");
+            var reopened = FormInput(p.Handle(Input(Id(screen, "form:settings")), 1100).Modal!);
+            check(reopened.Fields.OrderBy(k => k.Key).SequenceEqual(input.Fields.OrderBy(k => k.Key)) &&
+                reopened.Choices["toggles"].ToHashSet().SetEquals(input.Choices["toggles"]), "reopened unified form lost draft defaults");
             screen = Text(p, screen, "description", "새 소개말");
-            screen = Text(p, screen, "itemLevel", "999");
             screen = Text(p, screen, "private", "0000");
             check(!screen.Text.Contains("0000"), "PIN appeared in response");
             var work = p.Handle(Input(Id(screen, "apply")), 1100).Work!;
@@ -228,7 +235,7 @@ static partial class ListingDiscordTests
                 if (p.Progress(work).Body is WebOperation { State: not ("queued" or "running") }) break;
             }
             var result = p.Progress(work); check(h.Native.SubmitCalls == 1 && h.Native.Target.Description == "반영되는 소개말", "unsupported setting aborted batch");
-            check(ListingDiscordSession.Describe(result).Contains("미적용·확인 필요 1개"), "partial result missing");
+            check(ListingDiscordSession.Describe(result).Contains("[미적용] 제한 해제"), "partial result missing");
         });
     }
     private sealed class FakeDiscordResponse : IDiscordResponse

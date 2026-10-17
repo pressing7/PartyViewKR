@@ -6,14 +6,14 @@ namespace PartyViewKR;
 internal sealed partial class ListingDiscordPanel
 {
     private static string[] FormFields(string form) => form switch {
-        "description" => ["description"], "conditions" => ["objective", "completion", "itemLevel", .. ConditionFlags],
-        "rules" => [.. RuleFlags, "loot"], "private" => ["private"], _ => []
+        "description" => ["description"], "settings" => ["objective", "completion", "itemLevel", "loot", .. ConditionFlags, .. RuleFlags],
+        "private" => ["private"], _ => []
     };
     private static bool FormSupported(Panel p, string form) => FormFields(form).Any(p.View.Editor!.Supported.Contains);
     private static Modal BuildForm(Panel p, string form)
     {
         var modal = new ModalBuilder().WithTitle(form switch {
-            "description" => "소개말 수정", "conditions" => "모집 조건 함께 수정", "rules" => "참가 규칙 함께 수정", _ => "비공개 설정"
+            "description" => "소개말 수정", "settings" => "모집 설정 함께 수정", _ => "비공개 설정"
         }).WithCustomId(Id(p, "submit:" + form));
         var supported = p.View.Editor!.Supported;
         if (form == "description")
@@ -24,16 +24,18 @@ internal sealed partial class ListingDiscordPanel
             modal.AddTextInput("비밀번호 네 자리 · 비워두면 기존 값 유지", "password", TextInputStyle.Short,
                 maxLength: 4, required: false, placeholder: "0000~9999 · 새로 켤 때는 반드시 입력");
         } else {
-            var radioKeys = form == "conditions" ? new[] { "objective", "completion" } : ["loot"];
+            // Three radio groups, one numeric input and one checkbox group fit
+            // in a single five-component modal. Description/PIN stay separate.
+            string[] radioKeys = ["objective", "completion", "loot"];
             foreach (var key in radioKeys.Where(supported.Contains)) {
                 var radio = new RadioGroupBuilder().WithCustomId(key).WithRequired(true);
                 foreach (var option in Options(key)) radio.AddOption(option.Label, option.Value, isDefault: Value(p, key)?.ToString() == option.Value);
                 modal.AddRadioGroup(Label(key), radio);
             }
-            if (form == "conditions" && supported.Contains("itemLevel"))
+            if (supported.Contains("itemLevel"))
                 modal.AddTextInput("평균 아이템 레벨 · 1~999, 제한 없음은 0", "itemLevel", TextInputStyle.Short,
                     maxLength: 3, required: true, value: Value(p, "itemLevel")?.ToString() ?? "0");
-            var flags = (form == "conditions" ? ConditionFlags : RuleFlags).Where(supported.Contains).ToArray();
+            var flags = ConditionFlags.Concat(RuleFlags).Where(supported.Contains).ToArray();
             if (flags.Length > 0) {
                 var checks = new CheckboxGroupBuilder().WithCustomId("toggles").WithRequired(false).WithMinValues(0).WithMaxValues(flags.Length);
                 foreach (var key in flags) checks.AddOption(Label(key), key, defaultState: Enabled(p, key));
@@ -67,8 +69,8 @@ internal sealed partial class ListingDiscordPanel
                 changes.Add(new() { ["field"] = "private", ["value"] = true });
             else { error = "비공개를 새로 켤 때는 비밀번호 네 자리가 필요합니다."; return false; }
         } else {
-            var scalarKeys = (form == "conditions" ? new[] { "objective", "completion", "itemLevel" } : ["loot"]).Where(supported.Contains).ToArray();
-            var flags = (form == "conditions" ? ConditionFlags : RuleFlags).Where(supported.Contains).ToArray();
+            var scalarKeys = new[] { "objective", "completion", "itemLevel", "loot" }.Where(supported.Contains).ToArray();
+            var flags = ConditionFlags.Concat(RuleFlags).Where(supported.Contains).ToArray();
             if (!Keys(input.Fields, scalarKeys) || !Keys(input.Choices, flags.Length > 0 ? ["toggles"] : []) || input.Checks.Count != 0) return false;
             foreach (var key in scalarKeys) {
                 var text = input.Fields[key];

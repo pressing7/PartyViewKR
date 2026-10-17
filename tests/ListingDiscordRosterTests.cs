@@ -27,7 +27,7 @@ static partial class ListingDiscordTests
             host.Native.Target = WebEditFakeHost.Target(24); bridge.Update(host, 1001);
             var panel = new ListingDiscordPanel(bridge, App, Owner);
             var overview = panel.Complete(1001).Screen!;
-            var draft = Act(panel, Act(panel, overview, "settings"), "toggle:beginner");
+            var draft = Field(panel, overview, "beginner", "1");
             var details = panel.Handle(Input(Id(overview, "details")), 1100).Screen!;
             var oldGroup = Id(details, "group");
             details = Act(panel, details, "group", "2");

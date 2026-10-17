@@ -224,6 +224,7 @@ sealed class WebEditFakeHost : IListingWebEditHost
     public long Tick;
     public string? Blocked;
     public int StartCalls;
+    internal WebRefreshProgress? ReportOverride;
     private long ownedRevision = -1;
     public WebEditFakeHost() { Flow = new(Native); }
     public ulong SelfId { get { Guard(); return Native.SelfId; } }
@@ -248,7 +249,7 @@ sealed class WebEditFakeHost : IListingWebEditHost
         if (changes.Length == 0) Flow.Request(Tick, source: source); else Flow.RequestBatch(Tick, changes);
         ownedRevision = Flow.RequestRevision; return true;
     }
-    public WebRefreshProgress? ReadRefresh() { Guard(); return ownedRevision == Flow.RequestRevision ? WebRefreshProgress.From(Flow) : null; }
+    public WebRefreshProgress? ReadRefresh() { Guard(); return ReportOverride ?? (ownedRevision == Flow.RequestRevision ? WebRefreshProgress.From(Flow) : null); }
     public void Advance(long now)
     {
         Tick = now;

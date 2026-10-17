@@ -9,6 +9,7 @@
     <Compile Include="../src/ListingDiscordPanel.cs" Link="ListingDiscordPanel.cs" />
     <Compile Include="../src/ListingDiscordPanel.Forms.cs" Link="ListingDiscordPanel.Forms.cs" />
     <Compile Include="../src/ListingDiscordPanel.Render.cs" Link="ListingDiscordPanel.Render.cs" />
+    <Compile Include="../src/ListingDiscordPanel.Results.cs" Link="ListingDiscordPanel.Results.cs" />
     <Compile Include="../src/ListingDiscordIcons.cs" Link="ListingDiscordIcons.cs" />
     <Compile Include="../src/ListingDiscordSession.cs" Link="ListingDiscordSession.cs" />
     <Compile Include="../src/ListingDiscordClient.cs" Link="ListingDiscordClient.cs" />

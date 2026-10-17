@@ -20,15 +20,15 @@ internal sealed record DiscordScreen(string Text, MessageComponent Components)
 internal sealed record DiscordDecision(DiscordScreen? Screen = null, Modal? Modal = null,
     DiscordWork? Work = null, bool Replace = true);
 
-// Editors and job details are separate messages with independent navigation.
+// Editors, job details and complete results are separate messages with independent navigation.
 // Only the shared bridge may queue native game operations.
 internal sealed partial class ListingDiscordPanel(ListingWebBridge bridge, ulong applicationId, ulong ownerId,
     ListingDiscordIcons? iconCatalog = null)
 {
     private const long Lifetime = 15 * 60 * 1000;
     private readonly ListingDiscordIcons icons = iconCatalog ?? new();
-    private Panel? overview, editor, details;
-    private enum PanelKind { Overview, Editor, Details }
+    private Panel? overview, editor, details, results;
+    private enum PanelKind { Overview, Editor, Details, Results }
     private sealed class Panel(WebView view, PanelKind kind = PanelKind.Overview)
     {
         internal WebView View = view;
@@ -39,10 +39,13 @@ internal sealed partial class ListingDiscordPanel(ListingWebBridge bridge, ulong
         internal int Group, Slot = -1;
         internal string Page = kind == PanelKind.Editor ? "settings" : "main", Form = "";
         internal Dictionary<string, JsonObject> Changes = new(StringComparer.Ordinal);
+        internal string[] ResultPages = [];
+        internal string ResultPreview = "";
+        internal int ResultPage;
     }
     internal static readonly (string Key, string Label)[] Fields = [
         ("description", "소개말"), ("objective", "모집 목적"), ("beginner", "초행 및 초보자 환영"),
-        ("uniqueJobs", "잡 중복 없음"), ("private", "비공개 설정"), ("completion", "완료조건"),
+        ("uniqueJobs", "잡 중복 없음"), ("private", "비공개 설정"), ("completion", "완료 조건 설정"),
         ("itemLevel", "평균 아이템 레벨"), ("unrestricted", "제한 해제"),
         ("minimum_item_level", "최저 아이템 레벨로 참가"), ("silence_echo", "초월하는 힘 무효화"),
         ("loot", "전리품 규칙")
@@ -69,10 +72,19 @@ internal sealed partial class ListingDiscordPanel(ListingWebBridge bridge, ulong
         var parts = input.CustomId.Split(':');
         if (parts.Length is < 3 or > 4 || parts[0] != "pvkr") return Error("지원하지 않는 조작입니다.");
         var p = editor?.Nonce == parts[1] ? editor : overview?.Nonce == parts[1] ? overview :
-            details?.Nonce == parts[1] ? details : null;
+            details?.Nonce == parts[1] ? details : results?.Nonce == parts[1] ? results : null;
         if (p == null || now >= p.Expires) return Error("이 카드는 만료됐습니다. /pvkr로 다시 열어 주세요.");
         if (p.View.Session != current.Session) { Clear(); return Error("게임 접속 상태가 바뀌었습니다. /pvkr로 다시 열어 주세요."); }
         var action = parts[2];
+        if (p.Kind == PanelKind.Results) {
+            if (action != "resultpage" || parts.Length != 4 || !int.TryParse(parts[3], out var page) ||
+                page < 0 || page >= p.ResultPages.Length) return Error("작업 결과 카드에서는 결과만 확인할 수 있습니다.");
+            p.ResultPage = page; return new(Render(p, now));
+        }
+        if (action == "results" && p.Kind == PanelKind.Overview && p.ResultPages.Length > 0) {
+            results = new(p.View, PanelKind.Results) { ResultPages = p.ResultPages };
+            return new(Render(results, now), Replace: false);
+        }
         if (p.Kind == PanelKind.Overview && (action is "query" or "apply") && editor is { Changes.Count: > 0 })
             return Error("새 편집 카드에 변경사항이 있습니다. 편집 카드에서 ‘적용 및 갱신’을 눌러 주세요.");
         if (action == "query" && p.Kind == PanelKind.Overview) {
@@ -119,12 +131,7 @@ internal sealed partial class ListingDiscordPanel(ListingWebBridge bridge, ulong
             if (!ReadForm(p, parts[3], input, out var changes, out var error)) return Error(error);
             foreach (var change in changes) Set(p, change["field"]!.GetValue<string>(), change);
             p.Form = ""; p.Page = "settings";
-            return new(Render(p, now, "변경사항을 담았습니다. 적용 및 갱신을 누르면 게임에 반영됩니다."));
-        }
-        if (action == "toggle" && parts.Length == 4) {
-            var key = parts[3];
-            if (!ConditionFlags.Concat(RuleFlags).Contains(key) || !model.Supported.Contains(key)) return Error("지원하지 않는 항목입니다.");
-            Set(p, key, FlagChange(key, !Enabled(p, key))); return new(Render(p, now));
+            return new(Render(p, now));
         }
         if (action == "slot") {
             if (p.Page != "jobs" || !One(input, out var slot) || !int.TryParse(slot, out var index) || !GroupSlots(p).Any(s => s.NativeIndex == index))
@@ -154,8 +161,24 @@ internal sealed partial class ListingDiscordPanel(ListingWebBridge bridge, ulong
 
     internal WebReply Start(DiscordWork work, long now) => work.Query ? bridge.QueueQuery(work.Id, work.Session, now) : bridge.QueueApply(work.Id, work.Session, work.Body ?? [], now);
     internal WebReply Progress(DiscordWork work) => work.Query ? bridge.ReadQuery(work.Id) : bridge.ReadOperation(work.Id);
-    internal DiscordDecision Complete(long now, string notice = "") { Clear(); overview = new(bridge.ReadView()); return new(Render(overview, now, notice)); }
-    internal void Clear() { editor?.Changes.Clear(); editor = null; overview = null; details = null; }
+    internal DiscordDecision Complete(long now, string notice = "")
+    {
+        Clear(); overview = new(bridge.ReadView());
+        // The bridge keeps the last operation across queries. A fresh /pvkr
+        // therefore still exposes its full result without replaying the edit.
+        var operation = overview.View.Operation;
+        var report = operation is { State: not ("queued" or "running") } ? ListingDiscordSession.Describe(new(200, operation)) : "";
+        var summary = operation != null ? ListingDiscordSession.ResultSummary(operation) : "";
+        if (notice == report) notice = "";
+        if (Escape(notice).Length > 700) { report = notice; notice = ""; summary = ""; }
+        if (report.Length > 0) {
+            overview.ResultPages = PaginateResult(report);
+            overview.ResultPreview = Escape(report).Length <= 700 ? Escape(report) :
+                (summary.Length > 0 ? summary + "\n" : "") + $"전체 {overview.ResultPages.Length}페이지";
+        }
+        return new(Render(overview, now, notice));
+    }
+    internal void Clear() { editor?.Changes.Clear(); editor = null; overview = null; details = null; results = null; }
     private static bool One(DiscordInput input, out string value) { value = input.Values.FirstOrDefault() ?? ""; return input.Values.Length == 1; }
     private static JsonNode? Original(Panel p, string key) => p.View.Editor!.Values.TryGetValue(key, out var value) ? JsonSerializer.SerializeToNode(value) : null;
     private static JsonNode? Value(Panel p, string key) => p.Changes.TryGetValue(key, out var change) ? change["value"] : Original(p, key);

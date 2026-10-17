@@ -55,15 +55,17 @@ static partial class ListingDiscordConnectionTests
         test("discord Gateway grouped radio and checkbox values survive modal navigation", () => {
             using var bot = new InteractionFixture();
             bot.Open(); bot.Navigate("settings");
-            var conditions = bot.Modal("conditions");
+            var conditions = bot.Modal("settings");
             bot.Submit(conditions, [new { type = 21, custom_id = "objective", value = "3" },
                 new { type = 21, custom_id = "completion", value = "1" },
+                new { type = 21, custom_id = "loot", value = "2" },
                 new { type = 4, custom_id = "itemLevel", value = "0" },
-                new { type = 22, custom_id = "toggles", values = new[] { "beginner", "uniqueJobs" } }]);
-            check(bot.Text.Contains("적용 대기 3개"), "checkbox choices lost");
-            conditions = bot.Modal("conditions");
+                new { type = 22, custom_id = "toggles", values = new[] { "beginner", "uniqueJobs", "unrestricted", "minimum_item_level", "silence_echo" } }]);
+            check(bot.Text.Contains("적용 대기 7개"), "combined checkbox/radio choices lost");
+            conditions = bot.Modal("settings");
             bot.Submit(conditions, [new { type = 21, custom_id = "objective", value = "3" },
                 new { type = 21, custom_id = "completion", value = "1" },
+                new { type = 21, custom_id = "loot", value = "0" },
                 new { type = 4, custom_id = "itemLevel", value = "0" },
                 new { type = 22, custom_id = "toggles", values = Array.Empty<string>() }]);
             check(bot.Text.Contains("적용 대기 1개"), "radio value lost");
@@ -81,11 +83,38 @@ static partial class ListingDiscordConnectionTests
                 new { type = 23, custom_id = "enabled", value = enabled }, new { type = 4, custom_id = "password", value = password }]);
             Private(true, "0000");
             check(bot.Text.Contains("적용 대기 1개") && !bot.Text.Contains("0000"), "private input missing or PIN echoed");
-            Private(false, ""); check(bot.Text.Contains("변경할 항목을 고른 뒤"), "false checkbox ignored");
+            Private(false, ""); check(!bot.Text.Contains("적용 대기") && bot.Text.Contains("비공개 설정: 공개"), "false checkbox ignored");
             Private(true, "0000"); Private(true, "");
             check(bot.Text.Contains("적용 대기 1개"), "blank input removed pending PIN");
             var before = bot.Transport.Responses.Count; bot.Button("apply"); bot.ScreenAfter(before);
             check(bot.Host.Native.SubmitCalls == 1 && ListingPrivate.Read(bot.Host.Native.Target.ExtraCriteria) == true, "private settings not applied");
+        });
+        test("discord Gateway full results open separately and page through every item without replaying the edit", () => {
+            using var bot = new InteractionFixture(); bot.Open();
+            bot.Host.ReportOverride = new(false, "Completed", "전체 결과 테스트", true, true,
+                Enumerable.Range(1, 59).Select(i => new WebItemResult("item:" + i, "결과" + i, false,
+                    "내용" + i + " " + new string('한', 150) + " 끝" + i)).ToArray());
+            var before = bot.Transport.Responses.Count; bot.Button("apply"); bot.ScreenAfter(before);
+            var overview = bot.Transport.Message!.Value;
+            before = bot.Transport.Responses.Count; bot.Button("results"); bot.ScreenAfter(before);
+            var opened = bot.Transport.Responses.Skip(before).Single();
+            check(opened.Body.GetProperty("type").GetInt32() == 4 &&
+                (opened.Body.GetProperty("data").GetProperty("flags").GetInt32() & 64) != 0 &&
+                bot.Transport.Message!.Value.GetProperty("id").GetString() != overview.GetProperty("id").GetString(), "results did not open as separate private V2 message");
+            var full = new System.Text.StringBuilder(); var pages = 0;
+            while (true) {
+                full.Append(bot.Text); pages++;
+                var next = WalkJson(bot.Screen.GetProperty("components")).Single(c =>
+                    c.TryGetProperty("label", out var label) && label.GetString() == "다음");
+                if (next.TryGetProperty("disabled", out var disabled) && disabled.GetBoolean()) break;
+                before = bot.Transport.Responses.Count;
+                bot.Transport.Interaction(3, new { component_type = 2, custom_id = next.GetProperty("custom_id").GetString() });
+                bot.ScreenAfter(before);
+                check(bot.Transport.Responses.Skip(before).Single().Body.GetProperty("type").GetInt32() == 7, "page navigation did not update its own message");
+                check(pages < 10, "result paging loop");
+            }
+            check(pages > 1 && Enumerable.Range(1, 59).All(i => full.ToString().Contains("끝" + i)) && bot.Host.StartCalls == 1,
+                "result tail lost or game mutation replayed");
         });
         test("discord Gateway job presets and both select menus preserve every selected job", () => {
             using var bot = new InteractionFixture();
@@ -168,6 +197,7 @@ static partial class ListingDiscordConnectionTests
             PumpUntil(() => Transport.Responses.Count > before);
             var response = Transport.Responses.Skip(before).Single().Body;
             if (response.GetProperty("type").GetInt32() != 9) throw new Exception("Modal was not opened");
+            if (response.GetProperty("data").GetProperty("components").GetArrayLength() > 5) throw new Exception("Modal exceeds Discord component limit");
             return response.GetProperty("data").GetProperty("custom_id").GetString()!;
         }
         internal void Submit(string id, object[] fields)
