@@ -7,13 +7,16 @@ export default {
     const url = new URL(request.url);
     if (url.protocol !== "https:" && !(env.LOCAL_TEST_ONLY === "true" && ["127.0.0.1", "localhost"].includes(url.hostname)))
       return error(403, "HTTPS 주소로 접속해 주세요.");
-    if (url.search || !sameOrigin(request)) return error(403, "허용되지 않은 요청입니다.");
+    if (url.search) return error(403, "허용되지 않은 요청입니다.");
+    // The public connection page must load when opened from an external link.
+    // Origin checks still apply to all API and host connection requests below.
     if (request.method === "GET" && assets.has(url.pathname)) {
       const response = await env.ASSETS.fetch(request);
       const secured = new Response(response.body, response);
       for (const [key, value] of Object.entries(headers)) secured.headers.set(key, value);
       return secured;
     }
+    if (!sameOrigin(request)) return error(403, "허용되지 않은 요청입니다.");
     if (url.pathname === "/relay/host") {
       if (request.method !== "GET" || request.headers.get("Upgrade")?.toLowerCase() !== "websocket")
         return error(400, "지원하지 않는 연결입니다.");

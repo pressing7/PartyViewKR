@@ -23,6 +23,45 @@ async function host(mf, key = secret, id = room, browserKey = browser) {
 }
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
+test("external page navigation is public while relay APIs remain protected", { timeout: 15000 }, async () => {
+  const mf = new Miniflare(options());
+  try {
+    const navigation = { "Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document", "Sec-Fetch-User": "?1" };
+    const page = await mf.dispatchFetch("https://pvkr.test/", { headers: navigation });
+    assert.equal(page.status, 200, await page.clone().text());
+    assert.match(await page.text(), /connection-code/);
+    assert.match(page.headers.get("Content-Security-Policy"), /frame-ancestors 'none'/);
+    for (const path of ["/index.html", "/app.js", "/editor.js", "/connection.js", "/style.css"])
+      assert.equal((await mf.dispatchFetch("https://pvkr.test" + path, { headers: { "Sec-Fetch-Site": "same-origin" } })).status, 200, path);
+    assert.equal((await mf.dispatchFetch("https://pvkr.test/?key=x", { headers: navigation })).status, 403);
+    assert.equal((await mf.dispatchFetch("http://pvkr.test/", { headers: navigation })).status, 403);
+    assert.equal((await mf.dispatchFetch("https://pvkr.test/", { method: "POST", headers: navigation })).status, 403);
+
+    const connected = await host(mf); assert.equal(connected.status, 101);
+    const ws = connected.webSocket; ws.accept(); let received = 0;
+    ws.addEventListener("message", event => {
+      received++;
+      ws.send(JSON.stringify({ v: 1, id: JSON.parse(event.data).id, status: 200, body: { apiVersion: 2 } }));
+    });
+    const apiHeaders = { ...auth(), "Content-Type": "application/json", "X-PVKR-Request-Id": crypto.randomUUID(), "X-PVKR-Session": room };
+    for (const siteHeaders of [{ "Sec-Fetch-Site": "cross-site" }, { Origin: "https://external.test" }]) {
+      for (const path of ["/api/state", "/api/queries/" + crypto.randomUUID(), "/api/operations/" + crypto.randomUUID()])
+        assert.equal((await mf.dispatchFetch("https://pvkr.test" + path, { headers: { ...apiHeaders, ...siteHeaders } })).status, 403, path);
+      for (const path of ["/api/query", "/api/apply"])
+        assert.equal((await mf.dispatchFetch("https://pvkr.test" + path, { method: "POST", headers: { ...apiHeaders, ...siteHeaders }, body: "{}" })).status, 403, path);
+      assert.equal((await mf.dispatchFetch("https://pvkr.test/relay/host", { headers: { ...siteHeaders, Upgrade: "websocket",
+        Authorization: "Bearer " + secret, "X-PVKR-Room": room, "X-PVKR-Browser-Hash": await digest(browser) } })).status, 403);
+    }
+    assert.equal(received, 0, "rejected external requests reached the game PC");
+    assert.equal((await mf.dispatchFetch("https://pvkr.test/api/state", { headers: { "Sec-Fetch-Site": "same-origin" } })).status, 401);
+    assert.equal((await mf.dispatchFetch("https://pvkr.test/api/state", { headers: { ...auth("D".repeat(64)), "Sec-Fetch-Site": "same-origin" } })).status, 401);
+    assert.equal(received, 0, "unauthenticated requests reached the game PC");
+    assert.equal((await mf.dispatchFetch("https://pvkr.test/api/state", { headers: { ...auth(), Origin: "https://pvkr.test", "Sec-Fetch-Site": "same-origin" } })).status, 200);
+    assert.equal(received, 1);
+    ws.close(1000, "test end");
+  } finally { await mf.dispose(); }
+});
+
 test("relay authentication, route boundaries, WebSocket forwarding, timeout and replacement", { timeout: 60000 }, async () => {
   const mf = new Miniflare(options());
   try {
