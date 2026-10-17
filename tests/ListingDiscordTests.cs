@@ -149,17 +149,38 @@ static partial class ListingDiscordTests
                 check(document.RootElement.GetProperty("changes")[0].GetProperty("slot").GetInt32() == expected, "display index sent as native index");
             }
         });
-        test("discord 32 jobs use two menus and replacing one half preserves the other", () => {
+        test("discord five role menus include every job and class and preserve other selections", () => {
             var (b, h, _) = ListingWebEditTests.Ready();
             uint[] ids = [19,21,32,37,24,33,28,40,20,22,30,34,39,41,43,23,31,38,25,27,35,42,36,1,3,6,2,4,29,5,7,26];
             var rules = ListingJobRules.Read(ids.Select(id => new RecruitmentJob(id, "직업" + id)));
+            h.Native.Target = WebEditFakeHost.Target(48);
             h.Native.Target = h.Native.Target with { Slots = h.Native.Target.Slots with { JobRules = rules } }; b.Update(h, 1001);
             var p = new ListingDiscordPanel(b, App, Owner); var screen = Act(p, p.Complete(1001).Screen!, "settings");
             screen = Act(p, screen, "jobs"); screen = Act(p, screen, "alljobs");
-            check(Menu(screen, "choosejobs:0").Options.Count == 16 && Menu(screen, "choosejobs:1").Options.Count == 16, "Discord menu limit exceeded");
-            screen = Act(p, screen, "choosejobs:0", "19");
-            check(Menu(screen, "choosejobs:1").Options.All(o => o.IsDefault == true), "other half reset");
-            screen = Act(p, screen, "choosejobs:1"); screen = Act(p, screen, "choosejobs:0");
+            (string Label, uint[] Ids)[] groups = [
+                ("방어", [19,21,32,37,1,3]), ("회복", [24,33,28,40,6]),
+                ("근거리 공격", [20,22,30,34,39,41,43,2,4,29]),
+                ("원거리 물리", [23,31,38,5]), ("원거리 마법", [25,27,35,42,36,7,26])
+            ];
+            var controls = ListingDiscordCard.Walk(screen.Components.Components).ToArray();
+            check(controls.OfType<SelectMenuComponent>().Count(m => m.CustomId.Contains(":choosejobs:")) == 5 &&
+                controls.Length <= 40 && screen.Text.Length <= 4000, "five role menus exceed Discord limits");
+            var expected = ids.ToHashSet();
+            for (var group = 0; group < groups.Length; group++) {
+                var menu = Menu(screen, "choosejobs:" + group);
+                check(menu.Placeholder == groups[group].Label && screen.Text.Contains("**" + groups[group].Label + "**") &&
+                    menu.Options.Select(o => uint.Parse(o.Value)).SequenceEqual(groups[group].Ids) &&
+                    menu.MinValues == 0 && menu.MaxValues == groups[group].Ids.Length, "wrong role membership or label: " + group);
+                screen = Act(p, screen, "choosejobs:" + group, groups[group].Ids[^1].ToString());
+                expected.ExceptWith(groups[group].Ids); expected.Add(groups[group].Ids[^1]);
+                var actual = ListingDiscordCard.Walk(screen.Components.Components).OfType<SelectMenuComponent>()
+                    .Where(m => m.CustomId.Contains(":choosejobs:")).SelectMany(m => m.Options)
+                    .Where(o => o.IsDefault == true).Select(o => uint.Parse(o.Value)).ToHashSet();
+                check(actual.SetEquals(expected), "editing one role changed another role: " + group);
+            }
+            check(!p.Handle(Input(Id(screen, "choosejobs:0"), ["6"]), 1100).Replace, "healer class accepted in defense menu");
+            check(!p.Handle(Input(Id(screen, "choosejobs:0"), ["19", "19"]), 1100).Replace, "duplicate job accepted");
+            for (var group = 0; group < groups.Length; group++) screen = Act(p, screen, "choosejobs:" + group);
             check(p.Handle(Input(Id(screen, "apply")), 1100).Work == null, "empty job list submitted");
             screen = Act(p, screen, "alljobs");
             var work = p.Handle(Input(Id(screen, "apply")), 1100).Work!;

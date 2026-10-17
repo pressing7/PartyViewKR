@@ -161,12 +161,13 @@ internal sealed partial class ListingDiscordPanel
             card.Text($"### {Escape(slots.First(s => s.NativeIndex == p.Slot).Position)}\n" +
                 (selected.Count == jobs.Length ? "**누구나 가능**" : $"**{selected.Count}개 직업 허용**\n" + Escape(Limit(string.Join(", ", jobs.Where(j => selected.Contains(j.Id)).Select(j => j.Name)), 500))));
             card.Row(Button(p, "alljobs", "전체 선택"), Button(p, "preset:clear", "선택 비우기"),
-                Button(p, "preset:tank", "탱커", disabled: !jobs.Any(j => Preset("tank", j.Id))),
-                Button(p, "preset:healer", "힐러", disabled: !jobs.Any(j => Preset("healer", j.Id))),
-                Button(p, "preset:damage", "딜러", disabled: !jobs.Any(j => Preset("damage", j.Id))));
-            for (var page = 0; page < 2; page++) {
-                var choices = jobs.Skip(page * 16).Take(16).ToArray(); if (choices.Length == 0) continue;
-                card.Row(new SelectMenuBuilder().WithCustomId(Id(p, "choosejobs:" + page)).WithPlaceholder($"허용 직업 {page + 1}/2")
+                Button(p, "preset:tank", "방어", disabled: !jobs.Any(j => Preset("tank", j.Id))),
+                Button(p, "preset:healer", "회복", disabled: !jobs.Any(j => Preset("healer", j.Id))),
+                Button(p, "preset:damage", "공격", disabled: !jobs.Any(j => Preset("damage", j.Id))));
+            for (var group = 0; group < JobGroups.Length; group++) {
+                var choices = jobs.Where(j => JobGroup(j.Id) == group).ToArray(); if (choices.Length == 0) continue;
+                card.Text("**" + JobGroups[group] + "**");
+                card.Row(new SelectMenuBuilder().WithCustomId(Id(p, "choosejobs:" + group)).WithPlaceholder(JobGroups[group])
                     .WithMinValues(0).WithMaxValues(choices.Length).WithOptions(choices.Select(j => new SelectMenuOptionBuilder(j.Name, j.Id.ToString(), isDefault: selected.Contains(j.Id))).ToList()));
             }
         }

@@ -53,6 +53,7 @@ internal sealed partial class ListingDiscordPanel(ListingWebBridge bridge, ulong
     private static readonly string[] ConditionFlags = ["beginner", "uniqueJobs"];
     private static readonly string[] RuleFlags = ["unrestricted", "minimum_item_level", "silence_echo"];
     private static readonly string[] SettingFlags = ["beginner", .. RuleFlags, "uniqueJobs"];
+    private static readonly string[] JobGroups = ["방어", "회복", "근거리 공격", "원거리 물리", "원거리 마법"];
     internal bool Authorized(DiscordInput input) => ownerId != 0 && applicationId != 0 && input.UserId == ownerId && input.ApplicationId == applicationId;
     internal static string RequestId(ulong id) => new Guid(SHA256.HashData(Encoding.ASCII.GetBytes("pvkr-discord:" + id))[..16]).ToString("D");
     private static DiscordDecision Error(string message) => new(ListingDiscordCard.Message(message), Replace: false);
@@ -147,8 +148,8 @@ internal sealed partial class ListingDiscordPanel(ListingWebBridge bridge, ulong
                 if (parts.Length != 4 || parts[3] is not ("clear" or "tank" or "healer" or "damage")) return Error("직업 묶음을 다시 선택해 주세요.");
                 selected = model.Jobs.Where(j => Preset(parts[3], j.Id)).Select(j => j.Id).ToHashSet();
             } else {
-                if (parts.Length != 4 || !int.TryParse(parts[3], out var page) || page is < 0 or > 1) return Error("직업 목록을 다시 열어 주세요.");
-                var available = model.Jobs.Skip(page * 16).Take(16).Select(j => j.Id).ToHashSet();
+                if (parts.Length != 4 || !int.TryParse(parts[3], out var group) || group < 0 || group >= JobGroups.Length) return Error("직업 목록을 다시 열어 주세요.");
+                var available = model.Jobs.Where(j => JobGroup(j.Id) == group).Select(j => j.Id).ToHashSet();
                 var ids = new HashSet<uint>();
                 foreach (var v in input.Values) if (!uint.TryParse(v, out var id) || !available.Contains(id) || !ids.Add(id)) return Error("허용 직업을 다시 선택해 주세요.");
                 selected.ExceptWith(available); selected.UnionWith(ids);
@@ -201,9 +202,19 @@ internal sealed partial class ListingDiscordPanel(ListingWebBridge bridge, ulong
     }
     private static HashSet<uint> SelectedJobs(Panel p) => p.Changes.TryGetValue("job:" + p.Slot, out var change) ?
         change["jobs"]!.AsArray().Select(j => j!.GetValue<uint>()).ToHashSet() : p.View.Editor!.Slots.First(s => s.NativeIndex == p.Slot).Jobs.ToHashSet();
+    // Classes use the same role as their recruitment jobs; preserve the shared
+    // job order within each group and when serializing the complete selection.
+    private static int JobGroup(uint id) => id switch {
+        19 or 21 or 32 or 37 or 1 or 3 => 0,
+        24 or 33 or 28 or 40 or 6 => 1,
+        20 or 22 or 30 or 34 or 39 or 41 or 43 or 2 or 4 or 29 => 2,
+        23 or 31 or 38 or 5 => 3,
+        25 or 27 or 35 or 42 or 36 or 7 or 26 => 4,
+        _ => -1
+    };
     private static bool Preset(string name, uint id) => name switch {
-        "tank" => id is 19 or 21 or 32 or 37, "healer" => id is 24 or 33 or 28 or 40,
-        "damage" => id is 20 or 22 or 30 or 34 or 39 or 41 or 43 or 23 or 31 or 38 or 25 or 27 or 35 or 42 or 36, _ => false
+        "tank" => JobGroup(id) == 0, "healer" => JobGroup(id) == 1,
+        "damage" => JobGroup(id) is 2 or 3 or 4, _ => false
     };
     private static string Id(Panel p, string action) => "pvkr:" + p.Nonce + ":" + action;
     private static string Label(string key) => Fields.FirstOrDefault(f => f.Key == key).Label ?? key;

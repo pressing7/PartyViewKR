@@ -116,19 +116,33 @@ static partial class ListingDiscordConnectionTests
             check(pages > 1 && Enumerable.Range(1, 59).All(i => full.ToString().Contains("끝" + i)) && bot.Host.StartCalls == 1,
                 "result tail lost or game mutation replayed");
         });
-        test("discord Gateway job presets and both select menus preserve every selected job", () => {
+        test("discord Gateway role presets include classes and five menus preserve every selection", () => {
             using var bot = new InteractionFixture();
             uint[] ids = [19,21,32,37,24,33,28,40,20,22,30,34,39,41,43,23,31,38,25,27,35,42,36,1,3,6,2,4,29,5,7,26];
             bot.Host.Native.Target = bot.Host.Native.Target with { Slots = bot.Host.Native.Target.Slots with {
                 JobRules = ListingJobRules.Read(ids.Select(id => new RecruitmentJob(id, "직업" + id))) } };
-            bot.Open(); bot.Navigate("settings"); bot.Navigate("jobs"); bot.Navigate("preset:tank");
+            bot.Open(); bot.Navigate("settings"); bot.Navigate("jobs");
             string[] Selected() => WalkJson(bot.Screen.GetProperty("components"))
                 .Where(c => c.TryGetProperty("custom_id", out var id) && id.GetString()!.Contains(":choosejobs:"))
                 .SelectMany(c => c.GetProperty("options").EnumerateArray())
                 .Where(o => o.TryGetProperty("default", out var d) && d.GetBoolean()).Select(o => o.GetProperty("value").GetString()!).ToArray();
-            check(Selected().SequenceEqual(new[] { "19", "21", "32", "37" }), "tank preset included classes or other roles");
-            bot.Select("choosejobs:0", "19"); bot.Select("choosejobs:1", "1", "26");
-            check(Selected().SequenceEqual(new[] { "19", "1", "26" }), "select menu values lost across halves");
+            (string Action, string Label, uint[] Ids)[] presets = [
+                ("tank", "방어", [19,21,32,37,1,3]), ("healer", "회복", [24,33,28,40,6]),
+                ("damage", "공격", [20,22,30,34,39,41,43,2,4,29,23,31,38,5,25,27,35,42,36,7,26])
+            ];
+            foreach (var preset in presets) {
+                var buttonId = bot.Id("preset:" + preset.Action);
+                check(WalkJson(bot.Screen.GetProperty("components")).Single(c =>
+                    c.TryGetProperty("custom_id", out var id) && id.GetString() == buttonId).GetProperty("label").GetString() == preset.Label,
+                    "role button label changed");
+                bot.Navigate("preset:" + preset.Action);
+                check(Selected().SequenceEqual(preset.Ids.Select(id => id.ToString())), "role preset lost classes or included another role: " + preset.Action);
+            }
+            bot.Navigate("preset:clear");
+            bot.Select("choosejobs:0", "19", "1", "3"); bot.Select("choosejobs:1", "6");
+            bot.Select("choosejobs:2", "2", "4", "29"); bot.Select("choosejobs:3", "5"); bot.Select("choosejobs:4", "7", "26");
+            check(Selected().SequenceEqual(new[] { "19", "1", "3", "6", "2", "4", "29", "5", "7", "26" }), "select menu values lost across roles");
+            check(WalkJson(bot.Screen.GetProperty("components")).Count() <= 40, "five menus exceed message component limit");
             var before = bot.Transport.Responses.Count; bot.Button("apply"); bot.ScreenAfter(before);
             check(bot.Host.Native.SubmitCalls == 1, "job batch did not submit");
         });
