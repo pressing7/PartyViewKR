@@ -25,23 +25,23 @@ internal sealed partial class ListingDiscordPanel
                 maxLength: 4, required: false, placeholder: "0000~9999 · 새로 켤 때는 반드시 입력");
         } else {
             // Discord allows only five modal components. Keep scalar fields in
-            // editor order and label the shared checkbox list by the same sections.
+            // editor order and the remaining flags in one shared checkbox list.
             foreach (var key in new[] { "objective", "completion", "itemLevel", "loot" }.Where(supported.Contains)) {
                 if (key == "itemLevel") {
-                    modal.AddTextInput(FormLabel(key), "itemLevel", TextInputStyle.Short,
+                    modal.AddTextInput(Label(key), "itemLevel", TextInputStyle.Short,
                         maxLength: 3, required: true, value: Value(p, key)?.ToString() ?? "0",
                         placeholder: "1~999 · 제한 없음은 0");
                     continue;
                 }
                 var radio = new RadioGroupBuilder().WithCustomId(key).WithRequired(true);
                 foreach (var option in Options(key)) radio.AddOption(option.Label, option.Value, isDefault: Value(p, key)?.ToString() == option.Value);
-                modal.AddRadioGroup(FormLabel(key), radio);
+                modal.AddRadioGroup(Label(key), radio);
             }
             var flags = SettingFlags.Where(supported.Contains).ToArray();
             if (flags.Length > 0) {
                 var checks = new CheckboxGroupBuilder().WithCustomId("toggles").WithRequired(false).WithMinValues(0).WithMaxValues(flags.Length);
-                foreach (var key in flags) checks.AddOption(FormLabel(key), key, defaultState: Enabled(p, key));
-                modal.AddCheckBoxGroup("목적 · 임무 찾기 설정 · 모집 역할", checks);
+                foreach (var key in flags) checks.AddOption(Label(key), key, defaultState: Enabled(p, key));
+                modal.AddCheckBoxGroup("사용할 옵션", checks);
             }
         }
         return modal.Build();
@@ -94,9 +94,5 @@ internal sealed partial class ListingDiscordPanel
         }
         error = ""; return true;
     }
-    private static string FormLabel(string key) => (key switch {
-        "objective" or "beginner" => "목적", "completion" or "itemLevel" => "모집 참가 조건",
-        "uniqueJobs" => "모집 역할", _ => "임무 찾기 설정"
-    }) + " · " + Label(key);
     private static bool Keys<T>(Dictionary<string, T> values, string[] expected) => values.Count == expected.Length && expected.All(values.ContainsKey);
 }
