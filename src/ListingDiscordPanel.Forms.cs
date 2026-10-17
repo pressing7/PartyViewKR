@@ -6,14 +6,14 @@ namespace PartyViewKR;
 internal sealed partial class ListingDiscordPanel
 {
     private static string[] FormFields(string form) => form switch {
-        "description" => ["description"], "settings" => ["objective", "completion", "itemLevel", "loot", .. ConditionFlags, .. RuleFlags],
+        "description" => ["description"], "settings" => ["objective", "completion", "itemLevel", "loot", .. SettingFlags],
         "private" => ["private"], _ => []
     };
     private static bool FormSupported(Panel p, string form) => FormFields(form).Any(p.View.Editor!.Supported.Contains);
     private static Modal BuildForm(Panel p, string form)
     {
         var modal = new ModalBuilder().WithTitle(form switch {
-            "description" => "소개말 수정", "settings" => "모집 설정 함께 수정", _ => "비공개 설정"
+            "description" => "소개말 수정", "settings" => "모집 설정 수정", _ => "비공개 설정"
         }).WithCustomId(Id(p, "submit:" + form));
         var supported = p.View.Editor!.Supported;
         if (form == "description")
@@ -24,22 +24,24 @@ internal sealed partial class ListingDiscordPanel
             modal.AddTextInput("비밀번호 네 자리 · 비워두면 기존 값 유지", "password", TextInputStyle.Short,
                 maxLength: 4, required: false, placeholder: "0000~9999 · 새로 켤 때는 반드시 입력");
         } else {
-            // Three radio groups, one numeric input and one checkbox group fit
-            // in a single five-component modal. Description/PIN stay separate.
-            string[] radioKeys = ["objective", "completion", "loot"];
-            foreach (var key in radioKeys.Where(supported.Contains)) {
+            // Discord allows only five modal components. Keep scalar fields in
+            // editor order and label the shared checkbox list by the same sections.
+            foreach (var key in new[] { "objective", "completion", "itemLevel", "loot" }.Where(supported.Contains)) {
+                if (key == "itemLevel") {
+                    modal.AddTextInput(FormLabel(key), "itemLevel", TextInputStyle.Short,
+                        maxLength: 3, required: true, value: Value(p, key)?.ToString() ?? "0",
+                        placeholder: "1~999 · 제한 없음은 0");
+                    continue;
+                }
                 var radio = new RadioGroupBuilder().WithCustomId(key).WithRequired(true);
                 foreach (var option in Options(key)) radio.AddOption(option.Label, option.Value, isDefault: Value(p, key)?.ToString() == option.Value);
-                modal.AddRadioGroup(Label(key), radio);
+                modal.AddRadioGroup(FormLabel(key), radio);
             }
-            if (supported.Contains("itemLevel"))
-                modal.AddTextInput("평균 아이템 레벨 · 1~999, 제한 없음은 0", "itemLevel", TextInputStyle.Short,
-                    maxLength: 3, required: true, value: Value(p, "itemLevel")?.ToString() ?? "0");
-            var flags = ConditionFlags.Concat(RuleFlags).Where(supported.Contains).ToArray();
+            var flags = SettingFlags.Where(supported.Contains).ToArray();
             if (flags.Length > 0) {
                 var checks = new CheckboxGroupBuilder().WithCustomId("toggles").WithRequired(false).WithMinValues(0).WithMaxValues(flags.Length);
-                foreach (var key in flags) checks.AddOption(Label(key), key, defaultState: Enabled(p, key));
-                modal.AddCheckBoxGroup("사용할 옵션", checks);
+                foreach (var key in flags) checks.AddOption(FormLabel(key), key, defaultState: Enabled(p, key));
+                modal.AddCheckBoxGroup("목적 · 임무 찾기 설정 · 모집 역할", checks);
             }
         }
         return modal.Build();
@@ -70,7 +72,7 @@ internal sealed partial class ListingDiscordPanel
             else { error = "비공개를 새로 켤 때는 비밀번호 네 자리가 필요합니다."; return false; }
         } else {
             var scalarKeys = new[] { "objective", "completion", "itemLevel", "loot" }.Where(supported.Contains).ToArray();
-            var flags = ConditionFlags.Concat(RuleFlags).Where(supported.Contains).ToArray();
+            var flags = SettingFlags.Where(supported.Contains).ToArray();
             if (!Keys(input.Fields, scalarKeys) || !Keys(input.Choices, flags.Length > 0 ? ["toggles"] : []) || input.Checks.Count != 0) return false;
             foreach (var key in scalarKeys) {
                 var text = input.Fields[key];
@@ -92,5 +94,9 @@ internal sealed partial class ListingDiscordPanel
         }
         error = ""; return true;
     }
+    private static string FormLabel(string key) => (key switch {
+        "objective" or "beginner" => "목적", "completion" or "itemLevel" => "모집 참가 조건",
+        "uniqueJobs" => "모집 역할", _ => "임무 찾기 설정"
+    }) + " · " + Label(key);
     private static bool Keys<T>(Dictionary<string, T> values, string[] expected) => values.Count == expected.Length && expected.All(values.ContainsKey);
 }

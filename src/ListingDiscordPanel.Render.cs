@@ -31,9 +31,7 @@ internal sealed partial class ListingDiscordPanel
             Pending(card, p);
             var apply = Button(p, "apply", p.Changes.Count > 0 ? $"{p.Changes.Count}개 적용 및 갱신" : "적용 및 갱신", ButtonStyle.Success,
                 !p.View.CanRefresh || p.Changes.Count == 0 || p.Changes.Values.Any(c => c["field"]?.ToString() == "job" && c["jobs"]!.AsArray().Count == 0));
-            if (p.Page != "jobs" && FormSupported(p, "settings"))
-                card.Row(Button(p, "form:settings", "함께 수정", ButtonStyle.Primary), apply);
-            else card.Row(apply);
+            card.Row(apply);
             card.Divider();
             if (p.Page == "jobs") DrawJobs(card, p); else DrawSettings(card, p);
         } else if (p.Kind == PanelKind.Details) {
@@ -127,7 +125,11 @@ internal sealed partial class ListingDiscordPanel
             if (p.Changes.ContainsKey("description")) content += "\n-# 변경 대기 · 기존: " + Escape(Limit(DisplayValue(p, "description", true), 160));
             card.Section(content, Button(p, "form:description", "수정")); card.Divider();
         }
-        SettingsSection("목적", "objective", "beginner");
+        if (FormSupported(p, "settings")) {
+            var purpose = new[] { "objective", "beginner" }.Where(supported.Contains).Select(k => Setting(p, k));
+            card.Section("### 목적\n" + string.Join('\n', purpose), Button(p, "form:settings", "수정", ButtonStyle.Primary));
+            card.Divider();
+        }
         SettingsSection("모집 참가 조건", "completion", "itemLevel");
         SettingsSection("임무 찾기 설정", "unrestricted", "minimum_item_level", "silence_echo", "loot");
         if (supported.Contains("private")) {

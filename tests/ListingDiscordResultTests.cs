@@ -88,7 +88,8 @@ static partial class ListingDiscordTests
                 check(labels.All(section.Contains), "setting misplaced: " + title);
             }
             var buttons = components.OfType<ButtonComponent>().ToArray();
-            check(buttons.Count(b => b.Label == "함께 수정") == 1 && !buttons.Any(b => b.CustomId.Contains(":toggle:")), "individual toggle/forms remain");
+            check(buttons.Count(b => b.CustomId.EndsWith(":form:settings", StringComparison.Ordinal)) == 1 &&
+                !buttons.Any(b => b.Label == "함께 수정" || b.CustomId.Contains(":toggle:")), "individual toggle/forms remain");
             var roles = components.OfType<SectionComponent>().Single(s => s.Accessory is ButtonComponent { Label: "직업 수정" });
             check(roles.Components.OfType<TextDisplayComponent>().Single().Content.Contains("잡 중복 없음"), "job button not in roles");
             check(!screen.Text.Contains("변경할 항목을 고른 뒤") && screen.Text.Length < 4000 && components.Length <= 40, "editor instructions or oversized payload");

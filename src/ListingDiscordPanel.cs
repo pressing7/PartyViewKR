@@ -52,6 +52,7 @@ internal sealed partial class ListingDiscordPanel(ListingWebBridge bridge, ulong
     ];
     private static readonly string[] ConditionFlags = ["beginner", "uniqueJobs"];
     private static readonly string[] RuleFlags = ["unrestricted", "minimum_item_level", "silence_echo"];
+    private static readonly string[] SettingFlags = ["beginner", .. RuleFlags, "uniqueJobs"];
     internal bool Authorized(DiscordInput input) => ownerId != 0 && applicationId != 0 && input.UserId == ownerId && input.ApplicationId == applicationId;
     internal static string RequestId(ulong id) => new Guid(SHA256.HashData(Encoding.ASCII.GetBytes("pvkr-discord:" + id))[..16]).ToString("D");
     private static DiscordDecision Error(string message) => new(ListingDiscordCard.Message(message), Replace: false);
@@ -219,7 +220,7 @@ internal sealed partial class ListingDiscordPanel(ListingWebBridge bridge, ulong
         "objective" => [("0", "설정 안 함"), ("1", "완료 목적"), ("2", "연습"), ("3", "반복 공략")],
         "completion" => [("1", "설정 안 함"), ("2", "공략 완료"), ("4", "미완료")],
         "loot" => [("0", "일반"), ("1", "선입찰 금지"), ("2", "파티장 분배")],
-        "beginner" or "uniqueJobs" or "private" or "unrestricted" or "minimum_item_level" or "silence_echo" => [("1", "켜짐"), ("0", "꺼짐")], _ => []
+        "beginner" or "uniqueJobs" or "private" or "unrestricted" or "minimum_item_level" or "silence_echo" => [("1", "✅"), ("0", "❌")], _ => []
     };
     private static string Escape(string value)
     {
