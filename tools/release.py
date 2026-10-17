@@ -20,7 +20,10 @@ OUT = ROOT / 'release-output'
 REFS = ROOT / '.build' / 'references'
 DOTNET = os.environ.get('DOTNET', 'dotnet')
 TOOL = ROOT / 'tools/CompatibilityTool/bin/Release/net10.0/CompatibilityTool.dll'
-FILES = ['PartyViewKR.dll', 'PartyViewKR.deps.json', 'PartyViewKR.json']
+FILES = ['PartyViewKR.dll', 'PartyViewKR.deps.json', 'PartyViewKR.json',
+         'Discord.Net.Core.dll', 'Discord.Net.Rest.dll', 'Discord.Net.WebSocket.dll',
+         'Discord.Net.Dave.dll', 'Newtonsoft.Json.dll',
+         'System.Security.Cryptography.ProtectedData.dll', 'THIRD-PARTY-NOTICES.txt']
 REFERENCE_FILES = ['Dalamud.dll', 'FFXIVClientStructs.dll', 'Dalamud.Bindings.ImGui.dll',
                    'InteropGenerator.Runtime.dll', 'Dalamud.Common.dll']
 
@@ -86,6 +89,18 @@ def verify(refs):
         run(DOTNET, TOOL, 'verify', baseline, refs / (assembly + '.dll'))
 
 
+def verify_runtime_files(build_dir):
+    deps = read_json(build_dir / 'PartyViewKR.deps.json')
+    target = deps['targets'][deps['runtimeTarget']['name']]
+    runtime_files = {Path(name).name for lib in target.values() for name in lib.get('runtime', {})}
+    if runtime_files != {name for name in FILES if name.endswith('.dll')}:
+        raise ValueError('Runtime dependencies disagree with package allowlist')
+    if any(lib.get('runtimeTargets') for lib in target.values()):
+        raise ValueError('Platform-specific runtime dependencies need an explicit package layout')
+    if any(not (build_dir / name).is_file() for name in FILES):
+        raise ValueError('A required runtime/package file is missing')
+
+
 def package(build_dir, tag=None):
     manifest = read_json(ROOT / 'src/PartyViewKR.json')
     ver = manifest['AssemblyVersion']
@@ -101,6 +116,7 @@ def package(build_dir, tag=None):
         raise ValueError('Built DLL identity disagrees with manifest')
     if read_json(build_dir / 'PartyViewKR.json') != manifest:
         raise ValueError('Built manifest differs from source manifest')
+    verify_runtime_files(build_dir)
     OUT.mkdir(exist_ok=True)
     # Fixed timestamps make identical builds produce identical ZIPs on retries.
     with zipfile.ZipFile(OUT / 'PartyViewKR.zip', 'w', compression=zipfile.ZIP_DEFLATED) as z:

@@ -41,6 +41,7 @@ internal sealed partial class ListingWebBridge
         reason, reason, DateTimeOffset.UtcNow, null, null);
     private bool Active => view.Query?.State is "queued" or "running";
     internal byte[] ReadState() { lock (gate) return json; }
+    internal WebView ReadView() { lock (gate) return view; }
     internal WebReply ReadQuery(string id)
     {
         if (Guid.TryParseExact(id, "D", out var parsed)) id = parsed.ToString("D");

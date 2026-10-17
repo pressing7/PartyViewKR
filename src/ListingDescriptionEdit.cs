@@ -15,12 +15,20 @@ internal sealed record ListingDescriptionEdit(RefreshTarget Original, string Tex
     // game's input may impose a stricter limit; check it again before SetText.
     internal const int MaxBytes = 192;
     private static readonly UTF8Encoding Utf8 = new(false, true);
-    internal string Value => Text.Replace("\r\n", "\n").Replace('\r', '\n').Trim();
+    internal static string Normalize(string text) => text.Replace("\r\n", "\n").Replace('\r', '\n').Trim();
+    internal string Value => Normalize(Text);
     internal bool Changed => !ListingIdentity.SameText(Original.Description, Value);
     internal int ByteCount { get { try { return Utf8.GetByteCount(Value); } catch (EncoderFallbackException) { return -1; } } }
-    internal string ValidationError => ByteCount < 0 || Value.Any(c => c == '\ufffd' || char.IsControl(c) && c != '\n')
-        ? "입력할 수 없는 문자가 포함되어 있습니다."
-        : ByteCount > MaxBytes ? "소개말의 최대 입력 길이를 초과했습니다." : "";
+    internal static string Validate(string text)
+    {
+        var value = Normalize(text);
+        int bytes;
+        try { bytes = Utf8.GetByteCount(value); } catch (EncoderFallbackException) { return "입력할 수 없는 문자가 포함되어 있습니다."; }
+        return value.Any(c => c == '\ufffd' || char.IsControl(c) && c != '\n')
+            ? "입력할 수 없는 문자가 포함되어 있습니다."
+            : bytes > MaxBytes ? "소개말의 최대 입력 길이를 초과했습니다." : "";
+    }
+    internal string ValidationError => Validate(Text);
     internal bool Valid => ListingJobEdit.SupportsSettings(Original) && Changed && ValidationError.Length == 0;
 
     internal bool MatchesOriginal(RefreshTarget current) => Valid && ListingJobEdit.SupportsSettings(current) &&

@@ -6,7 +6,7 @@ public sealed partial class Plugin
     private WebHost? webHost;
     private string webStatus = "브라우저 조회가 꺼져 있습니다.";
     internal bool WebEnabled => webServer?.Running == true;
-    private bool AnyWebEnabled => WebEnabled || RelayEnabled;
+    private bool AnyWebEnabled => WebEnabled || RelayEnabled || DiscordEnabled;
     internal string WebAddress => webServer?.BaseUrl ?? "";
     internal string WebLink => WebEnabled ? webServer!.ConnectionUrl : "";
     internal string WebStatus => webServer is { Running: false } ? "연결이 종료됐습니다. 브라우저 조회를 다시 켜 주세요." : webStatus;
@@ -55,6 +55,7 @@ public sealed partial class Plugin
     internal void StopWeb()
     {
         StopRelay();
+        StopDiscord();
         var server = Interlocked.Exchange(ref webServer, null);
         server?.Dispose();
         if (server != null) { webHost?.CancelOwnedQuery(); webHost?.CancelOwnedRefresh(); }
@@ -63,7 +64,7 @@ public sealed partial class Plugin
 
     private void UpdateWeb(long now)
     {
-        var bridge = WebEnabled ? webServer!.Bridge : RelayEnabled ? relayClient!.Bridge : null;
+        var bridge = WebEnabled ? webServer!.Bridge : RelayEnabled ? relayClient!.Bridge : DiscordEnabled ? discordClient!.Bridge : null;
         if (bridge == null || webHost == null) return;
         try { bridge.Update(webHost, now); }
         catch (Exception) { bridge.PublicationFailed(); }

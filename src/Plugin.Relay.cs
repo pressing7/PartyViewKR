@@ -8,7 +8,9 @@ public sealed class RelayConfiguration : IPluginConfiguration
 {
     public int Version { get; set; } = 1;
     public string ServerUrl { get; set; } = "";
-    // No server key, connection key, recruitment data or PIN is saved.
+    public string EncryptedDiscordToken { get; set; } = "";
+    // Discord token is optional and protected with Windows CurrentUser DPAPI.
+    // No relay key, connection code, recruitment data or PIN is saved.
 }
 
 public sealed partial class Plugin
@@ -31,7 +33,9 @@ public sealed partial class Plugin
         StopWeb();
         try
         {
-            PluginInterface.SavePluginConfig(new RelayConfiguration { ServerUrl = server.GetLeftPart(UriPartial.Authority) });
+            var config = PluginInterface.GetPluginConfig() as RelayConfiguration ?? new();
+            config.ServerUrl = server.GetLeftPart(UriPartial.Authority);
+            PluginInterface.SavePluginConfig(config);
             var version = typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "unknown";
             webHost ??= new WebHost(this);
             relayClient = new ListingRelayClient(new ListingWebBridge(version), server.AbsoluteUri, key);

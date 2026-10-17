@@ -51,6 +51,36 @@ class ReleaseTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             r.package(Path('nonexistent'), 'v99.0.0')
 
+    def test_package_contains_the_complete_runtime_dependency_set(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp)
+            for name in r.FILES:
+                (path / name).write_text('fixture')
+            runtime = {name: {} for name in r.FILES if name.endswith('.dll')}
+            deps = {'runtimeTarget': {'name': 'net10'}, 'targets': {'net10': {'fixture': {'runtime': runtime}}}}
+            r.write_json(path / 'PartyViewKR.deps.json', deps)
+            r.verify_runtime_files(path)
+            (path / 'Discord.Net.Core.dll').unlink()
+            with self.assertRaisesRegex(ValueError, 'missing'):
+                r.verify_runtime_files(path)
+
+    def test_new_or_native_runtime_dependencies_require_package_review(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp)
+            for name in r.FILES:
+                (path / name).write_text('fixture')
+            runtime = {name: {} for name in r.FILES if name.endswith('.dll')}
+            runtime['Unexpected.dll'] = {}
+            deps = {'runtimeTarget': {'name': 'net10'}, 'targets': {'net10': {'fixture': {'runtime': runtime}}}}
+            r.write_json(path / 'PartyViewKR.deps.json', deps)
+            with self.assertRaisesRegex(ValueError, 'allowlist'):
+                r.verify_runtime_files(path)
+            del runtime['Unexpected.dll']
+            deps['targets']['net10']['fixture']['runtimeTargets'] = {'runtimes/win-x64/native/extra.dll': {}}
+            r.write_json(path / 'PartyViewKR.deps.json', deps)
+            with self.assertRaisesRegex(ValueError, 'Platform-specific'):
+                r.verify_runtime_files(path)
+
     def test_wrong_reference_hash_never_extracts_dlls(self):
         with patch.object(r, 'download', return_value=b'wrong'), patch.object(r, 'zipfile') as zip_mock:
             with self.assertRaises(ValueError):

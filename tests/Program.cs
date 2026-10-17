@@ -260,6 +260,7 @@ ListingDescriptionRecoveryTests.Run(Test, Check);
 ListingWebTests.Run(Test, Check);
 ListingWebEditTests.Run(Test, Check);
 ListingRelayTests.Run(Test, Check);
+ListingDiscordTests.Run(Test, Check);
 CompatibilityTests.Run(Test, Check);
 Console.WriteLine($"All {passed} tests passed. Native game interaction still requires in-game validation.");
 
