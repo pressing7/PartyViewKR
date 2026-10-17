@@ -15,6 +15,12 @@ https://raw.githubusercontent.com/pressing7/PartyViewKR/main/pluginmaster.json
 배포 파일은 [Releases](https://github.com/pressing7/PartyViewKR/releases)의 `PartyViewKR.zip`입니다.
 저장소 루트에 남아 있는 이전 수동 업로드 DLL/JSON은 최신 배포 파일이 아닙니다.
 
+## 0.3.35의 디스코드 연결 수정
+
+0.3.34는 Discord Gateway가 준비되기 전에 `/pvkr` 명령어를 등록하여, 앱 ID가 비어 있는 등록 요청을 보내는 오류가 있었습니다. **Gateway READY 수신 후 명령어를 등록**하고, 등록까지 성공해야 연결 완료로 표시합니다. 실패하면 로그인·봇 정보 확인·Gateway 준비·명령어 등록 중 해당 단계와 HTTP/Discord 오류 번호를 보여줍니다. 토큰과 서버 오류 본문은 표시하지 않습니다.
+
+실제 Discord.Net 라이브러리에 모의 REST/Gateway를 연결한 회귀 테스트에서 기존 순서의 실패를 재현하고 수정 후 정상 등록, 연결 취소, 인증·명령어 등록 실패를 검사했습니다. 관리 코드 **322개** 테스트와 로컬 Release 빌드를 통과했습니다. 실제 봇 연결은 업데이트 후 확인하며, **Actions 빌드·배포는 사용자가 직접 실행합니다.**
+
 ## 0.3.34의 개인 디스코드 봇
 
 각자 만든 개인 봇의 토큰을 게임의 `/pvkr` → **외부 접속 · 개인 디스코드 봇**에 등록합니다. 봇과의 DM에서 `/pvkr`를 입력하면 내 모집글을 조회하고 버튼·선택 메뉴·입력창으로 수정·갱신할 수 있습니다. **[개인 봇 생성부터 휴대폰 사용까지의 설정 가이드](docs/discord.md)**를 참고하세요.

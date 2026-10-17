@@ -9,7 +9,9 @@ internal sealed class ListingDiscordClient : IDisposable
     private readonly CancellationTokenSource stop = new();
     private readonly DiscordSocketClient socket;
     private readonly Task lifetime;
+    private readonly TaskCompletionSource gatewayReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private ListingDiscordSession? session;
+    private const string ConnectedStatus = "연결됨 · 봇과의 DM 또는 초대한 서버에서 /pvkr를 입력하세요.";
     private string status = "디스코드에 연결하는 중입니다.";
     private string inviteUrl = "";
     private int disposed, ready, running = 1;
@@ -18,13 +20,14 @@ internal sealed class ListingDiscordClient : IDisposable
     internal bool Connected => Running && Volatile.Read(ref ready) != 0 && socket.ConnectionState == ConnectionState.Connected;
     internal string Status => Volatile.Read(ref status);
     internal string InviteUrl => Volatile.Read(ref inviteUrl);
+    internal Task Completion => lifetime;
 
-    internal ListingDiscordClient(ListingWebBridge bridge, string token)
+    internal ListingDiscordClient(ListingWebBridge bridge, string token, DiscordSocketConfig? config = null)
     {
         Bridge = bridge;
-        socket = new(new DiscordSocketConfig {
+        socket = new(config ?? new DiscordSocketConfig {
             GatewayIntents = GatewayIntents.Guilds, AlwaysDownloadUsers = false,
-            MessageCacheSize = 0, LogLevel = LogSeverity.Critical
+            AlwaysDownloadDefaultStickers = false, MessageCacheSize = 0, LogLevel = LogSeverity.Critical
         });
         socket.Ready += Ready;
         socket.Connected += Reconnected;
@@ -34,29 +37,43 @@ internal sealed class ListingDiscordClient : IDisposable
     }
     private async Task Run(string token)
     {
+        var stage = "봇 로그인";
         try
         {
             await socket.LoginAsync(TokenType.Bot, token); token = "";
             stop.Token.ThrowIfCancellationRequested();
+            stage = "봇 정보 확인";
+            status = "봇 정보를 확인하는 중입니다.";
             var application = await socket.GetApplicationInfoAsync(Options());
             if (application.Team != null || application.Owner == null || application.Owner.IsBot) {
                 status = "개인 계정이 소유한 봇을 사용해 주세요. 팀 소유 앱은 지원하지 않습니다."; return;
             }
             session = new(Bridge, application.Id, application.Owner.Id, stop.Token);
             inviteUrl = $"https://discord.com/oauth2/authorize?client_id={application.Id}&scope=bot%20applications.commands&permissions=0";
+            stage = "Gateway 연결 준비";
+            status = "디스코드 Gateway의 연결 준비를 기다리는 중입니다.";
+            await socket.StartAsync();
+            // Login/GetApplicationInfo do not set the socket REST client's application ID.
+            // Discord.Net fills it from READY. Never register commands before that event.
+            await gatewayReady.Task.WaitAsync(TimeSpan.FromSeconds(30), stop.Token);
+            stop.Token.ThrowIfCancellationRequested();
+            stage = "/pvkr 명령어 등록";
+            status = "/pvkr 명령어를 등록하는 중입니다.";
             // Create-by-name updates only /pvkr; never bulk-overwrite other commands.
             await ((IDiscordClient)socket.Rest).CreateGlobalApplicationCommand(new SlashCommandBuilder()
                 .WithName("pvkr").WithDescription("내 파티 모집글 조회·수정·갱신")
                 .WithIntegrationTypes(ApplicationIntegrationType.GuildInstall)
                 .WithContextTypes(InteractionContextType.Guild, InteractionContextType.BotDm).Build(), Options());
-            await socket.StartAsync();
+            stop.Token.ThrowIfCancellationRequested();
+            Volatile.Write(ref ready, 1);
+            status = ConnectedStatus;
             await Task.Delay(Timeout.Infinite, stop.Token);
         }
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
         catch (HttpException e) when (e.HttpCode == System.Net.HttpStatusCode.Unauthorized) {
-            status = "봇 토큰이 올바르지 않습니다. Developer Portal의 Bot 토큰을 확인해 주세요.";
+            status = "봇 토큰이 올바르지 않습니다. Developer Portal의 Bot 토큰을 확인해 주세요. " + FailureDetails(stage, e);
         }
-        catch (Exception) { status = "디스코드 연결을 시작하지 못했습니다. 인터넷 연결과 봇 토큰을 확인한 후 다시 연결해 주세요."; }
+        catch (Exception e) { status = "디스코드 연결을 시작하지 못했습니다. " + FailureDetails(stage, e); }
         finally {
             token = ""; Volatile.Write(ref ready, 0); Volatile.Write(ref running, 0);
             Bridge.Stop(); stop.Cancel(); session?.ClearIfIdle();
@@ -66,28 +83,38 @@ internal sealed class ListingDiscordClient : IDisposable
         }
     }
     private RequestOptions Options() => new() { CancelToken = stop.Token, Timeout = 15000, RetryMode = RetryMode.RetryRatelimit };
+    internal static string FailureDetails(string stage, Exception error)
+    {
+        // SDK messages/requests can include credentials: expose only codes and the type.
+        var detail = error switch {
+            HttpException http => $"HTTP {(int)http.HttpCode}" + (http.DiscordCode is { } code ? $" / Discord {(int)code}" : ""),
+            WebSocketClosedException closed => $"Gateway {closed.CloseCode}",
+            _ => error.GetType().Name
+        };
+        return $"단계: {stage} · {detail}";
+    }
     private Task Ready()
     {
-        Volatile.Write(ref ready, 1);
-        status = "연결됨 · 봇과의 DM 또는 초대한 서버에서 /pvkr를 입력하세요.";
+        gatewayReady.TrySetResult();
+        if (Volatile.Read(ref ready) != 0 && !stop.IsCancellationRequested) status = ConnectedStatus;
         return Task.CompletedTask;
     }
     private Task Disconnected(Exception exception)
     {
-        if (!stop.IsCancellationRequested) status = "디스코드 연결이 끊겼습니다. 자동으로 다시 연결하는 중입니다.";
+        if (!stop.IsCancellationRequested) status = "디스코드 연결이 끊겼습니다. 자동으로 다시 연결하는 중입니다. " + FailureDetails("Gateway 연결", exception);
         return Task.CompletedTask;
     }
     private Task Reconnected()
     {
         // A resumed Gateway session need not emit READY again.
         if (Volatile.Read(ref ready) != 0 && !stop.IsCancellationRequested)
-            status = "연결됨 · 봇과의 DM 또는 초대한 서버에서 /pvkr를 입력하세요.";
+            status = ConnectedStatus;
         return Task.CompletedTask;
     }
     private Task Interaction(SocketInteraction interaction)
     {
         var active = session;
-        if (!Running || active == null) return Task.CompletedTask;
+        if (!Connected || active == null) return Task.CompletedTask;
         DiscordInput? input = interaction switch {
             SocketSlashCommand command when command.Data.Name == "pvkr" =>
                 new(command.Id, command.ApplicationId, command.User.Id, command.Data.Name, "", [], []),

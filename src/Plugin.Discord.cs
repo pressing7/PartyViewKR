@@ -16,6 +16,7 @@ public sealed partial class Plugin
     {
         if (disposed || DiscordEnabled) return false;
         if (discordClient != null) StopDiscord();
+        var stage = "연결 설정 읽기";
         try
         {
             var config = PluginInterface.GetPluginConfig() as RelayConfiguration ?? new();
@@ -30,15 +31,22 @@ public sealed partial class Plugin
             var plain = Encoding.UTF8.GetBytes(token);
             try { config.EncryptedDiscordToken = remember ? Convert.ToBase64String(ProtectedData.Protect(plain, null, DataProtectionScope.CurrentUser)) : ""; }
             finally { CryptographicOperations.ZeroMemory(plain); }
+            stage = "연결 설정 저장";
             PluginInterface.SavePluginConfig(config);
+            stage = "기존 연결 종료";
             StopWeb();
             webHost ??= new WebHost(this);
+            stage = "디스코드 클라이언트 생성";
             discordClient = new(new ListingWebBridge(typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "unknown"), token);
+            stage = "모집글 조회 시작";
             RequestRead(); return true;
         }
         catch (CryptographicException) { discordStatus = "저장한 토큰을 읽거나 암호화하지 못했습니다. 토큰을 다시 입력해 주세요."; }
         catch (FormatException) { discordStatus = "저장한 토큰을 읽지 못했습니다. 토큰을 다시 입력해 주세요."; }
-        catch (Exception) { discordStatus = "디스코드 연결 설정을 저장하지 못했습니다. 다시 시도해 주세요."; }
+        catch (Exception e) {
+            StopDiscord();
+            discordStatus = $"디스코드 연결을 시작하지 못했습니다. 단계: {stage} · {e.GetType().Name}";
+        }
         return false;
     }
     internal void ForgetDiscordToken()

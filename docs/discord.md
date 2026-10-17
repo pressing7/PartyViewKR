@@ -1,4 +1,4 @@
-# 개인 디스코드 봇으로 PVKR 조작하기 (0.3.34)
+# 개인 디스코드 봇으로 PVKR 조작하기 (0.3.35)
 
 각 사용자가 **자신의 봇을 만들고 자신의 PC의 PVKR에 토큰을 등록**합니다. 게임 PC가 Discord Gateway에 직접 연결하므로 별도의 Cloudflare Worker, 공용 중계 서버, 포트 개방이 필요하지 않습니다. 게임과 PVKR은 켜져 있어야 합니다.
 
@@ -44,6 +44,8 @@
 
 ## 연결이 안 될 때
 
+- **0.3.34 사용 중**: 명령어 등록 순서 오류가 있으므로 0.3.35 이상으로 업데이트합니다. 기존 봇과 토큰을 그대로 사용할 수 있습니다.
+- **연결 시작 실패**: PVKR에 표시된 `단계`와 오류 번호를 확인합니다. 봇 정보 확인과 명령어 등록 실패를 구분할 수 있으며, 문제를 제보할 때는 이 상태 문구만 보내고 토큰은 보내지 않습니다.
 - **토큰 오류**: Developer Portal의 **Bot** 토큰인지 확인하고 다시 입력합니다. Reset Token을 다시 눌렀다면 이전 토큰은 사용할 수 없습니다.
 - **팀 소유 앱 안내**: 본인 계정 소유의 별도 애플리케이션을 만듭니다.
 - **봇은 연결됐지만 명령이 안 옴**: 봇을 서버에 초대했는지, `applications.commands` 권한이 포함됐는지, Interactions Endpoint URL이 비어 있는지 확인합니다. 명령 목록 반영 후 다시 입력합니다.
@@ -55,6 +57,6 @@
 
 ## 개발 검증
 
-관리 코드 테스트로 소유자·앱 ID 확인, 중복 요청, 응답 접수 실패 시 실행 차단, 오래된 모집 정보, 친선경기·48인 자리, 두 직업 메뉴의 선택 보존, 비밀번호 0000, 일부 항목 실패 후 갱신을 검사합니다. 실제 개인 봇 연결, Android Discord 화면, Windows 토큰 암호화 및 인게임 반영은 사용자의 환경에서 확인해야 합니다. Actions 빌드와 배포는 사용자가 실행합니다.
+관리 코드 테스트로 소유자·앱 ID 확인, 중복 요청, 응답 접수 실패 시 실행 차단, 오래된 모집 정보, 친선경기·48인 자리, 두 직업 메뉴의 선택 보존, 비밀번호 0000, 일부 항목 실패 후 갱신을 검사합니다. 실제 Discord.Net 라이브러리에 모의 REST/Gateway 응답을 주어 READY 전 명령어 등록 차단, READY 후 올바른 앱 ID 사용, 취소와 오류 표시도 확인합니다. 실제 개인 봇 연결, Android Discord 화면, Windows 토큰 암호화 및 인게임 반영은 사용자의 환경에서 확인해야 합니다. Actions 빌드와 배포는 사용자가 실행합니다.
 
 구현은 [Discord Gateway](https://docs.discord.com/developers/events/gateway), [Interactions](https://docs.discord.com/developers/interactions/receiving-and-responding), [Discord.Net](https://docs.discordnet.dev/) API를 사용합니다. 봇 만들기 기본 절차는 [Discord 공식 시작 안내](https://docs.discord.com/developers/quick-start/getting-started)를 참고할 수 있습니다.
