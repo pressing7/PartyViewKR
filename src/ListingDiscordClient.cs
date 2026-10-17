@@ -119,7 +119,8 @@ internal sealed class ListingDiscordClient : IDisposable
             SocketSlashCommand command when command.Data.Name == "pvkr" =>
                 new(command.Id, command.ApplicationId, command.User.Id, command.Data.Name, "", [], []),
             SocketMessageComponent component when component.Data.CustomId.StartsWith("pvkr:", StringComparison.Ordinal) =>
-                new(component.Id, component.ApplicationId, component.User.Id, "", component.Data.CustomId, component.Data.Values.ToArray(), []),
+                // Buttons omit values; Discord.Net exposes null, unlike select menus.
+                new(component.Id, component.ApplicationId, component.User.Id, "", component.Data.CustomId, component.Data.Values?.ToArray() ?? [], []),
             SocketModal modal when modal.Data.CustomId.StartsWith("pvkr:", StringComparison.Ordinal) =>
                 new(modal.Id, modal.ApplicationId, modal.User.Id, "", modal.Data.CustomId, [], modal.Data.Components.ToDictionary(c => c.CustomId, c => c.Value)),
             _ => null

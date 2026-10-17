@@ -9,7 +9,7 @@ using Discord.Net.WebSockets;
 using Discord.WebSocket;
 using PartyViewKR;
 
-static class ListingDiscordConnectionTests
+static partial class ListingDiscordConnectionTests
 {
     // No real token or network: exercise Discord.Net's REST/Gateway initialization itself.
     private const string FakeToken = "NTAw.fake.only-for-offline-tests-not-a-real-token";
@@ -67,12 +67,16 @@ static class ListingDiscordConnectionTests
                 check(text.Contains("test") && !text.Contains(FakeToken), "exception details leaked");
             }
         });
+        RunInteractions(test, check);
     }
 
     private sealed class OfflineTransport : IRestClient, IWebSocketClient
     {
         internal readonly TaskCompletionSource Identified = new(TaskCreationOptions.RunContinuationsAsynchronously);
         internal readonly ConcurrentQueue<string> Commands = new();
+        internal readonly ConcurrentQueue<(string Method, string Endpoint, JsonElement Body)> Responses = new();
+        internal JsonElement? Message;
+        private int sequence = 1;
         internal bool RejectCommands, RejectAuth;
         public event Func<string, Task>? TextMessage;
         public event Func<byte[], int, int, Task>? BinaryMessage { add { } remove { } }
@@ -100,14 +104,27 @@ static class ListingDiscordConnectionTests
             "guilds":[],"private_channels":[],"session_id":"offline","resume_gateway_url":"wss://offline.invalid",
             "application":{"id":"500","flags":0}}}
             """);
+        internal void Interaction(int type, object data, ulong user = 600)
+        {
+            var id = SnowflakeUtils.ToSnowflake(DateTimeOffset.UtcNow) + (ulong)Interlocked.Increment(ref sequence);
+            var interaction = new Dictionary<string, object> {
+                ["id"] = id.ToString(), ["application_id"] = "500", ["type"] = type, ["data"] = data,
+                ["channel_id"] = "800", ["token"] = "offline-interaction-" + id, ["version"] = 1,
+                ["user"] = new { id = user.ToString(), username = "owner", discriminator = "0" },
+                ["entitlements"] = Array.Empty<object>(), ["authorizing_integration_owners"] = new Dictionary<string, string>(),
+                ["app_permissions"] = "0", ["context"] = 1
+            };
+            if (type != 2 && Message is { } message) interaction["message"] = message;
+            Receive(JsonSerializer.Serialize(new { op = 0, s = sequence, t = "INTERACTION_CREATE", d = interaction })).GetAwaiter().GetResult();
+        }
         public Task<RestResponse> SendAsync(string method, string endpoint, CancellationToken cancelToken, bool headerOnly = false,
             string? reason = null, IEnumerable<KeyValuePair<string, IEnumerable<string>>>? requestHeaders = null) => Reply(method, endpoint);
         public Task<RestResponse> SendAsync(string method, string endpoint, string json, CancellationToken cancelToken, bool headerOnly = false,
-            string? reason = null, IEnumerable<KeyValuePair<string, IEnumerable<string>>>? requestHeaders = null) => Reply(method, endpoint);
+            string? reason = null, IEnumerable<KeyValuePair<string, IEnumerable<string>>>? requestHeaders = null) => Reply(method, endpoint, json);
         public Task<RestResponse> SendAsync(string method, string endpoint, IReadOnlyDictionary<string, object> multipartParams,
             CancellationToken cancelToken, bool headerOnly = false, string? reason = null,
             IEnumerable<KeyValuePair<string, IEnumerable<string>>>? requestHeaders = null) => throw new NotSupportedException();
-        private Task<RestResponse> Reply(string method, string endpoint)
+        private Task<RestResponse> Reply(string method, string endpoint, string? json = null)
         {
             var code = HttpStatusCode.OK;
             string body;
@@ -123,8 +140,32 @@ static class ListingDiscordConnectionTests
                 }
                 else body = """{"id":"700","application_id":"500","name":"pvkr","type":1,"description":"PVKR","version":"1"}""";
             }
+            else if (method == "POST" && endpoint.StartsWith("interactions/") && endpoint.EndsWith("/callback")) {
+                using var parsed = JsonDocument.Parse(json!);
+                var response = parsed.RootElement.Clone();
+                if (response.GetProperty("type").GetInt32() is 4 or 7) MakeMessage(response.GetProperty("data"));
+                Responses.Enqueue((method, endpoint, response));
+                code = HttpStatusCode.NoContent; body = "";
+            }
+            else if (method == "PATCH" && endpoint.StartsWith("webhooks/500/") && endpoint.EndsWith("/messages/@original")) {
+                using var parsed = JsonDocument.Parse(json!);
+                var response = parsed.RootElement.Clone();
+                body = MakeMessage(response).GetRawText();
+                Responses.Enqueue((method, endpoint, response));
+            }
             else throw new InvalidOperationException("Unexpected offline REST endpoint: " + method + " " + endpoint);
             return Task.FromResult(new RestResponse(code, [], new MemoryStream(Encoding.UTF8.GetBytes(body))));
+        }
+        private JsonElement MakeMessage(JsonElement data)
+        {
+            Message = JsonSerializer.SerializeToElement(new {
+                id = "900", channel_id = "800", type = 0,
+                author = new { id = "500", username = "PVKR", discriminator = "0", bot = true },
+                timestamp = DateTimeOffset.UtcNow, content = data.TryGetProperty("content", out var text) ? text.GetString() : "",
+                components = data.TryGetProperty("components", out var components) ? components : JsonSerializer.SerializeToElement(Array.Empty<object>()),
+                attachments = Array.Empty<object>(), embeds = Array.Empty<object>(), mentions = Array.Empty<object>(), mention_roles = Array.Empty<object>()
+            });
+            return Message.Value;
         }
     }
 }
