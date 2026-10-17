@@ -20,20 +20,24 @@ internal sealed record DiscordScreen(string Text, MessageComponent Components)
 internal sealed record DiscordDecision(DiscordScreen? Screen = null, Modal? Modal = null,
     DiscordWork? Work = null, bool Replace = true);
 
-// Opening/resuming the editor sends a NEW message. Its nonce/navigation never
-// replace the read card. Only the shared bridge may queue native game operations.
-internal sealed partial class ListingDiscordPanel(ListingWebBridge bridge, ulong applicationId, ulong ownerId)
+// Editors and job details are separate messages with independent navigation.
+// Only the shared bridge may queue native game operations.
+internal sealed partial class ListingDiscordPanel(ListingWebBridge bridge, ulong applicationId, ulong ownerId,
+    ListingDiscordIcons? iconCatalog = null)
 {
     private const long Lifetime = 15 * 60 * 1000;
-    private Panel? overview, editor;
-    private sealed class Panel(WebView view, bool editing = false)
+    private readonly ListingDiscordIcons icons = iconCatalog ?? new();
+    private Panel? overview, editor, details;
+    private enum PanelKind { Overview, Editor, Details }
+    private sealed class Panel(WebView view, PanelKind kind = PanelKind.Overview)
     {
         internal WebView View = view;
-        internal readonly bool Editing = editing;
+        internal readonly PanelKind Kind = kind;
+        internal bool Editing => Kind == PanelKind.Editor;
         internal string Nonce = "";
         internal long Expires;
         internal int Group, Slot = -1;
-        internal string Page = editing ? "settings" : "main", Form = "";
+        internal string Page = kind == PanelKind.Editor ? "settings" : "main", Form = "";
         internal Dictionary<string, JsonObject> Changes = new(StringComparer.Ordinal);
     }
     internal static readonly (string Key, string Label)[] Fields = [
@@ -64,14 +68,14 @@ internal sealed partial class ListingDiscordPanel(ListingWebBridge bridge, ulong
         if (input.Command.Length > 0) return Error("지원하지 않는 명령입니다.");
         var parts = input.CustomId.Split(':');
         if (parts.Length is < 3 or > 4 || parts[0] != "pvkr") return Error("지원하지 않는 조작입니다.");
-        var p = editor?.Nonce == parts[1] ? editor : overview?.Nonce == parts[1] ? overview : null;
+        var p = editor?.Nonce == parts[1] ? editor : overview?.Nonce == parts[1] ? overview :
+            details?.Nonce == parts[1] ? details : null;
         if (p == null || now >= p.Expires) return Error("이 카드는 만료됐습니다. /pvkr로 다시 열어 주세요.");
         if (p.View.Session != current.Session) { Clear(); return Error("게임 접속 상태가 바뀌었습니다. /pvkr로 다시 열어 주세요."); }
         var action = parts[2];
-        if (!p.Editing && (action is "status" or "query" or "apply") && editor is { Changes.Count: > 0 })
+        if (p.Kind == PanelKind.Overview && (action is "query" or "apply") && editor is { Changes.Count: > 0 })
             return Error("새 편집 카드에 변경사항이 있습니다. 편집 카드에서 ‘적용 및 갱신’을 눌러 주세요.");
-        if (action == "status" && !p.Editing) return Complete(now);
-        if (action == "query" && !p.Editing) {
+        if (action == "query" && p.Kind == PanelKind.Overview) {
             if (!current.CanQuery) return Error(current.Reason);
             Clear(); return new(Work: new(true, RequestId(input.Id), current.Session, null));
         }
@@ -80,12 +84,22 @@ internal sealed partial class ListingDiscordPanel(ListingWebBridge bridge, ulong
                 return Error("파티를 다시 선택해 주세요.");
             p.Group = index; p.Slot = -1; return new(Render(p, now));
         }
+        if (action == "details" && p.Kind == PanelKind.Overview) {
+            if (p.View.Listing is not { SlotsReadable: true, Groups.Length: > 0 })
+                return Error("자리 정보를 읽지 못했습니다. 내 모집글을 다시 조회해 주세요.");
+            details = new(p.View, PanelKind.Details) { Group = p.Group };
+            return new(Render(details, now), Replace: false);
+        }
+        // Reading a captured listing does not require an editable game state,
+        // but a details nonce must never be usable to submit or alter a draft.
+        if (p.Kind == PanelKind.Details) return Error("직업 상세 카드는 조회 전용입니다. 변경하려면 조회 카드의 ‘수정’을 눌러 주세요.");
         var model = p.View.Editor;
         if (model == null || model.Revision != current.Editor?.Revision) return Error("모집 정보가 바뀌었습니다. /pvkr로 현재 정보를 다시 조회해 주세요.");
         if (action is "settings" or "jobs") {
+            if (action == "jobs" && !p.Editing) return Error("조회 카드의 ‘수정’에서 자리·직업을 선택해 주세요.");
             if (action == "jobs" && !model.Supported.Contains("job")) return Error("현재 모집에서 직업 제한을 수정할 수 없습니다.");
             var freshMessage = !p.Editing;
-            if (freshMessage) { editor ??= new(p.View, true) { Group = p.Group }; p = editor; }
+            if (freshMessage) { editor ??= new(p.View, PanelKind.Editor) { Group = p.Group }; p = editor; }
             p.Page = action; return new(Render(p, now), Replace: !freshMessage);
         }
         if (action == "apply") {
@@ -140,7 +154,7 @@ internal sealed partial class ListingDiscordPanel(ListingWebBridge bridge, ulong
     internal WebReply Start(DiscordWork work, long now) => work.Query ? bridge.QueueQuery(work.Id, work.Session, now) : bridge.QueueApply(work.Id, work.Session, work.Body ?? [], now);
     internal WebReply Progress(DiscordWork work) => work.Query ? bridge.ReadQuery(work.Id) : bridge.ReadOperation(work.Id);
     internal DiscordDecision Complete(long now, string notice = "") { Clear(); overview = new(bridge.ReadView()); return new(Render(overview, now, notice)); }
-    internal void Clear() { editor?.Changes.Clear(); editor = null; overview = null; }
+    internal void Clear() { editor?.Changes.Clear(); editor = null; overview = null; details = null; }
     private static bool One(DiscordInput input, out string value) { value = input.Values.FirstOrDefault() ?? ""; return input.Values.Length == 1; }
     private static JsonNode? Original(Panel p, string key) => p.View.Editor!.Values.TryGetValue(key, out var value) ? JsonSerializer.SerializeToNode(value) : null;
     private static JsonNode? Value(Panel p, string key) => p.Changes.TryGetValue(key, out var change) ? change["value"] : Original(p, key);

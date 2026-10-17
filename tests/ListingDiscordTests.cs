@@ -58,6 +58,7 @@ static partial class ListingDiscordTests
     internal static void Run(Action<string, Action> test, Action<bool, string> check)
     {
         RunCardFlow(test, check);
+        RunRoster(test, check);
         test("discord rejects wrong owner or app without reading or queuing a game action", () => {
             var (b, h, _) = ListingWebEditTests.Ready(); var p = new ListingDiscordPanel(b, App, Owner);
             foreach (var input in new[] { Input() with { Command = "pvkr", UserId = 7 }, Input() with { Command = "pvkr", ApplicationId = 8 } }) {

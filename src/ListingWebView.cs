@@ -4,7 +4,11 @@ namespace PartyViewKR;
 // flags, diagnostic dump, pending edits, or recruitment password.
 internal sealed record WebSetting(string Key, string Label, string Value);
 internal sealed record WebSlot(int NativeIndex, string Position, bool HasMember, string Job,
-    bool Anyone, bool RulesComplete, string[] AllowedJobs);
+    bool Anyone, bool RulesComplete, string[] AllowedJobs)
+{
+    // Recruitment-time job, used to look up an icon without guessing from a name.
+    public uint JobId { get; init; }
+}
 internal sealed record WebGroup(string Name, WebSlot[] Slots);
 internal sealed record WebListing(string Leader, string Duty, string Description, string Remaining,
     DateTimeOffset? ReadAt, bool Live, int? Filled, int? Total, bool SlotsReadable, bool CountsAgree,
@@ -31,7 +35,7 @@ internal static class ListingWebView
                 slots.NumberOfParties > 1 ? $"{(char)('A' + g.Key)}파티" : "파티",
                 g.Select(s => new WebSlot(s.NativeIndex, slots.PositionLabel(s), s.HasMember, s.Job,
                     s.AllowedJobs.Anyone && s.AllowedJobs.Complete, s.AllowedJobs.Complete,
-                    s.AllowedJobs.Names.ToArray())).ToArray())).ToArray() : [];
+                    s.AllowedJobs.Names.ToArray()) { JobId = s.JobId }).ToArray())).ToArray() : [];
         WebSetting[] settings = [
             new("objective", "모집 목적", ListingObjectives.Label(listing.Objective)),
             new("beginner", "초행 및 초보자 환영", ListingCheckboxValues.Label(listing.BeginnerFriendly)),

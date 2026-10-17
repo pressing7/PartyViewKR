@@ -5,10 +5,10 @@ static partial class ListingDiscordConnectionTests
 {
     private static void RunInteractions(Action<string, Action> test, Action<bool, string> check)
     {
-        test("discord Gateway buttons without values acknowledge status and settings", () => {
+        test("discord Gateway buttons without values acknowledge settings", () => {
             using var bot = new InteractionFixture();
             bot.Open();
-            foreach (var action in new[] { "status", "settings", "jobs", "settings" }) {
+            foreach (var action in new[] { "settings", "jobs", "settings" }) {
                 var before = bot.Transport.Responses.Count;
                 var wasEditor = bot.Text.Contains("모집 수정");
                 var oldMessageId = bot.Transport.Message!.Value.GetProperty("id").GetString();
@@ -20,6 +20,21 @@ static partial class ListingDiscordConnectionTests
                 check((bot.Transport.Message!.Value.GetProperty("id").GetString() != oldMessageId) == openingEditor, "message identity changed incorrectly");
             }
             check(bot.Host.StartCalls == 0, "navigation started a mutation");
+        });
+        test("discord Gateway details use a new read-only message and preserve the overview", () => {
+            using var bot = new InteractionFixture(); bot.Open();
+            var overview = bot.Transport.Message!.Value;
+            var editId = bot.Id("settings");
+            var before = bot.Transport.Responses.Count;
+            bot.Button("details"); bot.ScreenAfter(before, controls: false);
+            var response = bot.Transport.Responses.Skip(before).Single();
+            check(response.Body.GetProperty("type").GetInt32() == 4 && bot.Text.Contains("직업 상세") && bot.Text.Contains("등록 직업: 흑마도사"), "details replaced overview or lost listing jobs");
+            check(bot.Transport.Message!.Value.GetProperty("id").GetString() != overview.GetProperty("id").GetString(), "details reused message identity");
+            // A real click on the earlier overview still opens an editor.
+            bot.Transport.Message = overview; before = bot.Transport.Responses.Count;
+            bot.Transport.Interaction(3, new { component_type = 2, custom_id = editId });
+            bot.ScreenAfter(before);
+            check(bot.Text.Contains("모집 수정") && bot.Host.StartCalls == 0, "details invalidated overview or mutated game");
         });
         test("discord Gateway query and refresh buttons ACK before executing on framework", () => {
             foreach (var action in new[] { "query", "apply" }) {
@@ -77,7 +92,7 @@ static partial class ListingDiscordConnectionTests
             uint[] ids = [19,21,32,37,24,33,28,40,20,22,30,34,39,41,43,23,31,38,25,27,35,42,36,1,3,6,2,4,29,5,7,26];
             bot.Host.Native.Target = bot.Host.Native.Target with { Slots = bot.Host.Native.Target.Slots with {
                 JobRules = ListingJobRules.Read(ids.Select(id => new RecruitmentJob(id, "직업" + id))) } };
-            bot.Open(); bot.Navigate("jobs"); bot.Navigate("preset:tank");
+            bot.Open(); bot.Navigate("settings"); bot.Navigate("jobs"); bot.Navigate("preset:tank");
             string[] Selected() => WalkJson(bot.Screen.GetProperty("components"))
                 .Where(c => c.TryGetProperty("custom_id", out var id) && id.GetString()!.Contains(":choosejobs:"))
                 .SelectMany(c => c.GetProperty("options").EnumerateArray())
@@ -91,7 +106,7 @@ static partial class ListingDiscordConnectionTests
         test("discord Gateway unauthorized and stale buttons receive an error response", () => {
             using var bot = new InteractionFixture();
             bot.Open();
-            var oldId = bot.Id("status");
+            var oldId = bot.Id("details");
             var before = bot.Transport.Responses.Count;
             bot.Transport.Interaction(3, new { component_type = 2, custom_id = oldId }, user: 601);
             bot.ScreenAfter(before, controls: false);

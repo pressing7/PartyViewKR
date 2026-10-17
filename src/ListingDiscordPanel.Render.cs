@@ -9,11 +9,11 @@ internal sealed partial class ListingDiscordPanel
     {
         p.Nonce = Guid.NewGuid().ToString("N"); p.Expires = now + Lifetime; p.Form = "";
         var card = new ListingDiscordCard(p.Editing ? new Color(0xF0B232) : new Color(0x5865F2));
-        card.Text(p.Editing ? "## PVKR · 모집 수정" : "## PVKR · 내 모집글");
+        card.Text(p.Kind switch { PanelKind.Editor => "## PVKR · 모집 수정", PanelKind.Details => "## PVKR · 직업 상세", _ => "## PVKR · 내 모집글" });
         if (notice.Length > 0) card.Text(Escape(Limit(notice, 700)));
         var listing = p.View.Listing;
         if (listing != null) {
-            card.Text($"**{Escape(Limit(listing.Duty, 180))}**\n👥 **{listing.Filled?.ToString() ?? "?"}/{listing.Total?.ToString() ?? "?"}명**　⏱ {Escape(Limit(listing.Remaining, 30))}\n-# 모집자 {Escape(Limit(listing.Leader, 80))}");
+            card.Text($"**{Escape(Limit(listing.Duty, 180))}**\n👥 **{listing.Filled?.ToString() ?? "?"}/{listing.Total?.ToString() ?? "?"}명**　⏱ {Remaining(listing)}\n-# 모집자 {Escape(Limit(listing.Leader, 80))}");
         } else card.Text(Escape(p.View.Reason.Length > 0 ? p.View.Reason : p.View.Status));
         if (p.Editing) {
             Pending(card, p);
@@ -21,10 +21,13 @@ internal sealed partial class ListingDiscordPanel
                 !p.View.CanRefresh || p.Changes.Count == 0 || p.Changes.Values.Any(c => c["field"]?.ToString() == "job" && c["jobs"]!.AsArray().Count == 0)));
             card.Divider();
             if (p.Page == "jobs") DrawJobs(card, p); else DrawSettings(card, p);
+        } else if (p.Kind == PanelKind.Details) {
+            card.Divider(); GroupMenu(card, p); DrawJobDetails(card, p);
         } else {
-            card.Row(Button(p, "query", "다시 조회", disabled: !p.View.CanQuery),
+            card.Row(Button(p, "query", "조회", disabled: !p.View.CanQuery),
                 Button(p, "apply", "갱신", ButtonStyle.Success, !p.View.CanRefresh),
-                Button(p, "settings", "수정", ButtonStyle.Primary, p.View.Editor == null || !p.View.CanRefresh));
+                Button(p, "settings", "수정", ButtonStyle.Primary, p.View.Editor == null || !p.View.CanRefresh),
+                Button(p, "details", "직업 상세", disabled: listing is not { SlotsReadable: true, Groups.Length: > 0 }));
             if (listing != null) {
                 card.Divider(); card.Text("### 소개말\n" + Escape(listing.Description.Length > 0 ? Limit(listing.Description, 400) : "(없음)"));
                 var conditions = listing.Settings.Where(s => s.Key is "objective" or "completion" or "itemLevel");
@@ -32,18 +35,38 @@ internal sealed partial class ListingDiscordPanel
                 card.Divider(); GroupMenu(card, p);
                 if (listing.Groups.Length > p.Group) {
                     var group = listing.Groups[p.Group];
-                    var lines = group.Slots.Select(s => $"{(s.HasMember ? "●" : "○")} **{Escape(s.Position)}** · " + (s.HasMember ? Escape(s.Job) :
-                        !s.RulesComplete ? "직업 확인 불가" : s.Anyone ? "모집 중 · 누구나 가능" : "모집 중 · " + Escape(Limit(string.Join(", ", s.AllowedJobs), 90))));
-                    card.Section($"### {Escape(group.Name)} · {group.Slots.Count(s => s.HasMember)}/{group.Slots.Length}명",
-                        Button(p, "jobs", "자리·직업 수정", disabled: p.View.Editor?.Slots.Length is not > 0 || !p.View.CanRefresh));
-                    card.Text(string.Join('\n', lines));
-                }
+                    card.Text($"### {Escape(group.Name)} · {group.Slots.Count(s => s.HasMember)}/{group.Slots.Length}명\n" + string.Join(" ", group.Slots.Select(icons.ForSlot)));
+                    var legend = icons.Legend(group.Slots);
+                    if (legend.Length > 0) card.Text("-# " + legend);
+                } else card.Text("자리 정보를 읽지 못했습니다. 다시 조회해 주세요.");
             }
-            card.Row(Button(p, "status", "상태 확인"));
             if (!p.View.CanRefresh && p.View.RefreshReason.Length > 0) card.Text(Escape(Limit(p.View.RefreshReason, 240)));
         }
         if (listing?.ReadAt is { } at) card.Text($"-# 조회 <t:{at.ToUnixTimeSeconds()}:T> · 조회 당시의 모집 정보" + (!listing.Live ? " · 최신 정보는 다시 조회" : ""));
         return card.Build();
+    }
+
+    private static string Remaining(WebListing listing)
+    {
+        // Anchor to the captured read, never render time. Navigating a card must
+        // not restart the countdown, and an unreadable timer must not become 60m.
+        if (listing.ReadAt is { } at && RefreshEvidence.ParseSeconds(listing.Remaining) is { } seconds)
+            return $"종료 예정 <t:{at.AddSeconds(seconds).ToUnixTimeSeconds()}:R>";
+        return "남은 시간 " + (string.IsNullOrWhiteSpace(listing.Remaining) ? "확인 불가" : Escape(Limit(listing.Remaining, 30)));
+    }
+
+    private static void DrawJobDetails(ListingDiscordCard card, Panel p)
+    {
+        var groups = p.View.Listing?.Groups ?? [];
+        if (p.Group < 0 || p.Group >= groups.Length) { card.Text("자리 정보를 읽지 못했습니다. 조회 카드에서 다시 조회해 주세요."); return; }
+        var group = groups[p.Group];
+        card.Text($"### {Escape(group.Name)} · {group.Slots.Count(s => s.HasMember)}/{group.Slots.Length}명\n-# 참가 직업은 모집에 등록된 직업입니다.");
+        foreach (var slot in group.Slots) {
+            var info = slot.HasMember ? "등록 직업: " + (slot.Job.Length > 0 ? Escape(slot.Job) : "확인 불가") :
+                !slot.RulesComplete ? "허용 직업을 확인할 수 없습니다." : slot.Anyone ? "누구나 가능" :
+                "허용 직업: " + (slot.AllowedJobs.Length > 0 ? Escape(string.Join(", ", slot.AllowedJobs)) : "없음");
+            card.Text($"**{Escape(slot.Position)} · {(slot.HasMember ? "참가" : "모집 중")}**\n{info}");
+        }
     }
 
     private static ButtonBuilder Button(Panel p, string action, string label, ButtonStyle style = ButtonStyle.Secondary, bool disabled = false) =>

@@ -13,7 +13,7 @@ static partial class ListingDiscordTests
             var opened = p.Handle(Input(Id(overview, "settings")), 1100);
             check(!opened.Replace && opened.Screen!.Text.Contains("모집 수정"), "editor replaced overview");
             var draft = Act(p, opened.Screen!, "toggle:beginner");
-            foreach (var action in new[] { "query", "status", "apply" }) {
+            foreach (var action in new[] { "query", "apply" }) {
                 var blocked = p.Handle(Input(Id(overview, action)), 1100);
                 check(blocked.Work == null && !blocked.Replace && blocked.Screen!.Text.Contains("편집 카드"), "overview discarded pending edits");
             }
