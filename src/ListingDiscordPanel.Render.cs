@@ -9,11 +9,20 @@ internal sealed partial class ListingDiscordPanel
     {
         p.Nonce = Guid.NewGuid().ToString("N"); p.Expires = now + Lifetime; p.Form = "";
         var card = new ListingDiscordCard(p.Editing ? new Color(0xF0B232) : new Color(0x5865F2));
-        card.Text(p.Kind switch { PanelKind.Editor => "## PVKR · 모집 수정", PanelKind.Details => "## PVKR · 직업 상세", _ => "## PVKR · 내 모집글" });
+        if (p.Kind == PanelKind.Overview) {
+            card.Row(Button(p, "query", "조회", disabled: !p.View.CanQuery),
+                Button(p, "apply", "갱신", ButtonStyle.Success, !p.View.CanRefresh),
+                Button(p, "settings", "수정", ButtonStyle.Primary, p.View.Editor == null || !p.View.CanRefresh));
+        } else card.Text(p.Editing ? "## PVKR · 모집 수정" : "## PVKR · 직업 상세");
         if (notice.Length > 0) card.Text(Escape(Limit(notice, 700)));
         var listing = p.View.Listing;
         if (listing != null) {
-            card.Text($"**{Escape(Limit(listing.Duty, 180))}**\n👥 **{listing.Filled?.ToString() ?? "?"}/{listing.Total?.ToString() ?? "?"}명**　⏱ {Remaining(listing)}\n-# 모집자 {Escape(Limit(listing.Leader, 80))}");
+            var markers = new[] {
+                listing.Settings.Any(s => s.Key == "private" && s.Active) ? icons.Private : "",
+                listing.Settings.Any(s => s.Key == "beginner" && s.Active) ? icons.Beginner : ""
+            };
+            var prefix = string.Concat(markers.Where(s => s.Length > 0).Select(s => s + " "));
+            card.Text($"{prefix}**{Escape(Limit(listing.Duty, 180))}**\n👥 **{listing.Filled?.ToString() ?? "?"}/{listing.Total?.ToString() ?? "?"}명**　⏱ {Remaining(listing)}\n-# 모집자 {Escape(Limit(listing.Leader, 80))}");
         } else card.Text(Escape(p.View.Reason.Length > 0 ? p.View.Reason : p.View.Status));
         if (p.Editing) {
             Pending(card, p);
@@ -24,18 +33,15 @@ internal sealed partial class ListingDiscordPanel
         } else if (p.Kind == PanelKind.Details) {
             card.Divider(); GroupMenu(card, p); DrawJobDetails(card, p);
         } else {
-            card.Row(Button(p, "query", "조회", disabled: !p.View.CanQuery),
-                Button(p, "apply", "갱신", ButtonStyle.Success, !p.View.CanRefresh),
-                Button(p, "settings", "수정", ButtonStyle.Primary, p.View.Editor == null || !p.View.CanRefresh),
-                Button(p, "details", "직업 상세", disabled: listing is not { SlotsReadable: true, Groups.Length: > 0 }));
             if (listing != null) {
+                DrawActiveSettings(card, listing);
                 card.Divider(); card.Text("### 소개말\n" + Escape(listing.Description.Length > 0 ? Limit(listing.Description, 400) : "(없음)"));
-                var conditions = listing.Settings.Where(s => s.Key is "objective" or "completion" or "itemLevel");
-                card.Text(string.Join(" · ", conditions.Select(s => Escape(s.Label + ": " + s.Value))));
                 card.Divider(); GroupMenu(card, p);
                 if (listing.Groups.Length > p.Group) {
                     var group = listing.Groups[p.Group];
-                    card.Text($"### {Escape(group.Name)} · {group.Slots.Count(s => s.HasMember)}/{group.Slots.Length}명\n" + string.Join(" ", group.Slots.Select(icons.ForSlot)));
+                    card.Section($"### {Escape(group.Name)} · {group.Slots.Count(s => s.HasMember)}/{group.Slots.Length}명",
+                        Button(p, "details", "직업 상세", disabled: !listing.SlotsReadable));
+                    card.Text(string.Join(" ", group.Slots.Select(icons.ForSlot)));
                     var legend = icons.Legend(group.Slots);
                     if (legend.Length > 0) card.Text("-# " + legend);
                 } else card.Text("자리 정보를 읽지 못했습니다. 다시 조회해 주세요.");
@@ -44,6 +50,22 @@ internal sealed partial class ListingDiscordPanel
         }
         if (listing?.ReadAt is { } at) card.Text($"-# 조회 <t:{at.ToUnixTimeSeconds()}:T> · 조회 당시의 모집 정보" + (!listing.Live ? " · 최신 정보는 다시 조회" : ""));
         return card.Build();
+    }
+
+    private static void DrawActiveSettings(ListingDiscordCard card, WebListing listing)
+    {
+        string Tags(params string[] keys) => string.Join(" ", keys.Select(key => listing.Settings.FirstOrDefault(s => s.Key == key && s.Active))
+            .OfType<WebSetting>().Select(s => "[" + Escape(s.Key switch {
+                "objective" or "completion" or "loot" => s.Value,
+                "itemLevel" => s.Label + " " + s.Value,
+                _ => s.Label
+            }) + "]"));
+        var lines = new[] {
+            Tags("unrestricted", "minimum_item_level", "silence_echo", "loot"),
+            Tags("objective", "completion", "uniqueJobs", "itemLevel")
+        }.Where(line => line.Length > 0).ToArray();
+        if (lines.Length == 0) return;
+        card.Divider(); card.Text(string.Join('\n', lines));
     }
 
     private static string Remaining(WebListing listing)

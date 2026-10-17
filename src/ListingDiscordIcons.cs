@@ -5,14 +5,20 @@ namespace PartyViewKR;
 // to show the roster. Missing images always have an explicit state fallback.
 internal sealed class ListingDiscordIcons(IReadOnlyDictionary<string, ulong>? applicationEmojiIds = null)
 {
+    internal string Private => Resolve("private", "🔒");
+    internal string Beginner => Resolve("beginner", "🌱");
+
     internal string ForSlot(WebSlot slot)
     {
         var (key, fallback) = slot.HasMember ? (slot.JobId > 0 ? "job_" + slot.JobId : "member", "🟦") :
             !slot.RulesComplete ? ("unknown", "⬛") :
             slot.Anyone ? ("anyone", "⬜") : ("restricted", "🟨");
-        return applicationEmojiIds != null && applicationEmojiIds.TryGetValue(key, out var id) && id != 0
-            ? $"<:pvkr_{key}:{id}>" : fallback;
+        return Resolve(key, fallback);
     }
+
+    private string Resolve(string key, string fallback) =>
+        applicationEmojiIds != null && applicationEmojiIds.TryGetValue(key, out var id) && id != 0
+            ? $"<:pvkr_{key}:{id}>" : fallback;
 
     // Only the fallback symbols in use need explaining once real icons exist.
     internal string Legend(IEnumerable<WebSlot> slots)
