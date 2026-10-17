@@ -36,13 +36,17 @@ internal sealed partial class ListingDiscordPanel
             if (listing != null) {
                 DrawActiveSettings(card, listing);
                 card.Divider(); card.Text("### 소개말\n" + Escape(listing.Description.Length > 0 ? Limit(listing.Description, 400) : "(없음)"));
-                card.Divider(); GroupMenu(card, p);
-                if (listing.Groups.Length > p.Group) {
-                    var group = listing.Groups[p.Group];
-                    card.Section($"### {Escape(group.Name)} · {group.Slots.Count(s => s.HasMember)}/{group.Slots.Length}명",
+                card.Divider();
+                if (listing.Groups.Length > 0) {
+                    var single = listing.Groups.Length == 1;
+                    var first = listing.Groups[0];
+                    card.Section(single ? $"### {Escape(first.Name)} · {first.Slots.Count(s => s.HasMember)}/{first.Slots.Length}명" : "### 파티 구성",
                         Button(p, "details", "직업 상세", disabled: !listing.SlotsReadable));
-                    card.Text(string.Join(" ", group.Slots.Select(icons.ForSlot)));
-                    var legend = icons.Legend(group.Slots);
+                    foreach (var group in listing.Groups) {
+                        var label = single ? "" : $"**{Escape(group.Name)} · {group.Slots.Count(s => s.HasMember)}/{group.Slots.Length}명**\n";
+                        card.Text(label + string.Join(" ", group.Slots.Select(icons.ForSlot)));
+                    }
+                    var legend = icons.Legend(listing.Groups.SelectMany(group => group.Slots));
                     if (legend.Length > 0) card.Text("-# " + legend);
                 } else card.Text("자리 정보를 읽지 못했습니다. 다시 조회해 주세요.");
             }

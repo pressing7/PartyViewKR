@@ -5,7 +5,7 @@ static partial class ListingDiscordTests
 {
     private static void RunCardFlow(Action<string, Action> test, Action<bool, string> check)
     {
-        test("discord separate editor preserves drafts while overview navigation stays independent", () => {
+        test("discord separate editor preserves drafts while viewing all parties and navigating details", () => {
             var (b, h, _) = ListingWebEditTests.Ready();
             h.Native.Target = WebEditFakeHost.Target(24); b.Update(h, 1001);
             var p = new ListingDiscordPanel(b, App, Owner);
@@ -17,8 +17,9 @@ static partial class ListingDiscordTests
                 var blocked = p.Handle(Input(Id(overview, action)), 1100);
                 check(blocked.Work == null && !blocked.Replace && blocked.Screen!.Text.Contains("편집 카드"), "overview discarded pending edits");
             }
-            overview = Act(p, overview, "group", "1");
-            check(overview.Text.Contains("B파티"), "overview navigation failed during editing");
+            var details = p.Handle(Input(Id(overview, "details")), 1100).Screen!;
+            details = Act(p, details, "group", "1");
+            check(details.Text.Contains("B파티") && overview.Text.Contains("C파티"), "details or complete roster missing during editing");
             var resumed = p.Handle(Input(Id(overview, "settings")), 1100);
             check(!resumed.Replace && resumed.Screen!.Text.Contains("적용 대기 1개"), "resuming lost draft");
             check(p.Handle(Input(Id(draft, "apply")), 1100).Work == null, "older editor remained active");

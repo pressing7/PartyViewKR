@@ -80,6 +80,7 @@ internal sealed partial class ListingDiscordPanel(ListingWebBridge bridge, ulong
             Clear(); return new(Work: new(true, RequestId(input.Id), current.Session, null));
         }
         if (action == "group") {
+            if (p.Kind == PanelKind.Overview) return Error("조회 카드에는 모든 파티를 표시합니다. 직업 상세에서 파티를 선택해 주세요.");
             if (!One(input, out var group) || !int.TryParse(group, out var index) || index < 0 || index >= (p.View.Listing?.Groups.Length ?? 0))
                 return Error("파티를 다시 선택해 주세요.");
             p.Group = index; p.Slot = -1; return new(Render(p, now));

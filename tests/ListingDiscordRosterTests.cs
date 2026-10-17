@@ -22,7 +22,7 @@ static partial class ListingDiscordTests
             check(!detail.Replace && detail.Screen!.Text.Contains("등록 직업: 흑마도사") && detail.Screen.Text.Contains("허용 직업: 나이트, 백마도사"), "read-only details unavailable without editable model");
             check(bridge.ReadView().Editor == null && host.Calls == 0, "opening details requested game changes");
         });
-        test("discord job details preserve draft and overview navigation and reject forged editing actions", () => {
+        test("discord job details preserve draft and full overview and reject forged editing actions", () => {
             var (bridge, host, _) = ListingWebEditTests.Ready();
             host.Native.Target = WebEditFakeHost.Target(24); bridge.Update(host, 1001);
             var panel = new ListingDiscordPanel(bridge, App, Owner);
@@ -40,8 +40,8 @@ static partial class ListingDiscordTests
             var reopened = panel.Handle(Input(Id(overview, "details")), 1100);
             check(!reopened.Replace && reopened.Screen!.Text.Contains("A파티 1"), "details changed overview group");
             check(!panel.Handle(Input(oldGroup, ["1"]), 1100).Replace, "older detail card remained active");
-            overview = Act(panel, overview, "group", "1");
-            check(overview.Text.Contains("B파티") && !overview.Text.Contains("직업 상세\n"), "overview navigation was replaced by details");
+            check(overview.Text.Contains("A파티") && overview.Text.Contains("B파티") && overview.Text.Contains("C파티"), "overview omitted a party");
+            check(!ListingDiscordCard.Walk(overview.Components.Components).OfType<SelectMenuComponent>().Any(), "overview still requires party selection");
             var work = panel.Handle(Input(Id(draft, "apply")), 1100).Work!;
             using var body = System.Text.Json.JsonDocument.Parse(work.Body!);
             check(body.RootElement.GetProperty("changes").GetArrayLength() == 1 && host.StartCalls == 0, "detail viewing discarded/submitted the draft");
@@ -63,6 +63,11 @@ static partial class ListingDiscordTests
                 var details = panel.Handle(Input(Id(overview, "details")), 1100).Screen!;
                 var groups = bridge.ReadView().Listing!.Groups;
                 if (friendly) check(groups.Select(g => g.Slots.Length).SequenceEqual(new[] { 5, 5, 8 }), "friendly padding included");
+                var icons = new ListingDiscordIcons();
+                foreach (var group in groups) {
+                    check(overview.Text.Contains(group.Name + " · ") && overview.Text.Contains(string.Join(" ", group.Slots.Select(icons.ForSlot))), "overview lost a party or its registered icons");
+                }
+                check(overview.Text.Length <= 4000 && ListingDiscordCard.Walk(overview.Components.Components).Count() <= 40, "full overview exceeds Discord limits");
                 for (var i = 0; i < groups.Length; i++) {
                     if (i > 0) details = Act(panel, details, "group", i.ToString());
                     foreach (var slot in groups[i].Slots) check(details.Text.Contains("**" + slot.Position + " · "), "registered seat missing: " + slot.Position);
@@ -80,9 +85,9 @@ static partial class ListingDiscordTests
             var overview = panel.Complete(1000).Screen!;
             var expected = $"<t:{new DateTimeOffset(at).AddSeconds(2142).ToUnixTimeSeconds()}:R>";
             check(overview.Text.Contains(expected), "relative expiry not calculated from game read time");
-            overview = Act(panel, overview, "group", "1");
             host.Listing = host.Listing with { ReadAt = at.AddMinutes(5), Remaining = "60분 00초" }; bridge.Update(host, 1002);
             var details = panel.Handle(Input(Id(overview, "details")), 1100).Screen!;
+            details = Act(panel, details, "group", "1");
             check(details.Text.Contains(expected) && details.Text.Contains("최신 정보는 다시 조회"), "cached timer restarted or lost stale label");
             overview = panel.Complete(1100).Screen!;
             var refreshed = $"<t:{new DateTimeOffset(at).AddMinutes(65).ToUnixTimeSeconds()}:R>";
