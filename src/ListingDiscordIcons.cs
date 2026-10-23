@@ -29,8 +29,9 @@ internal sealed class ListingDiscordIcons(IReadOnlyDictionary<string, ulong>? ap
         // One or more jobs from each role is enough; do not require the whole
         // role. Only the full runtime catalog qualifies as "anyone".
         return jobs.Aggregate(0, (mask, id) => mask | Role(id)) switch {
+            1 => "role_t", 2 => "role_h", 4 => "role_d",
             3 => "role_th", 5 => "role_td", 6 => "role_hd", 7 => "role_thd",
-            _ => null // Single-role group artwork has not been supplied yet.
+            _ => null
         };
     }
     private static int Role(uint id) => id switch {
@@ -42,7 +43,7 @@ internal sealed class ListingDiscordIcons(IReadOnlyDictionary<string, ulong>? ap
     };
     private string Resolve(string key, string fallback) =>
         ids.TryGetValue(key, out var id) && id != 0
-            ? $"<:pvkr_{key}:{id}>" : fallback;
+            ? $"<:{ListingDiscordEmojiAssets.NameFor(key)}:{id}>" : fallback;
 
     // Only the fallback symbols in use need explaining once real icons exist.
     internal string Legend(IEnumerable<WebSlot> slots)

@@ -68,30 +68,45 @@ static partial class ListingDiscordConnectionTests
             }
         });
         test("discord SDK lists application emojis and uploads a missing embedded PNG after READY", () => {
-            var transport = new OfflineTransport { MissingEmoji = "pvkr_checked_role_th" };
+            var transport = new OfflineTransport { MissingEmoji = "join_tank_healer_role" };
             using var client = new ListingDiscordClient(new("test"), FakeToken, transport.Config());
             Wait(() => transport.Identified.Task.IsCompleted || !client.Running);
             check(transport.EmojiCalls.IsEmpty, "emoji API called before application ID is known");
             transport.Ready().GetAwaiter().GetResult();
             Wait(() => client.Status.Contains("이모지 준비 완료") || !client.Running);
-            check(client.Connected && client.Status.Contains("74/74"), client.Status);
-            check(transport.EmojiCalls.SequenceEqual(new[] { "GET", "POST:pvkr_checked_role_th" }), "unexpected emoji API calls");
+            check(client.Connected && client.Status.Contains("80/80"), client.Status);
+            check(transport.EmojiCalls.SequenceEqual(new[] { "GET", "POST:join_tank_healer_role" }), "unexpected emoji API calls");
             check(transport.UploadedEmojiPng, "embedded PNG not uploaded as image data");
             transport.Ready().GetAwaiter().GetResult();
-            check(transport.EmojiCalls.Count == 2 && client.Status.Contains("74/74"), "Gateway resume uploaded twice or lost status");
+            check(transport.EmojiCalls.Count == 2 && client.Status.Contains("80/80"), "Gateway resume uploaded twice or lost status");
             client.Dispose(); client.Completion.WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
         });
         test("discord emoji permission failures preserve connection and expose only safe codes", () => {
             foreach (var rejectList in new[] { false, true }) {
                 var transport = new OfflineTransport { RejectEmojiList = rejectList, RejectEmojiCreate = !rejectList,
-                    MissingEmoji = "pvkr_checked_role_th" };
+                    MissingEmoji = "join_tank_healer_role" };
                 using var client = new ListingDiscordClient(new("test"), FakeToken, transport.Config());
                 Wait(() => transport.Identified.Task.IsCompleted || !client.Running);
                 transport.Ready().GetAwaiter().GetResult();
                 Wait(() => client.Status.Contains("일부 미준비") || !client.Running);
                 check(client.Connected && client.Running && client.Status.Contains("HTTP 403"), client.Status);
-                check(client.Status.Contains(rejectList ? "0/74" : "73/74") && !client.Status.Contains(FakeToken), "partial progress or redaction lost");
+                check(client.Status.Contains(rejectList ? "0/80" : "79/80") && !client.Status.Contains(FakeToken), "partial progress or redaction lost");
                 check(transport.EmojiCalls.Count == (rejectList ? 1 : 2), "failed list or upload retried blindly");
+                client.Dispose(); client.Completion.WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
+            }
+        });
+        test("discord SDK migrates the legacy emoji name using PATCH and preserves its ID", () => {
+            foreach (var reject in new[] { false, true }) {
+                var transport = new OfflineTransport { LegacyEmoji = "join_tank_healer_role", RejectEmojiRename = reject };
+                using var client = new ListingDiscordClient(new("test"), FakeToken, transport.Config());
+                Wait(() => transport.Identified.Task.IsCompleted || !client.Running);
+                check(transport.EmojiCalls.IsEmpty, "rename ran before READY");
+                transport.Ready().GetAwaiter().GetResult();
+                Wait(() => client.Status.Contains(reject ? "일부 미준비" : "이모지 준비 완료") || !client.Running);
+                check(client.Connected && client.Status.Contains(reject ? "79/80" : "80/80"), client.Status);
+                check(transport.EmojiCalls.Count == 2 && transport.EmojiCalls.First() == "GET" &&
+                    transport.EmojiCalls.Last().StartsWith("PATCH:") && transport.EmojiCalls.Last().EndsWith(":join_tank_healer_role"), "legacy emoji re-uploaded or wrong API used");
+                check(!client.Status.Contains(FakeToken) && (!reject || client.Status.Contains("HTTP 403")), "rename failure diagnostics leaked or stopped connection");
                 client.Dispose(); client.Completion.WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
             }
         });
@@ -103,8 +118,8 @@ static partial class ListingDiscordConnectionTests
         internal readonly TaskCompletionSource Identified = new(TaskCreationOptions.RunContinuationsAsynchronously);
         internal readonly ConcurrentQueue<string> Commands = new();
         internal readonly ConcurrentQueue<string> EmojiCalls = new();
-        internal string? MissingEmoji;
-        internal bool RejectEmojiList, RejectEmojiCreate, UploadedEmojiPng;
+        internal string? MissingEmoji, LegacyEmoji;
+        internal bool RejectEmojiList, RejectEmojiCreate, RejectEmojiRename, UploadedEmojiPng;
         internal readonly ConcurrentQueue<(string Method, string Endpoint, JsonElement Body)> Responses = new();
         internal JsonElement? Message;
         private int sequence = 1;
@@ -169,7 +184,8 @@ static partial class ListingDiscordConnectionTests
                 EmojiCalls.Enqueue("GET");
                 if (RejectEmojiList) { code = HttpStatusCode.Forbidden; body = JsonSerializer.Serialize(new { code = 50001, message = FakeToken }); }
                 else body = JsonSerializer.Serialize(new { items = ListingDiscordEmojiAssets.All
-                    .Where(a => a.Name != MissingEmoji).Select((a, i) => new { id = (10000 + i).ToString(), name = a.Name, animated = false }).ToArray() });
+                    .Where(a => a.Name != MissingEmoji).Select((a, i) => new { id = (10000 + i).ToString(),
+                        name = a.Name == LegacyEmoji ? a.LegacyName! : a.Name, animated = false }).ToArray() });
             }
             else if (method == "POST" && endpoint == "applications/500/emojis") {
                 using var parsed = JsonDocument.Parse(json!);
@@ -186,6 +202,18 @@ static partial class ListingDiscordConnectionTests
                     png.SequenceEqual(expected.ToArray());
                 if (RejectEmojiCreate) { code = HttpStatusCode.Forbidden; body = JsonSerializer.Serialize(new { code = 50001, message = FakeToken }); }
                 else body = JsonSerializer.Serialize(new { id = "20000", name, animated = false });
+            }
+            else if (method == "PATCH" && endpoint.StartsWith("applications/500/emojis/")) {
+                using var parsed = JsonDocument.Parse(json!);
+                var name = parsed.RootElement.GetProperty("name").GetString()!;
+                var id = endpoint.Split('/')[^1];
+                var asset = ListingDiscordEmojiAssets.All.Single(a => a.Name == LegacyEmoji);
+                if (id != (10000 + ListingDiscordEmojiAssets.All.ToList().IndexOf(asset)).ToString() ||
+                    name != asset.Name || parsed.RootElement.EnumerateObject().Count() != 1)
+                    throw new Exception("rename must preserve ID and modify only name");
+                EmojiCalls.Enqueue("PATCH:" + id + ":" + name);
+                if (RejectEmojiRename) { code = HttpStatusCode.Forbidden; body = JsonSerializer.Serialize(new { code = 50001, message = FakeToken }); }
+                else body = JsonSerializer.Serialize(new { id, name, animated = false });
             }
             else if (method == "POST" && endpoint.EndsWith("/commands")) {
                 Commands.Enqueue(endpoint);

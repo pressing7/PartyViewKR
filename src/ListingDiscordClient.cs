@@ -99,6 +99,7 @@ internal sealed class ListingDiscordClient : IDisposable
             await ListingDiscordEmojiAssets.Sync(icons,
                 ct => socket.Rest.GetApplicationEmotesAsync(EmojiOptions(ct)),
                 (name, stream, ct) => socket.Rest.CreateApplicationEmoteAsync(name, new Image(stream), EmojiOptions(ct)),
+                (id, name, ct) => socket.Rest.ModifyApplicationEmoteAsync(id, p => p.Name = name, EmojiOptions(ct)),
                 Progress, budget.Token);
             SetEmojiStatus($"직업 이모지 준비 완료 · {icons.Count}/{ListingDiscordEmojiAssets.All.Count}");
         }
