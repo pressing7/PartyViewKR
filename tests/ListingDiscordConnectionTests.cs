@@ -110,6 +110,38 @@ static partial class ListingDiscordConnectionTests
                 client.Dispose(); client.Completion.WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
             }
         });
+        test("discord full restart restores saved token and reuses all server emojis without uploads", () => {
+            var saved = new RelayConfiguration();
+            check(saved.PrepareDiscordConnection(FakeToken, true, DiscordSettingsTests.Protect, DiscordSettingsTests.Unprotect, out var token),
+                "initial connection settings rejected");
+            var serverEmojis = ListingDiscordEmojiAssets.All.Take(79).Select((a, i) => (a.Name, Id: (ulong)(10000 + i)))
+                .ToDictionary(e => e.Name, e => e.Id);
+            var first = new OfflineTransport { SavedEmojis = serverEmojis };
+            using (var client = new ListingDiscordClient(new("test"), token, first.Config())) {
+                Wait(() => first.Identified.Task.IsCompleted || !client.Running);
+                first.Ready().GetAwaiter().GetResult();
+                Wait(() => client.Status.Contains("이모지 준비 완료") || !client.Running);
+                check(client.Connected && client.Status.Contains("기존 79개 재사용") && client.Status.Contains("새 업로드 1개"), client.Status);
+                check(first.EmojiCalls.Count == 2 && serverEmojis.Count == 80, "initial missing emoji was not registered");
+                client.Dispose(); client.Completion.WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
+            }
+            var idsBefore = serverEmojis.ToDictionary(e => e.Key, e => e.Value);
+            // Recreate settings, client and in-memory icon registry; only the
+            // encrypted config and Discord's server-side emoji list survive.
+            var restored = Newtonsoft.Json.JsonConvert.DeserializeObject<RelayConfiguration>(Newtonsoft.Json.JsonConvert.SerializeObject(saved))!;
+            check(restored.ShouldAutoConnectDiscord && restored.PrepareDiscordConnection("", true,
+                DiscordSettingsTests.Protect, DiscordSettingsTests.Unprotect, out token), "saved connection did not restore");
+            var second = new OfflineTransport { SavedEmojis = serverEmojis };
+            using (var client = new ListingDiscordClient(new("test"), token, second.Config())) {
+                Wait(() => second.Identified.Task.IsCompleted || !client.Running);
+                second.Ready().GetAwaiter().GetResult();
+                Wait(() => client.Status.Contains("이모지 준비 완료") || !client.Running);
+                check(client.Connected && client.Status.Contains("기존 80개 재사용") && client.Status.Contains("새 업로드 0개"), client.Status);
+                check(second.EmojiCalls.SequenceEqual(["GET"]) && serverEmojis.All(e => idsBefore[e.Key] == e.Value),
+                    "restart uploaded/renamed emojis or changed IDs");
+                client.Dispose(); client.Completion.WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
+            }
+        });
         RunInteractions(test, check);
     }
 
@@ -118,6 +150,7 @@ static partial class ListingDiscordConnectionTests
         internal readonly TaskCompletionSource Identified = new(TaskCreationOptions.RunContinuationsAsynchronously);
         internal readonly ConcurrentQueue<string> Commands = new();
         internal readonly ConcurrentQueue<string> EmojiCalls = new();
+        internal Dictionary<string, ulong>? SavedEmojis;
         internal string? MissingEmoji, LegacyEmoji;
         internal bool RejectEmojiList, RejectEmojiCreate, RejectEmojiRename, UploadedEmojiPng;
         internal readonly ConcurrentQueue<(string Method, string Endpoint, JsonElement Body)> Responses = new();
@@ -183,6 +216,8 @@ static partial class ListingDiscordConnectionTests
             else if (method == "GET" && endpoint == "applications/500/emojis") {
                 EmojiCalls.Enqueue("GET");
                 if (RejectEmojiList) { code = HttpStatusCode.Forbidden; body = JsonSerializer.Serialize(new { code = 50001, message = FakeToken }); }
+                else if (SavedEmojis != null) body = JsonSerializer.Serialize(new { items = SavedEmojis
+                    .Select(e => new { id = e.Value.ToString(), name = e.Key, animated = false }).ToArray() });
                 else body = JsonSerializer.Serialize(new { items = ListingDiscordEmojiAssets.All
                     .Where(a => a.Name != MissingEmoji).Select((a, i) => new { id = (10000 + i).ToString(),
                         name = a.Name == LegacyEmoji ? a.LegacyName! : a.Name, animated = false }).ToArray() });
@@ -201,7 +236,11 @@ static partial class ListingDiscordConnectionTests
                     png.Take(8).SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }) &&
                     png.SequenceEqual(expected.ToArray());
                 if (RejectEmojiCreate) { code = HttpStatusCode.Forbidden; body = JsonSerializer.Serialize(new { code = 50001, message = FakeToken }); }
-                else body = JsonSerializer.Serialize(new { id = "20000", name, animated = false });
+                else {
+                    var id = (ulong)(20000 + (SavedEmojis?.Count ?? 0));
+                    if (SavedEmojis != null) SavedEmojis[name] = id;
+                    body = JsonSerializer.Serialize(new { id = id.ToString(), name, animated = false });
+                }
             }
             else if (method == "PATCH" && endpoint.StartsWith("applications/500/emojis/")) {
                 using var parsed = JsonDocument.Parse(json!);

@@ -36,6 +36,7 @@ public sealed partial class Plugin
     internal void StartWeb()
     {
         if (disposed || WebEnabled) return;
+        if (!DisableDiscordAutoConnect()) { webStatus = "디스코드 자동 연결 설정을 저장하지 못했습니다. 다시 시도해 주세요."; return; }
         StopWeb();
         try
         {

@@ -93,15 +93,29 @@ internal sealed class ListingDiscordClient : IDisposable
         using var budget = CancellationTokenSource.CreateLinkedTokenSource(stop.Token);
         budget.CancelAfter(TimeSpan.FromMinutes(5));
         RequestOptions EmojiOptions(CancellationToken ct) => new() { CancelToken = ct, Timeout = 15000, RetryMode = RetryMode.RetryRatelimit };
-        void Progress(int done, int total) => SetEmojiStatus($"직업 이모지 준비 중 · {done}/{total}");
+        var reused = -1; var uploaded = 0; var renamed = 0;
+        void Progress(int done, int total)
+        {
+            if (reused < 0) reused = done;
+            SetEmojiStatus($"직업 이모지 준비 중 · {done}/{total} · 기존 {reused}개 재사용 · 새 업로드 {uploaded}개");
+        }
         try {
-            Progress(0, ListingDiscordEmojiAssets.All.Count);
+            SetEmojiStatus("기존 직업 이모지 확인 중입니다.");
             await ListingDiscordEmojiAssets.Sync(icons,
                 ct => socket.Rest.GetApplicationEmotesAsync(EmojiOptions(ct)),
-                (name, stream, ct) => socket.Rest.CreateApplicationEmoteAsync(name, new Image(stream), EmojiOptions(ct)),
-                (id, name, ct) => socket.Rest.ModifyApplicationEmoteAsync(id, p => p.Name = name, EmojiOptions(ct)),
+                async (name, stream, ct) => {
+                    SetEmojiStatus($"새 직업 이모지 업로드 중 · {icons.Count}/{ListingDiscordEmojiAssets.All.Count} · 기존 {reused}개 재사용");
+                    var emote = await socket.Rest.CreateApplicationEmoteAsync(name, new Image(stream), EmojiOptions(ct));
+                    uploaded++; return emote;
+                },
+                async (id, name, ct) => {
+                    SetEmojiStatus($"기존 직업 이모지 이름 변경 중 · {icons.Count}/{ListingDiscordEmojiAssets.All.Count}");
+                    var emote = await socket.Rest.ModifyApplicationEmoteAsync(id, p => p.Name = name, EmojiOptions(ct));
+                    renamed++; return emote;
+                },
                 Progress, budget.Token);
-            SetEmojiStatus($"직업 이모지 준비 완료 · {icons.Count}/{ListingDiscordEmojiAssets.All.Count}");
+            SetEmojiStatus($"직업 이모지 준비 완료 · {icons.Count}/{ListingDiscordEmojiAssets.All.Count} · 기존 {reused}개 재사용 · 새 업로드 {uploaded}개" +
+                (renamed > 0 ? $" · 이름 변경 {renamed}개" : ""));
         }
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
         catch (Exception error) {

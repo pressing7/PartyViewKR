@@ -104,17 +104,20 @@ internal sealed class PartyWindow : Window
     private void DrawDiscord()
     {
         if (!ImGui.CollapsingHeader("외부 접속 · 개인 디스코드 봇")) return;
-        if (!discordSettingsLoaded) { rememberDiscordToken = plugin.HasSavedDiscordToken; discordSettingsLoaded = true; }
+        if (!discordSettingsLoaded) { rememberDiscordToken = plugin.RememberDiscordToken; discordSettingsLoaded = true; }
         ImGui.TextWrapped(plugin.DiscordStatus);
         if (plugin.DiscordEnabled) {
             if (plugin.DiscordInviteUrl.Length > 0 && ImGui.Button("내 봇 초대 링크 복사")) ImGui.SetClipboardText(plugin.DiscordInviteUrl);
             ImGui.TextWrapped("봇을 본인 서버에 초대한 뒤 봇과의 DM에서 /pvkr를 입력하세요. 서버에서 실행한 화면은 본인에게만 표시됩니다.");
-            if (ImGui.Button("디스코드 연결 끄기")) plugin.StopDiscord();
+            if (ImGui.Button("디스코드 연결 끄기")) plugin.TurnOffDiscord();
         }
         else {
             ImGui.SetNextItemWidth(-1);
             ImGui.InputTextWithHint("##discord-token", plugin.HasSavedDiscordToken ? "저장한 토큰 사용 (변경하려면 입력)" : "개인 봇 토큰", ref discordToken, 513, ImGuiInputTextFlags.Password);
-            ImGui.Checkbox("토큰 저장 (이 Windows 계정에서 암호화)", ref rememberDiscordToken);
+            ImGui.Checkbox("토큰 저장 및 시작 시 자동 연결", ref rememberDiscordToken);
+            ImGui.TextWrapped(rememberDiscordToken
+                ? "토큰은 이 Windows 계정에서 암호화해 저장합니다. 플러그인을 다시 켜면 자동 연결하고 등록된 이모지를 재사용합니다."
+                : "이번 연결에서만 토큰을 사용합니다. 다음 실행에는 다시 입력합니다.");
             if (ImGui.Button("디스코드 연결 켜기") && plugin.StartDiscord(discordToken, rememberDiscordToken)) discordToken = "";
         }
         if (plugin.HasSavedDiscordToken && ImGui.Button("저장한 봇 토큰 삭제")) { plugin.ForgetDiscordToken(); rememberDiscordToken = false; }

@@ -399,6 +399,7 @@ public sealed partial class Plugin : IDalamudPlugin
     private void OnUpdate(IFramework framework)
     {
         if (disposed) return;
+        RestoreDiscordConnection();
         ObjectiveTrace.Update();
         var now = Environment.TickCount64;
         if (!readRequested && now - lastRead < 500) return;

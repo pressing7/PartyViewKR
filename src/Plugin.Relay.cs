@@ -1,17 +1,6 @@
-using Dalamud.Configuration;
 using System.Security.Cryptography;
 
 namespace PartyViewKR;
-
-[Serializable]
-public sealed class RelayConfiguration : IPluginConfiguration
-{
-    public int Version { get; set; } = 1;
-    public string ServerUrl { get; set; } = "";
-    public string EncryptedDiscordToken { get; set; } = "";
-    // Discord token is optional and protected with Windows CurrentUser DPAPI.
-    // No relay key, connection code, recruitment data or PIN is saved.
-}
 
 public sealed partial class Plugin
 {
@@ -30,6 +19,7 @@ public sealed partial class Plugin
         if (disposed || RelayEnabled) return false;
         if (!ListingRelayProtocol.TryServer(address, out var server)) { relayStatus = "https://로 시작하는 서버 주소만 입력해 주세요. 경로는 넣지 않습니다."; return false; }
         if (!ListingRelayProtocol.IsKey(key)) { relayStatus = "서버와 동일한 64자리 연결 키를 입력해 주세요."; return false; }
+        if (!DisableDiscordAutoConnect()) { relayStatus = "디스코드 자동 연결 설정을 저장하지 못했습니다. 다시 시도해 주세요."; return false; }
         StopWeb();
         try
         {
