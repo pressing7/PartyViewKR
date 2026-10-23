@@ -14,6 +14,7 @@ internal sealed class ListingDiscordClient : IDisposable
     private const string ConnectedStatus = "연결됨 · 봇과의 DM 또는 초대한 서버에서 /pvkr를 입력하세요.";
     private string status = "디스코드에 연결하는 중입니다.";
     private string inviteUrl = "";
+    private string emojiStatus = "";
     private int disposed, ready, running = 1;
     internal ListingWebBridge Bridge { get; }
     internal bool Running => Volatile.Read(ref running) != 0 && Volatile.Read(ref disposed) == 0;
@@ -48,7 +49,8 @@ internal sealed class ListingDiscordClient : IDisposable
             if (application.Team != null || application.Owner == null || application.Owner.IsBot) {
                 status = "개인 계정이 소유한 봇을 사용해 주세요. 팀 소유 앱은 지원하지 않습니다."; return;
             }
-            session = new(Bridge, application.Id, application.Owner.Id, stop.Token);
+            var icons = new ListingDiscordIcons();
+            session = new(Bridge, application.Id, application.Owner.Id, stop.Token, iconCatalog: icons);
             inviteUrl = $"https://discord.com/oauth2/authorize?client_id={application.Id}&scope=bot%20applications.commands&permissions=0";
             stage = "Gateway 연결 준비";
             status = "디스코드 Gateway의 연결 준비를 기다리는 중입니다.";
@@ -67,6 +69,9 @@ internal sealed class ListingDiscordClient : IDisposable
             stop.Token.ThrowIfCancellationRequested();
             Volatile.Write(ref ready, 1);
             status = ConnectedStatus;
+            // Interactions already work while the first upload runs. This awaits
+            // only on our background lifetime task, never the Gateway/UI thread.
+            await PrepareEmojis(icons);
             await Task.Delay(Timeout.Infinite, stop.Token);
         }
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
@@ -83,6 +88,32 @@ internal sealed class ListingDiscordClient : IDisposable
         }
     }
     private RequestOptions Options() => new() { CancelToken = stop.Token, Timeout = 15000, RetryMode = RetryMode.RetryRatelimit };
+    private async Task PrepareEmojis(ListingDiscordIcons icons)
+    {
+        using var budget = CancellationTokenSource.CreateLinkedTokenSource(stop.Token);
+        budget.CancelAfter(TimeSpan.FromMinutes(5));
+        RequestOptions EmojiOptions(CancellationToken ct) => new() { CancelToken = ct, Timeout = 15000, RetryMode = RetryMode.RetryRatelimit };
+        void Progress(int done, int total) => SetEmojiStatus($"직업 이모지 준비 중 · {done}/{total}");
+        try {
+            Progress(0, ListingDiscordEmojiAssets.All.Count);
+            await ListingDiscordEmojiAssets.Sync(icons,
+                ct => socket.Rest.GetApplicationEmotesAsync(EmojiOptions(ct)),
+                (name, stream, ct) => socket.Rest.CreateApplicationEmoteAsync(name, new Image(stream), EmojiOptions(ct)),
+                Progress, budget.Token);
+            SetEmojiStatus($"직업 이모지 준비 완료 · {icons.Count}/{ListingDiscordEmojiAssets.All.Count}");
+        }
+        catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
+        catch (Exception error) {
+            SetEmojiStatus($"직업 이모지 일부 미준비 · {icons.Count}/{ListingDiscordEmojiAssets.All.Count}. " +
+                "준비되지 않은 이미지는 기본 기호로 표시합니다. 연결을 다시 켜면 이어서 준비합니다. " + FailureDetails("이모지 준비", error));
+        }
+    }
+    private string ConnectedMessage => ConnectedStatus + (emojiStatus.Length > 0 ? "\n" + emojiStatus : "");
+    private void SetEmojiStatus(string text)
+    {
+        Volatile.Write(ref emojiStatus, text);
+        if (Connected && !stop.IsCancellationRequested) status = ConnectedMessage;
+    }
     internal static string FailureDetails(string stage, Exception error)
     {
         // SDK messages/requests can include credentials: expose only codes and the type.
@@ -96,7 +127,7 @@ internal sealed class ListingDiscordClient : IDisposable
     private Task Ready()
     {
         gatewayReady.TrySetResult();
-        if (Volatile.Read(ref ready) != 0 && !stop.IsCancellationRequested) status = ConnectedStatus;
+        if (Volatile.Read(ref ready) != 0 && !stop.IsCancellationRequested) status = ConnectedMessage;
         return Task.CompletedTask;
     }
     private Task Disconnected(Exception exception)
@@ -108,7 +139,7 @@ internal sealed class ListingDiscordClient : IDisposable
     {
         // A resumed Gateway session need not emit READY again.
         if (Volatile.Read(ref ready) != 0 && !stop.IsCancellationRequested)
-            status = ConnectedStatus;
+            status = ConnectedMessage;
         return Task.CompletedTask;
     }
     private Task Interaction(SocketInteraction interaction)

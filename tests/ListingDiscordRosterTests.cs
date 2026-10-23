@@ -5,16 +5,16 @@ static partial class ListingDiscordTests
 {
     private static void RunRoster(Action<string, Action> test, Action<bool, string> check)
     {
-        test("discord compact roster uses recruitment job IDs and safe placeholders when assets are missing", () => {
+        test("discord compact roster uses checked recruitment conditions and safe placeholders when assets are missing", () => {
             var host = new WebFakeHost(); var bridge = new ListingWebBridge("test"); bridge.Update(host, 1000);
             var slots = bridge.ReadView().Listing!.Groups[0].Slots;
             check(slots[0].JobId == 25, "recruitment job identity lost in managed projection");
-            var icons = new ListingDiscordIcons(new Dictionary<string, ulong> { ["job_25"] = 123456, ["anyone"] = 0 });
+            var icons = new ListingDiscordIcons(new Dictionary<string, ulong> { ["checked_job_25"] = 123456, ["anyone"] = 0 });
             var panel = new ListingDiscordPanel(bridge, App, Owner, icons);
             var overview = panel.Complete(1000).Screen!;
             var buttons = ListingDiscordCard.Walk(overview.Components.Components).OfType<ButtonComponent>().Select(c => c.Label).ToArray();
             check(buttons.SequenceEqual(new[] { "조회", "갱신", "수정", "직업 상세" }), "overview controls not simplified");
-            check(overview.Text.Contains("<:pvkr_job_25:123456>") && overview.Text.Contains("🟨") && overview.Text.Contains("⬜"), "roster icons or fallbacks missing");
+            check(overview.Text.Contains("<:pvkr_checked_job_25:123456>") && overview.Text.Contains("🟨") && overview.Text.Contains("⬜"), "roster icons or fallbacks missing");
             check(!overview.Text.Contains("나이트") && !overview.Text.Contains("흑마도사"), "verbose job roster leaked into overview");
             check(new ListingDiscordIcons().ForSlot(slots[0]) == "🟦", "missing job image did not fall back");
             check(icons.ForSlot(slots[2] with { RulesComplete = false, Anyone = true }) == "⬛", "unreadable rules became anyone");

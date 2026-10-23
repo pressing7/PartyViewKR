@@ -58,6 +58,7 @@ static partial class ListingDiscordTests
     {
         RunCardFlow(test, check);
         RunRoster(test, check);
+        ListingDiscordEmojiTests.Run(test, check);
         RunResults(test, check);
         test("discord rejects wrong owner or app without reading or queuing a game action", () => {
             var (b, h, _) = ListingWebEditTests.Ready(); var p = new ListingDiscordPanel(b, App, Owner);

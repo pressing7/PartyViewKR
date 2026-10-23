@@ -63,7 +63,8 @@ static class ListingJobRulesTests
                 new ulong[] { 100, 0, 0 }, flags, id => $"직업 #{id}", ListingJobRules.Read(Jobs()));
             flags[1] = 0x100;
             check(slots.Slots[0].JobId == 21 && slots.Slots[0].Job == "직업 #21" &&
-                !slots.Slots[0].AllowedJobs.Complete, "occupied job was replaced by recruitment condition");
+                slots.Slots[0].AllowedJobs.Complete && slots.Slots[0].AllowedJobs.Ids.SequenceEqual(new uint[] { 24 }),
+                "participant job or its separate recruitment condition was lost");
             check(slots.Slots[1].AllowedJobs.Names.SequenceEqual(new[] { "직업 #24" }), "snapshot changed with source flags");
             check(slots.Slots[2].AllowedJobs.Anyone, "empty unrestricted slot lost");
         });

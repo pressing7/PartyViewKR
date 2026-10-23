@@ -11,6 +11,8 @@
     <Compile Include="../src/ListingDiscordPanel.Render.cs" Link="ListingDiscordPanel.Render.cs" />
     <Compile Include="../src/ListingDiscordPanel.Results.cs" Link="ListingDiscordPanel.Results.cs" />
     <Compile Include="../src/ListingDiscordIcons.cs" Link="ListingDiscordIcons.cs" />
+    <Compile Include="../src/ListingDiscordEmojiAssets.cs" Link="ListingDiscordEmojiAssets.cs" />
+    <EmbeddedResource Include="../src/DiscordIcons/*.png" LogicalName="PartyViewKR.DiscordIcons.%(Filename)%(Extension)" />
     <Compile Include="../src/ListingDiscordSession.cs" Link="ListingDiscordSession.cs" />
     <Compile Include="../src/ListingDiscordClient.cs" Link="ListingDiscordClient.cs" />
     <Compile Include="../src/ListingSnapshot.cs" Link="ListingSnapshot.cs" />

@@ -24,7 +24,7 @@ static partial class ListingDiscordConnectionTests
             using var client = new ListingDiscordClient(new("test"), FakeToken, transport.Config());
             Wait(() => transport.Identified.Task.IsCompleted || !client.Running);
             check(transport.Identified.Task.IsCompleted, "Gateway was not reached: " + client.Status);
-            check(transport.Commands.IsEmpty && !client.Connected, "command registered before READY");
+            check(transport.Commands.IsEmpty && transport.EmojiCalls.IsEmpty && !client.Connected, "application API called before READY");
             transport.Ready().GetAwaiter().GetResult();
             Wait(() => client.Connected || !client.Running);
             check(client.Connected, client.Status);
@@ -67,6 +67,34 @@ static partial class ListingDiscordConnectionTests
                 check(text.Contains("test") && !text.Contains(FakeToken), "exception details leaked");
             }
         });
+        test("discord SDK lists application emojis and uploads a missing embedded PNG after READY", () => {
+            var transport = new OfflineTransport { MissingEmoji = "pvkr_checked_role_th" };
+            using var client = new ListingDiscordClient(new("test"), FakeToken, transport.Config());
+            Wait(() => transport.Identified.Task.IsCompleted || !client.Running);
+            check(transport.EmojiCalls.IsEmpty, "emoji API called before application ID is known");
+            transport.Ready().GetAwaiter().GetResult();
+            Wait(() => client.Status.Contains("이모지 준비 완료") || !client.Running);
+            check(client.Connected && client.Status.Contains("74/74"), client.Status);
+            check(transport.EmojiCalls.SequenceEqual(new[] { "GET", "POST:pvkr_checked_role_th" }), "unexpected emoji API calls");
+            check(transport.UploadedEmojiPng, "embedded PNG not uploaded as image data");
+            transport.Ready().GetAwaiter().GetResult();
+            check(transport.EmojiCalls.Count == 2 && client.Status.Contains("74/74"), "Gateway resume uploaded twice or lost status");
+            client.Dispose(); client.Completion.WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
+        });
+        test("discord emoji permission failures preserve connection and expose only safe codes", () => {
+            foreach (var rejectList in new[] { false, true }) {
+                var transport = new OfflineTransport { RejectEmojiList = rejectList, RejectEmojiCreate = !rejectList,
+                    MissingEmoji = "pvkr_checked_role_th" };
+                using var client = new ListingDiscordClient(new("test"), FakeToken, transport.Config());
+                Wait(() => transport.Identified.Task.IsCompleted || !client.Running);
+                transport.Ready().GetAwaiter().GetResult();
+                Wait(() => client.Status.Contains("일부 미준비") || !client.Running);
+                check(client.Connected && client.Running && client.Status.Contains("HTTP 403"), client.Status);
+                check(client.Status.Contains(rejectList ? "0/74" : "73/74") && !client.Status.Contains(FakeToken), "partial progress or redaction lost");
+                check(transport.EmojiCalls.Count == (rejectList ? 1 : 2), "failed list or upload retried blindly");
+                client.Dispose(); client.Completion.WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
+            }
+        });
         RunInteractions(test, check);
     }
 
@@ -74,6 +102,9 @@ static partial class ListingDiscordConnectionTests
     {
         internal readonly TaskCompletionSource Identified = new(TaskCreationOptions.RunContinuationsAsynchronously);
         internal readonly ConcurrentQueue<string> Commands = new();
+        internal readonly ConcurrentQueue<string> EmojiCalls = new();
+        internal string? MissingEmoji;
+        internal bool RejectEmojiList, RejectEmojiCreate, UploadedEmojiPng;
         internal readonly ConcurrentQueue<(string Method, string Endpoint, JsonElement Body)> Responses = new();
         internal JsonElement? Message;
         private int sequence = 1;
@@ -134,6 +165,28 @@ static partial class ListingDiscordConnectionTests
                 else body = """{"id":"500","name":"PVKR","owner":{"id":"600","username":"owner","discriminator":"0","bot":false}}""";
             }
             else if (endpoint == "gateway/bot") body = """{"url":"wss://offline.invalid","shards":1,"session_start_limit":{"total":1000,"remaining":999,"reset_after":1000,"max_concurrency":1}}""";
+            else if (method == "GET" && endpoint == "applications/500/emojis") {
+                EmojiCalls.Enqueue("GET");
+                if (RejectEmojiList) { code = HttpStatusCode.Forbidden; body = JsonSerializer.Serialize(new { code = 50001, message = FakeToken }); }
+                else body = JsonSerializer.Serialize(new { items = ListingDiscordEmojiAssets.All
+                    .Where(a => a.Name != MissingEmoji).Select((a, i) => new { id = (10000 + i).ToString(), name = a.Name, animated = false }).ToArray() });
+            }
+            else if (method == "POST" && endpoint == "applications/500/emojis") {
+                using var parsed = JsonDocument.Parse(json!);
+                var name = parsed.RootElement.GetProperty("name").GetString()!;
+                EmojiCalls.Enqueue("POST:" + name);
+                var image = parsed.RootElement.GetProperty("image").GetString()!;
+                var png = Convert.FromBase64String(image[(image.IndexOf(',') + 1)..]);
+                // Discord.Net 3.20.2 labels every Image stream image/jpeg; it
+                // sends the original bytes. Verify PNG/alpha data is unmodified.
+                using var original = ListingDiscordEmojiAssets.All.Single(a => a.Name == name).Open();
+                using var expected = new MemoryStream(); original.CopyTo(expected);
+                UploadedEmojiPng = image.StartsWith("data:image/") && png.Length <= 256 * 1024 &&
+                    png.Take(8).SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }) &&
+                    png.SequenceEqual(expected.ToArray());
+                if (RejectEmojiCreate) { code = HttpStatusCode.Forbidden; body = JsonSerializer.Serialize(new { code = 50001, message = FakeToken }); }
+                else body = JsonSerializer.Serialize(new { id = "20000", name, animated = false });
+            }
             else if (method == "POST" && endpoint.EndsWith("/commands")) {
                 Commands.Enqueue(endpoint);
                 if (endpoint != "applications/500/commands" || RejectCommands) {

@@ -11,8 +11,9 @@ internal sealed record WebSetting(string Key, string Label, string Value)
 internal sealed record WebSlot(int NativeIndex, string Position, bool HasMember, string Job,
     bool Anyone, bool RulesComplete, string[] AllowedJobs)
 {
-    // Recruitment-time job, used to look up an icon without guessing from a name.
+    // Registered participant job is separate from the slot's allowed jobs.
     public uint JobId { get; init; }
+    public uint[] AllowedJobIds { get; init; } = [];
 }
 internal sealed record WebGroup(string Name, WebSlot[] Slots);
 internal sealed record WebListing(string Leader, string Duty, string Description, string Remaining,
@@ -40,7 +41,7 @@ internal static class ListingWebView
                 slots.NumberOfParties > 1 ? $"{(char)('A' + g.Key)}파티" : "파티",
                 g.Select(s => new WebSlot(s.NativeIndex, slots.PositionLabel(s), s.HasMember, s.Job,
                     s.AllowedJobs.Anyone && s.AllowedJobs.Complete, s.AllowedJobs.Complete,
-                    s.AllowedJobs.Names.ToArray()) { JobId = s.JobId }).ToArray())).ToArray() : [];
+                    s.AllowedJobs.Names.ToArray()) { JobId = s.JobId, AllowedJobIds = s.AllowedJobs.Ids.ToArray() }).ToArray())).ToArray() : [];
         WebSetting[] settings = [
             new("objective", "모집 목적", ListingObjectives.Label(listing.Objective)) { Active = ListingObjectives.Index(listing.Objective) > 0 },
             new("beginner", "초행 및 초보자 환영", ListingCheckboxValues.Label(listing.BeginnerFriendly)) { Active = listing.BeginnerFriendly == true },

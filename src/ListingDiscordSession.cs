@@ -14,9 +14,9 @@ internal interface IDiscordResponse
 // One editor per personal bot. This class is independent of the Gateway so ACK
 // failures, repeated events and shutdown can be tested without a real token.
 internal sealed class ListingDiscordSession(ListingWebBridge bridge, ulong appId, ulong ownerId,
-    CancellationToken cancellation, Func<long>? clock = null)
+    CancellationToken cancellation, Func<long>? clock = null, ListingDiscordIcons? iconCatalog = null)
 {
-    private readonly ListingDiscordPanel panel = new(bridge, appId, ownerId);
+    private readonly ListingDiscordPanel panel = new(bridge, appId, ownerId, iconCatalog);
     private readonly HashSet<ulong> seen = [];
     private readonly Queue<ulong> seenOrder = [];
     private int handling;

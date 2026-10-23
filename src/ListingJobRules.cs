@@ -5,6 +5,7 @@ internal sealed record RecruitmentJobOption(uint Id, string Name, ulong Flag);
 
 internal sealed record ListingAllowedJobs(bool Anyone, string[] Names, bool Complete)
 {
+    internal uint[] Ids { get; init; } = [];
     internal static readonly ListingAllowedJobs Unavailable = new(false, [], false);
 }
 
@@ -55,7 +56,10 @@ internal sealed class ListingJobRules
         return new(jobs.OrderBy(j => Array.IndexOf(DisplayOrder, j.Id)).ToArray(), complete && jobs.Count > 0);
     }
 
-    internal ListingAllowedJobs Describe(ulong flags) => new(
-        Complete && (flags & AllFlags) == AllFlags,
-        jobs.Where(j => (flags & j.Flag) != 0).Select(j => j.Name).ToArray(), Complete);
+    internal ListingAllowedJobs Describe(ulong flags)
+    {
+        var allowed = jobs.Where(j => (flags & j.Flag) != 0).ToArray();
+        return new(Complete && (flags & AllFlags) == AllFlags,
+            allowed.Select(j => j.Name).ToArray(), Complete) { Ids = allowed.Select(j => j.Id).ToArray() };
+    }
 }

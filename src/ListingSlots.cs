@@ -98,7 +98,9 @@ internal sealed record ListingSlots(bool Readable, int TotalSlots, int SlotsFill
             // Never replace listing jobs with current jobs or renumber native indices.
             registered.Add(new(registered.Count + 1, member, job, job == 0 ? "" : jobName(job), flags) {
                 NativeIndex = nativeIndex,
-                AllowedJobs = member == 0 && job == 0 ? jobRules.Describe(flags) : ListingAllowedJobs.Unavailable,
+                // Occupancy does not replace the recruitment condition. A TH
+                // seat can still have TH flags after a paladin joins it.
+                AllowedJobs = jobRules.Describe(flags),
             });
         }
         var slots = registered.ToArray();
