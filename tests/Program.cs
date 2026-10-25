@@ -238,6 +238,7 @@ Test("adding text during an empty-comment refresh is detected", () => {
     h.FinishQuery(); flow.Update(4000);
     Check(flow.Stage == RefreshStage.Unconfirmed && h.SubmitCalls == 1, "new content ignored or resubmitted");
 });
+AfkListingMonitorTests.Run(Test, Check);
 ListingSlotsTests.Run(Test, Check);
 ListingJobRulesTests.Run(Test, Check);
 ListingRoleButtonsTests.Run(Test, Check);

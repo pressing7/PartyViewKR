@@ -5,6 +5,8 @@
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../src/PartyRoster.cs" Link="PartyRoster.cs" />
+    <Compile Include="../src/AfkListingMonitor.cs" Link="AfkListingMonitor.cs" />
     <PackageReference Include="Discord.Net.WebSocket" Version="3.20.2" />
     <Compile Include="../src/RelayConfiguration.cs" Link="RelayConfiguration.cs" />
     <Compile Include="../src/ListingDiscordPanel.cs" Link="ListingDiscordPanel.cs" />

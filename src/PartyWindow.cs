@@ -30,6 +30,7 @@ internal sealed class PartyWindow : Window
 
     public override void Draw()
     {
+        DrawAfk();
         DrawListing();
         DrawJobEditor();
         DrawDescriptionEditor();
@@ -51,6 +52,20 @@ internal sealed class PartyWindow : Window
         DrawDiscord();
         if (ImGui.CollapsingHeader("현재 파티 상태 · 실시간 직업"))
             DrawCurrentParty();
+    }
+
+    private void DrawAfk()
+    {
+        var enabled = plugin.AfkEnabled;
+        ImGui.BeginDisabled(!enabled && (!Plugin.ClientState.IsLoggedIn || !Plugin.PlayerState.IsLoaded));
+        if (ImGui.Checkbox("AFK 모드 · 모집글 자동 조회", ref enabled)) plugin.SetAfkEnabled(enabled);
+        ImGui.EndDisabled();
+        if (enabled)
+        {
+            ImGui.TextWrapped(plugin.AfkStatus);
+            ImGui.TextDisabled("명단 변화 시 조회 · 60초마다 보완 조회 · 직업 변경은 비교하지 않음");
+        }
+        ImGui.Separator();
     }
 
     private void DrawBrowser()

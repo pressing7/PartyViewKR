@@ -2,7 +2,7 @@
 
 [전체 지도](../CODE_MAP.md)
 
-작성 전 git tracked 파일 전체를 분류했다. 생성물(bin/obj/node_modules/relay/assets), 사용자 설정/토큰, 로컬 분석 도구는 문서 범위에서 제외한다. 이 문서 묶음 자체는 아래 안내와 연결되어 있다.
+현재 문서와 신규 AFK 파일을 포함한 git tracked 파일 전체를 분류했다. 생성물(bin/obj/node_modules/relay/assets), 사용자 설정/토큰, 로컬 분석 도구는 문서 범위에서 제외한다. 이 문서 묶음 자체는 아래 안내와 연결되어 있다.
 
 | 경로 | 역할 / 연결 문서 |
 |---|---|
@@ -27,6 +27,7 @@
 | [relay/test/relay.test.mjs](../../relay/test/relay.test.mjs) | Miniflare 로컬 Worker와 fake WebSocket 및 실제 .NET relay fixture로 인증·host 교체·frame/timeout·apply를 통합 검증한다. Cloudflare 배포나 Wrangler dev 서버를 띄우는 테스트가 아니다. [함수 목록](tests.md#file-relay-test-relay-test-mjs) |
 | [relay/wrangler.jsonc](../../relay/wrangler.jsonc) | Worker entry·ASSETS·ROOM(PvkrRoom) binding·SQLite migration v1·compatibility date·run_worker_first를 선언한다. PVKR_CONNECT_KEY 실제 값은 여기 저장하지 않는다. |
 | [shared/NativeContract.cs](../../shared/NativeContract.cs) | 실행/Assembly.Load 없이 PE metadata를 읽는 ABI 계약 도구. 플러그인 runtime 검사와 CompatibilityTool이 같은 코드를 공유한다. [함수 목록](compat-release.md#file-shared-nativecontract-cs) |
+| [src/AfkListingMonitor.cs](../../src/AfkListingMonitor.cs) | AFK 감시의 순수 상태 기계. CID 명단 변화 및 성공 후60초 주기로 내 모집글을 조회하고 실패한 필요 상태를 보존한다. host 계약에는 수정/제출 기능이 없다. [함수 목록](core.md#file-src-afklistingmonitor-cs) |
 | [src/DiscordIcons/HD.png](../../src/DiscordIcons/HD.png) | embedded 슬롯 이미지 `HD`의 빈자리/일반 변형. 실제 이모지 이름/ID 재사용은 [EmojiAssets](discord.md#file-src-listingdiscordemojiassets-cs)가 담당한다. |
 | [src/DiscordIcons/README.md](../../src/DiscordIcons/README.md) | 80개 사용자 제공320×320 PNG의 출처·파일 의미·join naming·legacy rename 규칙. |
 | [src/DiscordIcons/TD.png](../../src/DiscordIcons/TD.png) | embedded 슬롯 이미지 `TD`의 빈자리/일반 변형. 실제 이모지 이름/ID 재사용은 [EmojiAssets](discord.md#file-src-listingdiscordemojiassets-cs)가 담당한다. |
@@ -167,9 +168,12 @@
 | [src/NativeReadGuard.cs](../../src/NativeReadGuard.cs) | 네이티브 포인터와 SeString 읽기의 범위/페이지 검사. 호환 계약 통과와 포인터 유효성 검사는 별개다. [함수 목록](compat-release.md#file-src-nativereadguard-cs) |
 | [src/ObjectiveTraceBuffer.cs](../../src/ObjectiveTraceBuffer.cs) | lock으로 보호하는 최대1024줄/120초 메모리 기록. 중단은 기록을 보존하고 새 시작은 이전 기록을 교체한다. [함수 목록](compat-release.md#file-src-objectivetracebuffer-cs) |
 | [src/PartyReader.cs](../../src/PartyReader.cs) | 현재 파티의 관찰용 스냅샷. 일반 파티 목록, 서버 초월의 로컬 그룹, 본인 정보 순으로 읽는다. 모집 등록 직업/빈자리 규칙의 기준으로 사용하면 안 된다. [함수 목록](core.md#file-src-partyreader-cs) |
-| [src/PartyViewKR.csproj](../../src/PartyViewKR.csproj) | net10.0-windows/x64/unsafe, 버전0.3.47/0.3.47.0, Discord.Net3.20.2·DPAPI 의존성 및 Web/PNG/contracts embedded resource, native references 지정. |
-| [src/PartyViewKR.json](../../src/PartyViewKR.json) | 현재 플러그인 manifest/API15/AssemblyVersion0.3.47.0. package 검증의 기준이며 csproj와 반드시 맞아야 한다. |
+| [src/PartyRoster.cs](../../src/PartyRoster.cs) | AFK 비교 전용 불변 CID 명단. 직업·이름·레벨·정렬 순서·그룹 내 위치는 비교에 넣지 않는다. [함수 목록](core.md#file-src-partyroster-cs) |
+| [src/PartyRosterReader.cs](../../src/PartyRosterReader.cs) | AFK가 켜진 동안만 현재 전체 파티 CID를 읽는다. 기존 PartyReader의 실시간 직업 표시와 별개이며 서버 초월은 최대6개 그룹 전체를 순회한다. [함수 목록](core.md#file-src-partyrosterreader-cs) |
+| [src/PartyViewKR.csproj](../../src/PartyViewKR.csproj) | net10.0-windows/x64/unsafe, 버전0.3.48/0.3.48.0, Discord.Net3.20.2·DPAPI 의존성 및 Web/PNG/contracts embedded resource, native references 지정. |
+| [src/PartyViewKR.json](../../src/PartyViewKR.json) | 현재 플러그인 manifest/API15/AssemblyVersion0.3.48.0. package 검증의 기준이며 csproj와 반드시 맞아야 한다. |
 | [src/PartyWindow.cs](../../src/PartyWindow.cs) | 인게임 ImGui 화면. 현재 파티/모집글/외부 연결/수정 초안/대기 변경/진단을 표시하고 Plugin에 의도만 전달한다. [함수 목록](core.md#file-src-partywindow-cs) |
+| [src/Plugin.Afk.cs](../../src/Plugin.Afk.cs) | 인게임 AFK 토글과 순수 monitor를 실제 Reader/기존 조회 guard에 연결한다. 별도의 지역 이동 상태 기계나 자동 갱신/알림 전송 경로를 만들지 않는다. [함수 목록](core.md#file-src-plugin-afk-cs) |
 | [src/Plugin.Discord.cs](../../src/Plugin.Discord.cs) | 사용자 설정과 Discord client 수명 연결. 재시작 복원은 한 번, 명시 끄기는 자동 연결도 끄며 Dispose는 저장 토큰을 지우지 않는다. [함수 목록](discord.md#file-src-plugin-discord-cs) |
 | [src/Plugin.Relay.cs](../../src/Plugin.Relay.cs) | PVKR 설정/UI와 중계 client 생성·종료를 연결한다. 서버 주소만 영구 저장하고 연결 키는 런타임에 사용한다. [함수 목록](web-relay.md#file-src-plugin-relay-cs) |
 | [src/Plugin.Web.cs](../../src/Plugin.Web.cs) | Plugin에서 loopback/relay/Discord 중 하나의 Bridge를 Framework에 연결하는 façade와 작업 소유권 어댑터. [함수 목록](web-relay.md#file-src-plugin-web-cs) |
@@ -182,6 +186,7 @@
 | [src/Web/index.html](../../src/Web/index.html) | 웹 조회/연결/editor/결과 영역과 DOM ID·외부 script 로드 순서. app/editor가 의존하는 ID 계약. |
 | [src/Web/style.css](../../src/Web/style.css) | 모바일/desktop의 조회·그룹·자리·편집·상태/오류 표시 스타일. |
 | [src/packages.lock.json](../../src/packages.lock.json) | 플러그인의 NuGet 전이 의존성 버전/해시 lock. |
+| [tests/AfkListingMonitorTests.cs](../../tests/AfkListingMonitorTests.cs) | AFK CID 명단 정규화, 가입/탈퇴 변경 보존,60초 보완 조회, 실패 backoff, 요청 revision 소유권과 캐릭터 수명를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-afklistingmonitortests-cs) |
 | [tests/CompatibilityTests.cs](../../tests/CompatibilityTests.cs) | 네이티브/interop ABI 계약 변화, MVID/버전 독립성 및 fail-closed 비교를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-compatibilitytests-cs) |
 | [tests/DalamudConfigurationStub.cs](../../tests/DalamudConfigurationStub.cs) | 테스트 전용 IPluginConfiguration 최소 interface stub. RelayConfiguration을 실제 Dalamud DLL 없이 빌드하도록 Version 속성 계약만 제공한다. 실행 함수는 없다. |
 | [tests/DiscordSettingsTests.cs](../../tests/DiscordSettingsTests.cs) | 저장 토큰 암복호화 어댑터, 재시작 설정 복원, 기억 해제와 오류 시 설정 보존를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-discordsettingstests-cs) |

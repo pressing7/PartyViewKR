@@ -74,7 +74,7 @@ public sealed partial class Plugin : IDalamudPlugin
     }
     internal ListingObjectiveTrace ObjectiveTrace { get; }
     internal bool ListingBusy => listingReader.Busy;
-    internal string Diagnostic => Snapshot.Diagnostic + "\n" + Listing.Diagnostic + "\n" + Refresh.Diagnostic + "\n" + refreshHost.Diagnostic + "\n" + ObjectiveTrace.Diagnostic;
+    internal string Diagnostic => Snapshot.Diagnostic + "\n" + Listing.Diagnostic + "\n" + Refresh.Diagnostic + "\n" + refreshHost.Diagnostic + "\n" + ObjectiveTrace.Diagnostic + "\n" + afk.Diagnostic + "\n" + afkReader.Diagnostic;
 
     public Plugin()
     {
@@ -403,11 +403,13 @@ public sealed partial class Plugin : IDalamudPlugin
         ObjectiveTrace.Update();
         var now = Environment.TickCount64;
         if (!readRequested && now - lastRead < 500) return;
+        var readParty = readRequested || window.IsOpen;
         readRequested = false;
         lastRead = now;
         try
         {
-            Snapshot = reader.Read(Snapshot);
+            if (!ClientState.IsLoggedIn) Snapshot = PartySnapshot.Empty;
+            else if (readParty) Snapshot = reader.Read(Snapshot);
             lastError = "";
         }
         catch (Exception ex)
@@ -420,6 +422,7 @@ public sealed partial class Plugin : IDalamudPlugin
         try
         {
             webHost?.BeforeRead(now);
+            if (afkHost != null) afk.BeforeRead(afkHost, now);
             Listing = listingReader.Read(Snapshot, Listing);
             lastListingError = "";
         }
@@ -444,11 +447,13 @@ public sealed partial class Plugin : IDalamudPlugin
             Log.Error(ex, "PartyViewKR: manual listing refresh stopped");
         }
         UpdateWeb(now);
+        if (afkHost != null) afk.Update(afkHost, now);
     }
 
     public void Dispose()
     {
         disposed = true;
+        if (afkHost != null) afk.SetEnabled(false, afkHost, Environment.TickCount64);
         StopWeb();
         ObjectiveTrace.Dispose();
         Refresh.Cancel();

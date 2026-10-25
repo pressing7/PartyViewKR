@@ -4,21 +4,20 @@
 
 ## 기준과 범위
 
-- 정리일: 2026-10-25. 플러그인 `0.3.47.0`, Dalamud API `15`.
-- 소스 기준: [`7af86e71affcda547be45cff6214587adb34fea6`](https://github.com/pressing7/PartyViewKR/commit/7af86e71affcda547be45cff6214587adb34fea6).
-- 확인한 main: [`1cecbfbc678d94650d8511c72faea6936baf143f`](https://github.com/pressing7/PartyViewKR/commit/1cecbfbc678d94650d8511c72faea6936baf143f). 앞 소스 커밋과의 차이는 배포 도구가 갱신한 `pluginmaster.json`뿐이다.
-- 작성 전 추적 파일 221개 전체를 [파일 지도](code-map/files.md)에 분류했다. 소스 위치는 이 기준의 행 번호다.
-- C# Roslyn 구문 분석, JavaScript Acorn 구문 분석, Python AST로 **1,184개 명명된 항목/진입점**을 대조했다: C# 1,062, JS 91, Python 31. 메서드뿐 아니라 생성자·로컬 함수·계산 속성·인터페이스 선언을 포함한 숫자다.
+- 정리일: 2026-10-25. 플러그인 `0.3.48.0`, Dalamud API `15`.
+- 소스 기준: `0.3.48.0`. 기반 main [`1ef1c969e8dea0d58babf71a80698880b8fcc0dc`](https://github.com/pressing7/PartyViewKR/commit/1ef1c969e8dea0d58babf71a80698880b8fcc0dc) 이후 AFK 명단 감시·자동 조회 변경을 포함한다.
+- 문서 자체와 신규 AFK 파일을 포함한 추적 파일 235개 전체를 [파일 지도](code-map/files.md)에 분류했다. 소스 위치는 이 버전의 행 번호다.
+- C# Roslyn 구문 분석, JavaScript Acorn 구문 분석, Python AST로 **1,228개 명명된 항목/진입점**을 대조했다: C# 1,106, JS 91, Python 31. 메서드뿐 아니라 생성자·로컬 함수·계산 속성·인터페이스 선언을 포함한 숫자다.
 - 자동 생성 record 메서드와 단순 auto-property accessor는 별도 함수로 세지 않는다. 이름 없는 LINQ/콜백은 소유 함수에서 설명하고, 중요한 DOM handler와 테스트 시나리오는 따로 연결했다.
-- 현재 C# 등록 테스트는 366개, Node 등록 테스트는 15개, Python `test_*` 메서드는 12개다. **이 숫자는 이번 문서 작성에서 추출한 범위이며 이번 작업의 테스트 실행 결과가 아니다.**
+- 현재 C# 등록 테스트는 392개, Node 등록 테스트는 15개, Python `test_*` 메서드는 12개다. 등록 범위와 실행 결과를 구분하며 이번 AFK 변경의 검증 환경은 아래에 기록한다.
 
-현재 구현은 **기존 본인 모집글의 조회·수정·수동 갱신**이다. 새 모집 시작, 콘텐츠/파티 유형 변경, AFK 감시와 자동 알림은 아직 구현하지 않았다. 루트의 `PartyViewKR.dll/json/deps.json`은 이전 수동 배포본이다. 빌드 기준은 `src/PartyViewKR.csproj`와 `src/PartyViewKR.json`, 설치 대상은 Releases ZIP이다.
+현재 구현은 **기존 본인 모집글의 조회·수정·수동 갱신 및 AFK 명단 감시에 따른 자동 조회**다. 새 모집 시작, 콘텐츠/파티 유형 변경 및 자동 알림은 아직 구현하지 않았다. 루트의 `PartyViewKR.dll/json/deps.json`은 이전 수동 배포본이다. 빌드 기준은 `src/PartyViewKR.csproj`와 `src/PartyViewKR.json`, 설치 대상은 Releases ZIP이다.
 
 ## 함수별 문서
 
 | 문서 | 찾을 내용 |
 |---|---|
-| [플러그인 수명·조회·자리 매핑](code-map/core.md) | `Plugin`, `PartyReader`, `ListingReader`, ownership/소개말, 슬롯·직업·친선 padding, 인게임 UI |
+| [플러그인 수명·조회·자리 매핑](code-map/core.md) | `Plugin`, `PartyReader`, `ListingReader`, AFK `PartyRosterReader`/`AfkListingMonitor`, ownership/소개말, 슬롯·직업·친선 padding, 인게임 UI |
 | [편집 모델·대기 변경·상태 기계](code-map/edits.md) | `Draft`, `Edit`, `Expected`, typed 조건, `ListingChange`, checkbox/dropdown/numeric UI 순서 |
 | [갱신 흐름·네이티브 UI](code-map/refresh.md) | 단일/배치 갱신, `ListingRefreshHost` partial 전체, native 이벤트·guard·최종 제출 |
 | [Discord](code-map/discord.md) | Gateway/REST·ACK·카드·모달·전체 결과·이모지 동기화·DPAPI 토큰 복원 |
@@ -35,6 +34,8 @@ flowchart TD
   W["브라우저·중계·Discord"] --> B["ListingWebBridge 관리형 큐"]
   B --> F["Plugin.OnUpdate / WebHost"]
   P --> F
+  A["AFK CID 명단 감시"] --> F
+  F --> C["PartyRosterReader 전체 그룹"]
   F --> R["ListingReader / PartyReader"]
   F --> S["ListingRefresh / ListingBatchRefresh"]
   S --> H["ListingRefreshHost native UI"]
@@ -43,7 +44,7 @@ flowchart TD
   V --> B
 ```
 
-`Plugin.OnUpdate`가 게임 스레드에서 처리한다. 먼저 저장 Discord 연결 복원과 trace를 진행하고, 기본 500ms 간격 또는 `RequestRead`에 따라 현재 파티 읽기 → 외부 요청 guard → 모집글 읽기 → 초안 준비 → 갱신 상태 기계 → 외부 snapshot 발행을 수행한다. 현재 파티 읽기는 현재 버전에서 AFK 여부와 관계없이 실행된다.
+`Plugin.OnUpdate`가 게임 스레드에서 처리한다. 저장 Discord 연결 복원과 trace를 먼저 진행하고, 기본 500ms 간격 또는 `RequestRead`에 따라 현재 파티 표시용 읽기 → 외부/AFK 요청 guard → 모집글 읽기 → 초안 준비 → 갱신 상태 기계 → 외부 snapshot 발행 → AFK 감시를 수행한다. 기존 현재 파티·직업 읽기는 PVKR 창을 표시하거나 명시 읽기를 요청했을 때만 진행한다. AFK 전용 전체 CID 읽기는 AFK가 켜진 동안만 진행한다.
 
 네트워크 callback은 네이티브 포인터를 읽지 않는다. `ListingWebBridge`의 lock 안에서 관리형 snapshot을 읽고 작업을 예약한다. 실제 `RequestQuery`/`StartRefresh`는 Framework에서 실행된다. `ListingWebRequestGuard`/`ListingWebRefreshGuard`는 **이 외부 연결이 시작한 revision**만 취소하므로 이후의 수동 요청까지 취소하면 안 된다.
 
@@ -54,6 +55,7 @@ flowchart TD
 | 데이터 | 실제 의미 | 주의점 |
 |---|---|---|
 | `PartySnapshot` / `MemberInfo` | 지금 파티에 있는 멤버와 현재 직업 | 입장 때 모집창에 등록된 직업과 다를 수 있다. 서버 초월은 현재 로컬 그룹만 읽는다. |
+| `PartyRoster` | AFK가 읽은 현재 전체 파티의 정렬된 고유 CID 집합 | 최대48명·자기 포함을 검증한다. 직업·이름·순서·그룹 내 위치는 비교하지 않는다. |
 | `ListingSnapshot` | 마지막으로 읽은 모집 상세 및 표시값 | `IsLive`는 현재 UI와 검증 가능한 읽기라는 뜻이다. 새 서버 응답 증거는 query 성공과 `DetailRevision` 증가를 함께 확인한다. |
 | `RefreshTarget` | 편집에 묶인 본인 CID·listing ID·임무·조건·슬롯 원본 | 수정 전 새로 조회한 source가 같아야 한다. `SameRecruitment`만으로 listing ID/참가자까지 검증됐다고 생각하면 안 된다. |
 | `LastViewedListing` | 네이티브 상세 모집 정보 | 현재 작성 중인 수정창 draft가 아니다. |
@@ -157,6 +159,8 @@ PIN은 `ExtraCriteria`나 외부 snapshot에 넣지 않는다. 수정창 passwor
 |---|---|---|
 | 구조 DLL 버전이 다른데 읽기가 차단됨 | `NativeCompatibility.Check`, `NativeContract.Differences` | MVID만 비교하지 말고 `nativeDifferences`, 파일/로드 MVID, native+interop 두 계약 |
 | 서버 초월/연합에서 현재 파티 인원이 일부만 나옴 | `PartyReader.ReadCrossRealm` | 현재 local group만 읽는 경계. 전체 모집은 `ListingSlots.Read` |
+| AFK에서 다른 그룹의 가입/탈퇴가 감지되지 않음 | `PartyRosterReader.ReadCrossRealm/ReadRegular` | `afkRosterSource`, 전체 그룹 범위·CID 완전성·`afkRosterReason`. 기존 현재 직업 표시의 local group 읽기와 구분 |
+| AFK 재입장 또는 조회 실패 후 자동 조회가 멈춤 | `AfkListingMonitor.Update/Retry`, `AfkHost.OwnListingMatches` | `Pending`, generation, 요청 revision, backoff, 새 상세/참가 CID 일치. A→B→A와 관측 사이 재입장은 각각 pending 및60초 보완 조회 |
 | 빈 소개말에서 Self 확인 실패 | `ListingDescription.Resolve`, `ListingIdentity.Resolve`, `ListingReader.Read` | UI ‘소개말 없음’과 native empty가 함께 맞는지 |
 | `initial_own_ready_timeout` | `ListingRefresh.WaitForOwn`, `ListingReader.HandleRequest`, `TryGetOwn` | 새 revision·조회 성공·visible/ready·리더 CID/이름/comment |
 | `stored_criteria_mismatch` / `roles` | `ValidateEditor`, `ListingRoleComparison.Describe`, `ListingEditorCriteria.Matches` | 실제 미등록과 친선 padding 구분, display/native 인덱스 |
@@ -181,6 +185,8 @@ PIN은 `ExtraCriteria`나 외부 snapshot에 넣지 않는다. 수정창 passwor
 
 ## 검증과 문서 갱신
 
+0.3.48 AFK 변경에서 관리형 테스트392개(추가26개)와 Python 배포 테스트12개를 통과했다. NuGet 캐시/WindowsDesktop 참조 팩이 없는 환경이므로 기존0.3.47 build의 의존 DLL을 직접 참조하는 별도 오프라인 프로젝트로 테스트 및 전체 C# 소스 컴파일을 수행했다. 소스 컴파일은 `net10.0`+Windows platform attribute에서 경고0/오류0이었으며, 정식 `net10.0-windows` 패키지 빌드/Actions 실행이나 인게임 검증을 대신하지 않는다. 기존 native ABI1088개 항목의 차이는0이었다.
+
 기능 변경 후 해당 모델/host/외부 어댑터와 관련 테스트를 함께 확인한다. 다음은 필요할 때 개발 환경에서 실행하는 명령이다. GitHub Actions 실행은 사용자가 담당한다.
 
 ```bash
@@ -201,8 +207,14 @@ native 변경은 고정 참조를 준비해 `python tools/release.py verify`와 
 4. 새 파일은 전체 파일 지도에 등록하고, 버전/기준 commit 및 항목 수를 다시 확인한다.
 5. 링크 target·함수 누락/중복·placeholder·문서 외 변경이 없는지 확인한다.
 
-## 다음 작업인 AFK 알림의 연결 지점
+## AFK 감시와 후속 알림의 연결 지점
 
-이 절은 **아직 구현되지 않은 작업의 출발점**이다. 현재 `Plugin.OnUpdate`는 평소에도500ms마다 현재 파티를 읽고 `PartyReader.ReadCrossRealm`은 local group만 읽는다. 따라서 “AFK 켜졌을 때만 전체 파티 변화를 감시”는 별도의 변경이 필요하다.
+PVKR 창 상단의 AFK 체크박스로 활성화한다. 시작 시 꺼져 있으며 실제 로그아웃/캐릭터 변경/Dispose에서 종료한다. 일시적인 `PlayerState.IsLoaded=false`는 모드를 끄지 않는다. 이 토글은 게임 자체의 자리비움 상태와 별개다.
 
-AFK 감시는 멤버 변화의 신호로 현재 파티를 사용하고, 알림 판정은 fresh 모집 상세의 등록 자리·점유·허용 직업으로 해야 한다. 같은 인원수의 교체를 놓치지 않도록 CID 집합 변화,24/48인 전체 그룹과 친선 관전, 이동 중 stale, 서버 반영 지연을 고려해야 한다. 기존 조회/수정 중에는 신호를 합치거나 미루고 공통 query guard/소유권을 지켜야 한다. 고정 직업 자리 제외·가득 참 등의 조건은 최신 모집 snapshot을 얻은 뒤 별도로 정의한다. 이 문서 작성에서는 감시·자동 조회·알림 코드를 추가하지 않았다.
+`PartyRosterReader`는 현재 직업을 읽지 않는다. 일반 파티는 `IPartyList`의 로컬 명단, 일반 연합은 공개 alliance API의20개 영역을 추가로 확인한다. 서버 초월은 `CrossRealmGroups` 전체1~6개 그룹을 읽으므로 친선 관전·다른 연합 그룹도 포함한다. 본인 누락·0 CID·중복·범위 오류·읽는 중 형태 변경은 불완전한 관측으로 처리한다. 활성 서버 초월 명단이 불완전하면 일반 파티1명으로 축소하지 않는다. 기존 `PartyReader`의 로컬 그룹/현재 직업 표시와는 서로 다른 경로다.
+
+`AfkListingMonitor.Update`는 명단이 바뀌면 `Pending`과 `generation`을 남긴다. A→B→A처럼 원상복귀해도 지우지 않는다. 마지막 성공 후60초가 지나면 관측 사이의 빠른 재입장을 보완하는 조회를 예약한다. 읽기 실패는 이전 정상 명단을 유지하고, 조회 실패는5/10/20/40/60초 backoff로 재시도한다. 영역 이동 여부를 별도로 판정하지 않고 기존 조회 guard에 접속/이동/수정창 판단을 맡긴다.
+
+성공은 자기 request revision, 새 detail revision, `Live/Self`, 참가 CID 전체 일치로 확인한다. 조회 중 generation이 변했으면 성공 후에도 후속 조회를 남긴다. 요청 최소 간격은2초, 완료 대기는15초다. `BeforeRead`는 기존 request guard를 재사용해 아직 native dispatch 전인 요청도 재검사한다. 다른 수동/외부 요청이 같은 Reader를 사용하므로 **자기 revision만 취소**한다. 적용 대기 변경/편집/갱신 동안에는 자동 조회를 미루고 필요 표시를 유지한다.
+
+AFK는 모집글 조회만 수행하며 `IAfkListingHost`에는 수정/제출 계약이 없다. Discord 메시지 자동 업데이트·알림 전송은 아직 구현하지 않았다. 이후 가득 참/고정 직업 자리 제외 알림은 성공한 fresh 모집 상세의 등록 자리·점유·허용 직업으로 판정해야 한다. 현재 직업으로 등록 직업을 덮어쓰면 안 된다. 감시 사이에 들어왔다 나간 모든 중간 이력은 보장하지 않으며60초 보완 조회로 최종 상태를 맞춘다.
