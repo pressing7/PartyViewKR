@@ -8,6 +8,9 @@
     <Compile Include="../src/PartyRoster.cs" Link="PartyRoster.cs" />
     <Compile Include="../src/AfkListingMonitor.cs" Link="AfkListingMonitor.cs" />
     <Compile Include="../src/AfkSettings.cs" Link="AfkSettings.cs" />
+    <Compile Include="../src/ListingDiscordNotifications.cs" Link="ListingDiscordNotifications.cs" />
+    <Compile Include="../src/ListingDiscordClient.Notifications.cs" Link="ListingDiscordClient.Notifications.cs" />
+    <Compile Include="../src/ListingDiscordSession.Notifications.cs" Link="ListingDiscordSession.Notifications.cs" />
     <Compile Include="../src/ListingWebBridge.Recovery.cs" Link="ListingWebBridge.Recovery.cs" />
     <Compile Include="../src/ListingDiscordSession.Recovery.cs" Link="ListingDiscordSession.Recovery.cs" />
     <PackageReference Include="Discord.Net.WebSocket" Version="3.20.2" />

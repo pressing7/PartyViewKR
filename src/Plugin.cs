@@ -453,6 +453,7 @@ public sealed partial class Plugin : IDalamudPlugin
         }
         UpdateWeb(now);
         if (afkHost != null) afk.Update(afkHost, now);
+        UpdateDiscordCompletion();
     }
 
     public void Dispose()

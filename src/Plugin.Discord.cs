@@ -10,6 +10,7 @@ public sealed partial class Plugin
     private string discordStatus = "디스코드 연결이 꺼져 있습니다.";
     internal bool DiscordEnabled => discordClient?.Running == true;
     internal string DiscordStatus => discordClient?.Status ?? discordStatus;
+    internal string DiscordNotificationStatus => discordClient?.NotificationStatus ?? "";
     internal string DiscordInviteUrl => discordClient?.InviteUrl ?? "";
     internal bool HasSavedDiscordToken => (PluginInterface.GetPluginConfig() as RelayConfiguration)?.HasSavedDiscordToken == true;
     internal bool RememberDiscordToken => (PluginInterface.GetPluginConfig() as RelayConfiguration)?.RememberDiscordToken ?? true;
@@ -44,7 +45,8 @@ public sealed partial class Plugin
             StopWeb();
             webHost ??= new WebHost(this);
             stage = "디스코드 클라이언트 생성";
-            discordClient = new(new ListingWebBridge(typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "unknown"), token);
+            discordClient = new(new ListingWebBridge(typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "unknown"), token,
+                notificationTarget: config.ReadNotificationTarget(), saveNotificationTarget: SaveDiscordNotificationTarget);
             stage = "모집글 조회 시작";
             RequestRead(); return true;
         }
@@ -56,6 +58,17 @@ public sealed partial class Plugin
         }
         return false;
     }
+    private Task SaveDiscordNotificationTarget(DiscordNotificationTarget target, CancellationToken cancellation) =>
+        Framework.RunOnFrameworkThread(() => {
+            cancellation.ThrowIfCancellationRequested();
+            if (disposed) throw new OperationCanceledException(cancellation);
+            var config = PluginInterface.GetPluginConfig() as RelayConfiguration ?? new();
+            config.WriteNotificationTarget(target); PluginInterface.SavePluginConfig(config);
+        });
+
+    private void UpdateDiscordCompletion() => discordClient?.ObserveCompletion(afk.Enabled,
+        ClientState.IsLoggedIn && PlayerState.IsLoaded ? PlayerState.ContentId : 0,
+        afk.CompletionRevision, afk.RecruitmentComplete);
     private static string ProtectDiscordToken(string token)
     {
         var plain = Encoding.UTF8.GetBytes(token);

@@ -13,7 +13,7 @@ static partial class ListingDiscordTests
             var panel = new ListingDiscordPanel(bridge, App, Owner, icons);
             var overview = panel.Complete(1000).Screen!;
             var buttons = ListingDiscordCard.Walk(overview.Components.Components).OfType<ButtonComponent>().Select(c => c.Label).ToArray();
-            check(buttons.SequenceEqual(new[] { "조회", "갱신", "수정", "수정창 닫기", "직업 상세" }), "overview controls not simplified");
+            check(buttons.SequenceEqual(new[] { "조회", "갱신", "수정", "수정창 닫기", "알림 채널로 설정", "직업 상세" }), "overview controls not simplified");
             check(overview.Text.Contains("<:join_black_mage_job:123456>") && overview.Text.Contains("🟨") && overview.Text.Contains("⬜"), "roster icons or fallbacks missing");
             check(!overview.Text.Contains("나이트") && !overview.Text.Contains("흑마도사"), "verbose job roster leaked into overview");
             check(new ListingDiscordIcons().ForSlot(slots[0]) == "🟦", "missing job image did not fall back");

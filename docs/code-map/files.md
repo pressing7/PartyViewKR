@@ -123,13 +123,16 @@
 | [src/ListingDescriptionEdit.cs](../../src/ListingDescriptionEdit.cs) | 소개말의 관리형 초안·요청·원본/결과 비교 모델. Supports는 snapshot을 편집 모델로 해석할 수 있다는 뜻이며 게임 컨트롤이 실제로 enabled인지는 Host가 확인한다. [함수 목록](edits.md#file-src-listingdescriptionedit-cs) |
 | [src/ListingDescriptionEditHost.cs](../../src/ListingDescriptionEditHost.cs) | 소개말의 실제 게임 UI 조작. 시작 시 컴포넌트 주소·수명·불변식을 고정하고 수정 중 재검증하며 UI와 저장값이 모두 일치해야 완료한다. [함수 목록](refresh.md#file-src-listingdescriptionedithost-cs) |
 | [src/ListingDescriptionRecovery.cs](../../src/ListingDescriptionRecovery.cs) | 배치 소개말 실패 후 화면 입력과 실제 저장 comment를 맞추는 순수 상태 기계. 이미 보낸 변경 callback/제출을 재시도하지 않는다. [함수 목록](edits.md#file-src-listingdescriptionrecovery-cs) |
+| [src/ListingDiscordClient.Notifications.cs](../../src/ListingDiscordClient.Notifications.cs) | 모집 완료 알림의 Discord.Net 전송 어댑터. 서버 텍스트 채널·bot 권한을 검사하고 everyone만 허용한 새 메시지를 보내며 서버 mention 응답을 확인한다. [함수 목록](discord.md#file-src-listingdiscordclient-notifications-cs) |
 | [src/ListingDiscordClient.cs](../../src/ListingDiscordClient.cs) | Discord.Net Gateway/REST 연결과 application owner 검증, /pvkr 등록, 이모지 동기화 및 SDK interaction 어댑터. 네트워크 작업은 게임 메모리를 직접 읽지 않는다. [함수 목록](discord.md#file-src-listingdiscordclient-cs) |
 | [src/ListingDiscordEmojiAssets.cs](../../src/ListingDiscordEmojiAssets.cs) | embedded PNG 80개의 asset key·읽기 쉬운 이름·legacy 이름 매핑 및 application emoji 동기화. 서버에 수동 업로드할 필요가 없다. [함수 목록](discord.md#file-src-listingdiscordemojiassets-cs) |
 | [src/ListingDiscordIcons.cs](../../src/ListingDiscordIcons.cs) | 봇 연결별 application emoji ID registry와 슬롯 이미지 선택. 참가 직업으로 제한 mask를 덮지 않고 원래 제한 이미지에 join 상태를 결합한다. [함수 목록](discord.md#file-src-listingdiscordicons-cs) |
+| [src/ListingDiscordNotifications.cs](../../src/ListingDiscordNotifications.cs) | AFK 완료 세대별 everyone 알림 controller. 명시적으로 선택한 목적지만 저장하며 비동기 전송 중 취소/권한 실패/불확실한 POST의 중복 멘션을 막는다. [함수 목록](discord.md#file-src-listingdiscordnotifications-cs) |
 | [src/ListingDiscordPanel.Forms.cs](../../src/ListingDiscordPanel.Forms.cs) | 소개말·비공개와 묶음 설정의 modal 구성/파싱. 외부 input은 반드시 현재 editor와 allowlisted field에 묶는다. [함수 목록](discord.md#file-src-listingdiscordpanel-forms-cs) |
 | [src/ListingDiscordPanel.Render.cs](../../src/ListingDiscordPanel.Render.cs) | 모바일 조회/수정/상세 카드와 Components V2 공통 builder. 조회에는 전체 그룹 아이콘을 한 번에 표시한다. [함수 목록](discord.md#file-src-listingdiscordpanel-render-cs) |
 | [src/ListingDiscordPanel.Results.cs](../../src/ListingDiscordPanel.Results.cs) | 긴 최근 작업 결과를 생략하지 않고 독립된 읽기 전용 페이지 카드로 표시한다. [함수 목록](discord.md#file-src-listingdiscordpanel-results-cs) |
 | [src/ListingDiscordPanel.cs](../../src/ListingDiscordPanel.cs) | SDK와 게임 메모리에서 분리된 카드/session 상태 모델. Overview·Editor·Details·Results에 nonce와 원본 revision을 묶어 오래된 버튼/폼을 거부한다. [함수 목록](discord.md#file-src-listingdiscordpanel-cs) |
+| [src/ListingDiscordSession.Notifications.cs](../../src/ListingDiscordSession.Notifications.cs) | 알림 채널 선택 interaction. Process의 owner/app 인증 뒤 session/중복/ACK를 확인하며 서버·채널 ID는 SDK가 읽은 현재 interaction에서만 가져온다. [함수 목록](discord.md#file-src-listingdiscordsession-notifications-cs) |
 | [src/ListingDiscordSession.Recovery.cs](../../src/ListingDiscordSession.Recovery.cs) | 일반 interaction의 handling 잠금과 별도로 닫기 interaction을 처리한다. 개인 봇 owner/app 인증은 Process에서 먼저 수행하고 session·ACK를 추가 검증한다. [함수 목록](discord.md#file-src-listingdiscordsession-recovery-cs) |
 | [src/ListingDiscordSession.cs](../../src/ListingDiscordSession.cs) | 한 사용자 interaction의 인증·ACK·게임 요청·결과 폴링을 직렬화한다. ACK 실패 뒤 게임 작업을 실행하지 않는 것이 핵심이다. [함수 목록](discord.md#file-src-listingdiscordsession-cs) |
 | [src/ListingEditorCriteria.cs](../../src/ListingEditorCriteria.cs) | 조회 시 0으로 보이는 친선경기 A/B 6~8번 padding과 수정창의 PvP 기본 마스크 차이만 한정적으로 허용한다. [함수 목록](core.md#file-src-listingeditorcriteria-cs) |
@@ -173,8 +176,8 @@
 | [src/PartyReader.cs](../../src/PartyReader.cs) | 현재 파티의 관찰용 스냅샷. 일반 파티 목록, 서버 초월의 로컬 그룹, 본인 정보 순으로 읽는다. 모집 등록 직업/빈자리 규칙의 기준으로 사용하면 안 된다. [함수 목록](core.md#file-src-partyreader-cs) |
 | [src/PartyRoster.cs](../../src/PartyRoster.cs) | AFK 비교 전용 불변 CID 명단. 직업·이름·레벨·정렬 순서·그룹 내 위치는 비교에 넣지 않는다. [함수 목록](core.md#file-src-partyroster-cs) |
 | [src/PartyRosterReader.cs](../../src/PartyRosterReader.cs) | AFK가 켜진 동안만 현재 전체 파티 CID를 읽는다. 기존 PartyReader의 실시간 직업 표시와 별개이며 서버 초월은 최대6개 그룹 전체를 순회한다. [함수 목록](core.md#file-src-partyrosterreader-cs) |
-| [src/PartyViewKR.csproj](../../src/PartyViewKR.csproj) | net10.0-windows/x64/unsafe, 버전0.3.48/0.3.48.0, Discord.Net3.20.2·DPAPI 의존성 및 Web/PNG/contracts embedded resource, native references 지정. |
-| [src/PartyViewKR.json](../../src/PartyViewKR.json) | 현재 플러그인 manifest/API15/AssemblyVersion0.3.48.0. package 검증의 기준이며 csproj와 반드시 맞아야 한다. |
+| [src/PartyViewKR.csproj](../../src/PartyViewKR.csproj) | net10.0-windows/x64/unsafe, 버전0.3.50/0.3.50.0, Discord.Net3.20.2·DPAPI 의존성 및 Web/PNG/contracts embedded resource, native references 지정. |
+| [src/PartyViewKR.json](../../src/PartyViewKR.json) | 현재 플러그인 manifest/API15/AssemblyVersion0.3.50.0. package 검증의 기준이며 csproj와 반드시 맞아야 한다. |
 | [src/PartyWindow.cs](../../src/PartyWindow.cs) | 인게임 ImGui 화면. 현재 파티/모집글/외부 연결/수정 초안/대기 변경/진단을 표시하고 Plugin에 의도만 전달한다. [함수 목록](core.md#file-src-partywindow-cs) |
 | [src/Plugin.Afk.cs](../../src/Plugin.Afk.cs) | 인게임 AFK 토글과 순수 monitor를 실제 Reader/기존 조회 guard에 연결한다. 별도의 지역 이동 상태 기계나 자동 갱신/알림 전송 경로를 만들지 않는다. [함수 목록](core.md#file-src-plugin-afk-cs) |
 | [src/Plugin.Discord.cs](../../src/Plugin.Discord.cs) | 사용자 설정과 Discord client 수명 연결. 재시작 복원은 한 번, 명시 끄기는 자동 연결도 끄며 Dispose는 저장 토큰을 지우지 않는다. [함수 목록](discord.md#file-src-plugin-discord-cs) |
@@ -190,6 +193,7 @@
 | [src/Web/index.html](../../src/Web/index.html) | 웹 조회/연결/editor/결과 영역과 DOM ID·외부 script 로드 순서. app/editor가 의존하는 ID 계약. |
 | [src/Web/style.css](../../src/Web/style.css) | 모바일/desktop의 조회·그룹·자리·편집·상태/오류 표시 스타일. |
 | [src/packages.lock.json](../../src/packages.lock.json) | 플러그인의 NuGet 전이 의존성 버전/해시 lock. |
+| [tests/AfkCompletionTests.cs](../../tests/AfkCompletionTests.cs) | 모집 자동 종료 뒤 현재 명단과 기억한 등록 정원으로 완료 감지·중복 억제를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-afkcompletiontests-cs) |
 | [tests/AfkListingMonitorTests.cs](../../tests/AfkListingMonitorTests.cs) | AFK CID 명단 정규화, 가입/탈퇴 변경 보존,60초 보완 조회, 실패 backoff, 요청 revision 소유권과 캐릭터 수명를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-afklistingmonitortests-cs) |
 | [tests/AfkSettingsTests.cs](../../tests/AfkSettingsTests.cs) | AFK 주기·재시도 선택/경계·설정 저장를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-afksettingstests-cs) |
 | [tests/CompatibilityTests.cs](../../tests/CompatibilityTests.cs) | 네이티브/interop ABI 계약 변화, MVID/버전 독립성 및 fail-closed 비교를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-compatibilitytests-cs) |
@@ -204,6 +208,8 @@
 | [tests/ListingDiscordConnectionTests.cs](../../tests/ListingDiscordConnectionTests.cs) | 실제 Discord.Net SDK의 fake Gateway/REST 연결 및 비동기 종료/ACK 처리를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingdiscordconnectiontests-cs) |
 | [tests/ListingDiscordEmojiTests.cs](../../tests/ListingDiscordEmojiTests.cs) | 80개 asset·이름·재사용/legacy rename/upload·slot 제한 및 join 이미지 선택를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingdiscordemojitests-cs) |
 | [tests/ListingDiscordInteractionTests.cs](../../tests/ListingDiscordInteractionTests.cs) | 실제 SDK interaction JSON→모달/버튼/select→공통 Bridge의 end-to-end 경로를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingdiscordinteractiontests-cs) |
+| [tests/ListingDiscordNotificationSdkTests.cs](../../tests/ListingDiscordNotificationSdkTests.cs) | 실제 SDK의 서버 권한과 everyone POST 직렬화를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingdiscordnotificationsdktests-cs) |
+| [tests/ListingDiscordNotificationTests.cs](../../tests/ListingDiscordNotificationTests.cs) | 알림 채널 저장·소유자/ACK·everyone 전송·취소·오류 중복 방지를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingdiscordnotificationtests-cs) |
 | [tests/ListingDiscordResultTests.cs](../../tests/ListingDiscordResultTests.cs) | 긴 결과 페이지의 무손실 분할, escape/Unicode 경계·읽기 전용 탐색를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingdiscordresulttests-cs) |
 | [tests/ListingDiscordRosterTests.cs](../../tests/ListingDiscordRosterTests.cs) | 24/48인/친선 전체 그룹 아이콘과 설정/상대시간 표시를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingdiscordrostertests-cs) |
 | [tests/ListingDiscordTests.cs](../../tests/ListingDiscordTests.cs) | owner/nonce/session·폼 유효성·직업 분류·중복 요청·ACK 선행를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingdiscordtests-cs) |

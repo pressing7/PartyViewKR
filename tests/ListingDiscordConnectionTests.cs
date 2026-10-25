@@ -143,9 +143,10 @@ static partial class ListingDiscordConnectionTests
             }
         });
         RunInteractions(test, check);
+        RunNotificationSdk(test, check);
     }
 
-    private sealed class OfflineTransport : IRestClient, IWebSocketClient
+    private sealed partial class OfflineTransport : IRestClient, IWebSocketClient
     {
         internal readonly TaskCompletionSource Identified = new(TaskCreationOptions.RunContinuationsAsynchronously);
         internal readonly ConcurrentQueue<string> Commands = new();
@@ -179,11 +180,11 @@ static partial class ListingDiscordConnectionTests
             return op == 1 ? Receive("{\"op\":11,\"d\":null}") : Task.CompletedTask;
         }
         private Task Receive(string json) => TextMessage?.Invoke(json) ?? Task.CompletedTask;
-        internal Task Ready() => Receive("""
+        internal Task Ready(bool notificationGuild = false) => Receive("""
             {"op":0,"s":1,"t":"READY","d":{"v":10,"user":{"id":"500","username":"PVKR","discriminator":"0","bot":true},
             "guilds":[],"private_channels":[],"session_id":"offline","resume_gateway_url":"wss://offline.invalid",
             "application":{"id":"500","flags":0}}}
-            """);
+            """.Replace("\"guilds\":[]", notificationGuild ? "\"guilds\":[{\"id\":\"700\",\"unavailable\":true}]" : "\"guilds\":[]"));
         internal void Interaction(int type, object data, ulong user = 600)
         {
             var id = SnowflakeUtils.ToSnowflake(DateTimeOffset.UtcNow) + (ulong)Interlocked.Increment(ref sequence);
@@ -260,6 +261,17 @@ static partial class ListingDiscordConnectionTests
                     code = HttpStatusCode.Forbidden; body = JsonSerializer.Serialize(new { code = 50001, message = FakeToken });
                 }
                 else body = """{"id":"700","application_id":"500","name":"pvkr","type":1,"description":"PVKR","version":"1"}""";
+            }
+            else if (method == "POST" && endpoint == "channels/800/messages") {
+                using var parsed = JsonDocument.Parse(json!);
+                NotificationMessages.Enqueue(parsed.RootElement.Clone());
+                body = JsonSerializer.Serialize(new {
+                    id = "990", channel_id = "800", type = 0,
+                    author = new { id = "500", username = "PVKR", discriminator = "0", bot = true },
+                    timestamp = DateTimeOffset.UtcNow, content = parsed.RootElement.GetProperty("content").GetString(),
+                    mention_everyone = !DropEveryoneMention, mentions = Array.Empty<object>(), mention_roles = Array.Empty<string>(),
+                    attachments = Array.Empty<object>(), embeds = Array.Empty<object>(), flags = 0
+                });
             }
             else if (method == "POST" && endpoint.StartsWith("interactions/") && endpoint.EndsWith("/callback")) {
                 using var parsed = JsonDocument.Parse(json!);

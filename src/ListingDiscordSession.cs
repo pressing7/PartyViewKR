@@ -14,9 +14,10 @@ internal interface IDiscordResponse
 // One editor per personal bot. This class is independent of the Gateway so ACK
 // failures, repeated events and shutdown can be tested without a real token.
 internal sealed partial class ListingDiscordSession(ListingWebBridge bridge, ulong appId, ulong ownerId,
-    CancellationToken cancellation, Func<long>? clock = null, ListingDiscordIcons? iconCatalog = null)
+    CancellationToken cancellation, Func<long>? clock = null, ListingDiscordIcons? iconCatalog = null,
+    ListingDiscordNotifications? notifications = null)
 {
-    private readonly ListingDiscordPanel panel = new(bridge, appId, ownerId, iconCatalog);
+    private readonly ListingDiscordPanel panel = new(bridge, appId, ownerId, iconCatalog, () => notifications?.Status ?? "");
     private readonly HashSet<ulong> seen = [];
     private readonly Queue<ulong> seenOrder = [];
     private int handling;
@@ -33,6 +34,8 @@ internal sealed partial class ListingDiscordSession(ListingWebBridge bridge, ulo
         // the game or waiting for a failed Discord response.
         if (input.Command.Length == 0 && input.CustomId.StartsWith(ListingDiscordPanel.ClosePrefix, StringComparison.Ordinal))
         { await CloseEditor(input, response); return; }
+        if (input.Command.Length == 0 && input.CustomId.StartsWith(ListingDiscordPanel.NotificationPrefix, StringComparison.Ordinal))
+        { await SelectNotificationChannel(input, response); return; }
         if (Interlocked.CompareExchange(ref handling, 1, 0) != 0) {
             await SafeScreen(response, ListingDiscordPanel.RecoveryMessage("앞선 요청을 처리 중입니다.", bridge.ReadView().Session)); return;
         }

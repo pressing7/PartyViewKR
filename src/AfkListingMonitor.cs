@@ -11,6 +11,7 @@ internal interface IAfkListingHost
     long RequestRevision { get; }
     long DetailRevision { get; }
     bool OwnListingMatches(PartyRoster roster);
+    int RegisteredCapacity { get; }
     bool RequestQuery(out string error);
     void CancelQuery(long revision);
 }
@@ -34,13 +35,19 @@ internal sealed class AfkListingMonitor
     internal bool Enabled { get; private set; }
     internal bool Pending { get; private set; }
     internal bool InFlight => requestRevision >= 0;
+    internal int RecruitmentCapacity { get; private set; }
+    internal long CompletionRevision { get; private set; }
+    internal bool RecruitmentComplete => Enabled && readable && complete;
+    private bool complete;
+    private long capacityRequestRevision, capacityDetailRevision;
     internal string Status { get; private set; } = "AFK 모드가 꺼져 있습니다.";
     internal string Diagnostic => $"afkEnabled={Enabled}; afkPending={Pending}; afkInFlight={InFlight}; " +
         $"afkRosterReadable={readable}; afkMemberCount={observed?.Count ?? 0}; afkChanges={changes}; " +
         $"afkQueryCalls={queries}; afkSuccesses={successes}; afkFailures={failures}; " +
         $"afkGeneration={generation}; afkRequestedGeneration={requestedGeneration}; " +
         $"afkPeriodicEnabled={Settings.PeriodicEnabled}; afkPeriodMinutes={Settings.PeriodMinutes}; " +
-        $"afkRetryEnabled={Settings.RetryEnabled}; afkRetrySeconds={Settings.RetrySeconds}; afkFailed={failed}";
+        $"afkRetryEnabled={Settings.RetryEnabled}; afkRetrySeconds={Settings.RetrySeconds}; afkFailed={failed}; " +
+        $"afkRecruitmentCapacity={RecruitmentCapacity}; afkRecruitmentComplete={RecruitmentComplete}; afkCompletionRevision={CompletionRevision}";
 
     internal void Configure(AfkSettings settings, long now)
     {
@@ -67,6 +74,8 @@ internal sealed class AfkListingMonitor
         Enabled = enabled; Pending = enabled; self = enabled ? host.SelfId : 0;
         observed = null; readable = false; generation = requestedGeneration = 0;
         confirmedGeneration = failedGeneration = 0; failed = false;
+        RecruitmentCapacity = 0; complete = false;
+        capacityRequestRevision = host.RequestRevision; capacityDetailRevision = host.DetailRevision;
         failures = queries = successes = changes = 0;
         nextAttempt = now; nextSupplement = now + Settings.PeriodMilliseconds;
         Status = enabled ? "명단을 읽고 내 모집글을 조회합니다." : "AFK 모드가 꺼져 있습니다.";
@@ -104,6 +113,22 @@ internal sealed class AfkListingMonitor
         if (failed && generation != failedGeneration) { failed = false; nextAttempt = now; }
         Pending = InFlight || generation != confirmedGeneration || failed || periodicDue;
 
+        // A manual/Discord own-query may confirm a newly created recruitment
+        // while the previous full state suppresses automatic queries. Adopt only
+        // a NEW successful own response whose entire roster still matches.
+        if (hasRoster && !host.QueryBusy && host.QuerySucceeded && host.RequestRevision != capacityRequestRevision &&
+            host.DetailRevision > capacityDetailRevision && host.OwnListingMatches(current!)) RememberCapacity(host);
+
+        // A full recruitment disappears from Party Finder automatically. Detect
+        // completion from the current CID roster and the last verified capacity,
+        // BEFORE waiting for or requesting another recruitment detail response.
+        if (hasRoster && CheckCompletion(current!.Count))
+        {
+            CancelOwned(host); Pending = false; failed = false;
+            Status = $"파티 모집 완료 · {RecruitmentCapacity}/{RecruitmentCapacity}명";
+            return;
+        }
+
         if (InFlight)
         {
             if (host.RequestRevision != requestRevision)
@@ -128,6 +153,11 @@ internal sealed class AfkListingMonitor
                 // A -> B -> A while the request was running is still a change.
                 Pending = generation != requestedGeneration;
                 Status = Pending ? "조회 중 명단이 바뀌어 다시 확인합니다." : Watching;
+                RememberCapacity(host);
+                if (CheckCompletion(observed!.Count)) {
+                    Pending = false;
+                    Status = $"파티 모집 완료 · {RecruitmentCapacity}/{RecruitmentCapacity}명";
+                }
             }
             else if (now - started >= QueryTimeout)
             {
@@ -173,6 +203,24 @@ internal sealed class AfkListingMonitor
             }
             else Retry(now, "조회 요청 중 오류가 발생했습니다.");
         }
+    }
+
+    private bool CheckCompletion(int members)
+    {
+        // More members than the cached recruitment can hold means that capacity
+        // no longer describes this party. Require another successful own read.
+        if (members > RecruitmentCapacity) RecruitmentCapacity = 0;
+        var full = RecruitmentCapacity > 0 && members == RecruitmentCapacity;
+        if (full && !complete) CompletionRevision++;
+        complete = full;
+        return full;
+    }
+
+    private void RememberCapacity(IAfkListingHost host)
+    {
+        var capacity = host.RegisteredCapacity;
+        RecruitmentCapacity = capacity is >= 1 and <= 48 ? capacity : 0;
+        capacityRequestRevision = host.RequestRevision; capacityDetailRevision = host.DetailRevision;
     }
 
     private bool CheckSession(IAfkListingHost host)

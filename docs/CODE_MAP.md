@@ -4,14 +4,14 @@
 
 ## 기준과 범위
 
-- 정리일: 2026-10-25. 플러그인 `0.3.49.0`, Dalamud API `15`.
-- 소스 기준: `0.3.49.0`. 기반 main [`a34099802f12d6e5c4859489472489319d146e4f`](https://github.com/pressing7/PartyViewKR/commit/a34099802f12d6e5c4859489472489319d146e4f) 이후 AFK 주기·실패 재시도 설정과 Discord 수정창 닫기 변경을 포함한다.
-- 문서 자체와 신규 AFK 설정·복구 파일을 포함한 추적 파일 241개 전체를 [파일 지도](code-map/files.md)에 분류했다. 소스 위치는 이 버전의 행 번호다.
-- C# Roslyn 구문 분석, JavaScript Acorn 구문 분석, Python AST로 **1,294개 명명된 항목/진입점**을 대조했다: C# 1,172, JS 91, Python 31. 메서드뿐 아니라 생성자·로컬 함수·계산 속성·인터페이스 선언을 포함한 숫자다.
+- 정리일: 2026-10-25. 플러그인 `0.3.50.0`, Dalamud API `15`.
+- 소스 기준: `0.3.50.0`. 기반 main [`cc2f36a982bc966653efe25eba93fca74c068899`](https://github.com/pressing7/PartyViewKR/commit/cc2f36a982bc966653efe25eba93fca74c068899) 이후 AFK 정원 도달 판정과 Discord everyone 알림 변경을 포함한다.
+- 문서 자체와 신규 AFK 설정·복구 파일을 포함한 추적 파일 247개 전체를 [파일 지도](code-map/files.md)에 분류했다. 소스 위치는 이 버전의 행 번호다.
+- C# Roslyn 구문 분석, JavaScript Acorn 구문 분석, Python AST로 **1,337개 명명된 항목/진입점**을 대조했다: C# 1,215, JS 91, Python 31. 메서드뿐 아니라 생성자·로컬 함수·계산 속성·인터페이스 선언을 포함한 숫자다.
 - 자동 생성 record 메서드와 단순 auto-property accessor는 별도 함수로 세지 않는다. 이름 없는 LINQ/콜백은 소유 함수에서 설명하고, 중요한 DOM handler와 테스트 시나리오는 따로 연결했다.
-- 현재 C# 등록 테스트는 416개, Node 등록 테스트는 15개, Python `test_*` 메서드는 12개다. 등록 범위와 실행 결과를 구분하며 이번 AFK 변경의 검증 환경은 아래에 기록한다.
+- 현재 C# 등록 테스트는 442개, Node 등록 테스트는 15개, Python `test_*` 메서드는 12개다. 등록 범위와 실행 결과를 구분하며 이번 AFK 변경의 검증 환경은 아래에 기록한다.
 
-현재 구현은 **기존 본인 모집글의 조회·수정·수동 갱신 및 AFK 명단 감시에 따른 자동 조회**다. 새 모집 시작, 콘텐츠/파티 유형 변경 및 자동 알림은 아직 구현하지 않았다. 루트의 `PartyViewKR.dll/json/deps.json`은 이전 수동 배포본이다. 빌드 기준은 `src/PartyViewKR.csproj`와 `src/PartyViewKR.json`, 설치 대상은 Releases ZIP이다.
+현재 구현은 **기존 본인 모집글의 조회·수정·수동 갱신 및 AFK 명단 감시에 따른 자동 조회**다. AFK 모집 완료 everyone 알림을 제공한다. 새 모집 시작과 콘텐츠/파티 유형 변경은 아직 구현하지 않았다. 루트의 `PartyViewKR.dll/json/deps.json`은 이전 수동 배포본이다. 빌드 기준은 `src/PartyViewKR.csproj`와 `src/PartyViewKR.json`, 설치 대상은 Releases ZIP이다.
 
 ## 함수별 문서
 
@@ -185,7 +185,7 @@ PIN은 `ExtraCriteria`나 외부 snapshot에 넣지 않는다. 수정창 passwor
 
 ## 검증과 문서 갱신
 
-0.3.49 AFK 설정·닫기 변경에서 관리형 테스트416개(추가24개)와 Python 배포 테스트12개를 통과했다. NuGet 캐시/WindowsDesktop 참조 팩이 없는 환경이므로 기존0.3.47 build의 의존 DLL을 직접 참조하는 별도 오프라인 프로젝트로 테스트 및 전체 C# 소스 컴파일을 수행했다. 소스 컴파일은 `net10.0`+Windows platform attribute에서 경고0/오류0이었으며, 정식 `net10.0-windows` 패키지 빌드/Actions 실행이나 인게임 검증을 대신하지 않는다. 기존 native ABI1088개 항목의 차이는0이었다.
+0.3.50 AFK 정원 도달·Discord 알림 변경에서 관리형 테스트442개와 Python 배포 테스트12개를 통과했다. 실제 SDK의 everyone POST 직렬화·권한 부족·서버 mention 확인도 포함한다. NuGet 캐시/WindowsDesktop 참조 팩이 없는 환경이므로 기존0.3.47 build의 의존 DLL을 직접 참조하는 별도 오프라인 프로젝트로 테스트 및 전체 C# 소스 컴파일을 수행했다. 소스 컴파일은 `net10.0`+Windows platform attribute에서 경고0/오류0이었으며, 정식 `net10.0-windows` 패키지 빌드/Actions 실행이나 인게임 검증을 대신하지 않는다. 기존 native ABI1088개 항목의 차이는0이었다.
 
 기능 변경 후 해당 모델/host/외부 어댑터와 관련 테스트를 함께 확인한다. 다음은 필요할 때 개발 환경에서 실행하는 명령이다. GitHub Actions 실행은 사용자가 담당한다.
 
@@ -207,7 +207,7 @@ native 변경은 고정 참조를 준비해 `python tools/release.py verify`와 
 4. 새 파일은 전체 파일 지도에 등록하고, 버전/기준 commit 및 항목 수를 다시 확인한다.
 5. 링크 target·함수 누락/중복·placeholder·문서 외 변경이 없는지 확인한다.
 
-## AFK 감시와 후속 알림의 연결 지점
+## AFK 감시와 모집 완료 알림의 연결 지점
 
 PVKR 창 상단의 AFK 체크박스로 활성화한다. 시작 시 꺼져 있으며 실제 로그아웃/캐릭터 변경/Dispose에서 종료한다. 일시적인 `PlayerState.IsLoaded=false`는 모드를 끄지 않는다. 이 토글은 게임 자체의 자리비움 상태와 별개다.
 
@@ -217,7 +217,7 @@ PVKR 창 상단의 AFK 체크박스로 활성화한다. 시작 시 꺼져 있으
 
 성공은 자기 request revision, 새 detail revision, `Live/Self`, 참가 CID 전체 일치로 확인한다. 조회 중 generation이 변했으면 성공 후에도 후속 조회를 남긴다. 요청 최소 간격은2초, 완료 대기는15초다. `BeforeRead`는 기존 request guard를 재사용해 아직 native dispatch 전인 요청도 재검사한다. 다른 수동/외부 요청이 같은 Reader를 사용하므로 **자기 revision만 취소**한다. 적용 대기 변경/편집/갱신 동안에는 자동 조회를 미루고 필요 표시를 유지한다.
 
-AFK는 모집글 조회만 수행하며 `IAfkListingHost`에는 수정/제출 계약이 없다. Discord 메시지 자동 업데이트·알림 전송은 아직 구현하지 않았다. 이후 가득 참/고정 직업 자리 제외 알림은 성공한 fresh 모집 상세의 등록 자리·점유·허용 직업으로 판정해야 한다. 현재 직업으로 등록 직업을 덮어쓰면 안 된다. 감시 사이에 들어왔다 나간 모든 중간 이력은 보장하지 않는다. 관측 사이 재입장 보완이 필요하면 주기적으로 추가 조회를 켠다.
+AFK의 `IAfkListingHost`에는 수정/제출 계약이 없다. 모집 완료 알림은 성공한 본인 모집 상세에서 **등록 정원만 먼저 기억**하고, 이후 현재 CID 명단 인원이 그 정원에 도달하면 판정한다. 정원이 차면 모집글이 자동 종료되므로 완료 시점의 재조회 성공을 요구하면 안 된다. 고정 직업 자리 제외 조건과 Discord 조회 카드 자동 업데이트는 아직 구현하지 않았다. 현재 직업으로 등록 직업을 덮어쓰면 안 된다. 감시 사이에 들어왔다 나간 모든 중간 이력은 보장하지 않는다. 관측 사이 재입장 보완이 필요하면 주기적으로 추가 조회를 켠다.
 
 
 ## Discord 수정창 닫기
@@ -229,3 +229,17 @@ AFK는 모집글 조회만 수행하며 `IAfkListingHost`에는 수정/제출 �
 실제 중단은 `Plugin.OnUpdate`의 읽기/제출보다 앞선 `ProcessRecovery`에서 실행한다. query/refresh/trace·로컬 초안·변경 대기열을 중단한 뒤 두 모집 관련 창의 주소/PreFinalize revision을 내부 ticket으로 고정한다. 직업 선택창을 먼저1회 닫고 사라진 뒤 부모 수정창을1회 닫으며,5초 안에 둘 다 사라져야 성공이다. 다른 창으로 교체되거나 읽기 실패/예외/timeout이면 실패를 알리고 close를 반복하지 않는다. 이미 제출한 변경을 취소하거나 새 모집을 만들지 않으며 다른 확인 대화상자를 누르지 않는다.
 
 디버깅 시작점은 [공통 queue](code-map/web-relay.md#file-src-listingwebbridge-recovery-cs), [게임 창 연결](code-map/refresh.md#file-src-plugin-recovery-cs), [별도 interaction 경로](code-map/discord.md#file-src-listingdiscordsession-recovery-cs), [회귀 테스트](code-map/tests.md#file-tests-listingrecoverytests-cs)다. 이 단계의 닫기 버튼은 Discord에 제공하며 브라우저 HTTP 경로를 새로 추가한 것은 아니다.
+
+## AFK 모집 완료 everyone 알림 (0.3.50)
+
+`AfkListingMonitor`는 시작 시 정원을 모른다. 자기 또는 새 수동/Discord 본인 조회가 성공하고 detail revision 증가·Live/Self·전체 CID 명단 일치가 확인된 경우 `RememberCapacity`로 실제 등록 정원을 저장한다. `Plugin.AfkHost.RegisteredCapacity`는 CountsAgree와 MappingValid까지 확인하므로 미등록/친선 padding은 정원에서 빠지고 친선 관전의 실제 등록 자리는 포함된다.
+
+`Update`의 현재 명단 관측 후, 조회 결과 대기보다 **먼저** `CheckCompletion`을 수행한다. 기억한 정원과 인원수가 같아진 최초 관측에서 `CompletionRevision`을 증가시키고 자기 조회를 취소한다. 가득 찬 상태는 자동 종료된 모집글을 주기/실패 재시도로 계속 조회하지 않는다. `RecruitmentComplete`는 현재 명단 읽기에 성공한 경우에만 참이다. 실제 빈자리 관측은 재무장하며 일시적 읽기 실패는 latch를 초기화하지 않는다. 정원보다 많은 명단은 이전 정원이 유효하지 않다고 보고 정원을 폐기한다. AFK 종료/캐릭터 변경은 정원을 초기화한다. 최초 AFK 조회 전 이미 모집이 종료됐다면 인원수로 정원을 추측하지 않는다.
+
+`Plugin.UpdateDiscordCompletion`은 위 관리형 완료 관측만 Discord 클라이언트에 전달한다. `ListingDiscordNotifications.Observe`는 AFK·본인·완료 세대·목적지·연결 상태를 확인해 비동기 전송을1개 예약한다. `Deliver`는 현재 상태를 재검증하고 POST 직전에 세대를 소비한다. 완료→실제 빈자리→완료는 새 세대이고, 반복 조회·읽기 실패만으로 같은 everyone 알림을 반복하지 않는다. POST 전 취소는 다시 유효한 명단에서 재시도할 수 있지만, 이미 전송을 시도한 뒤 응답을 잃으면 자동 재전송하지 않는다.
+
+조회 카드의 `알림 채널로 설정`은 `pvkr:notify:<session>`을 사용한다. 세션의 owner/app 인증·중복·같은 session·ACK 성공을 확인한 뒤 **SDK interaction의 서버/채널 ID**를 사용한다. 임의 channel ID를 custom_id나 입력문자열에서 받지 않는다. `SelectChannel`은 DM을 거부하고 채널 확인→Framework 설정 저장→활성 목적지 교체를 수행한다. 저장 실패 시 기존 목적지를 유지하며, 앱 ID가 다른 저장 목적지는 복원하지 않는다. 정상 설정만으로 알림/시험 메시지를 보내지는 않는다.
+
+`NotificationTransport`는 Gateway 캐시의 선택 서버 텍스트 채널과 봇의 ViewChannel/SendMessages/MentionEveryone 권한을 설정 시·전송 전에 확인한다. 고정 내용 **`@everyone 파티모집완료`**, AllowedMentionTypes.Everyone만 허용한 새 bot message로 전송하고 응답의 MentionedEveryone을 확인한다. 기존 V2/ephemeral 조회·수정 응답의 AllowedMentions.None은 유지한다. 연결 종료·AFK 종료·캐릭터 변경·읽기 불가·빈자리 관측은 아직 진행 중인 전송을 취소한다. 이미 도착한 메시지를 회수하거나 앱/휴대폰의 알림 설정을 우회하지 않는다.
+
+함수 시작점은 [AFK controller](code-map/core.md#file-src-afklistingmonitor-cs), [알림 controller](code-map/discord.md#file-src-listingdiscordnotifications-cs), [SDK 전송](code-map/discord.md#file-src-listingdiscordclient-notifications-cs), [채널 선택](code-map/discord.md#file-src-listingdiscordsession-notifications-cs)이다. [AFK 완료 회귀](code-map/tests.md#file-tests-afkcompletiontests-cs), [알림 상태 회귀](code-map/tests.md#file-tests-listingdiscordnotificationtests-cs), [SDK 직렬화 회귀](code-map/tests.md#file-tests-listingdiscordnotificationsdktests-cs)가 자동 종료/재조회 실패/미등록 정원/중복/권한/취소/실제 요청 형태를 검증한다.

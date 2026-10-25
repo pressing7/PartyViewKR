@@ -11,6 +11,16 @@ public sealed class RelayConfiguration : IPluginConfiguration
     public bool RememberDiscordToken { get; set; } = true;
     // Existing saved tokens also reconnect when upgrading from 0.3.46.
     public bool DiscordAutoConnect { get; set; } = true;
+    public ulong DiscordNotificationApplicationId { get; set; }
+    public ulong DiscordNotificationGuildId { get; set; }
+    public ulong DiscordNotificationChannelId { get; set; }
+    internal DiscordNotificationTarget ReadNotificationTarget() => new(DiscordNotificationApplicationId,
+        DiscordNotificationGuildId, DiscordNotificationChannelId);
+    internal void WriteNotificationTarget(DiscordNotificationTarget target)
+    {
+        DiscordNotificationApplicationId = target.ApplicationId;
+        DiscordNotificationGuildId = target.GuildId; DiscordNotificationChannelId = target.ChannelId;
+    }
     public bool AfkPeriodicEnabled { get; set; }
     public int AfkPeriodMinutes { get; set; } = 1;
     public bool AfkRetryEnabled { get; set; } = true;
@@ -48,6 +58,6 @@ public sealed class RelayConfiguration : IPluginConfiguration
         RememberDiscordToken = false;
         DiscordAutoConnect = false;
     }
-    // Only the DPAPI-protected token, connection preferences and AFK timing are persisted.
+    // Only the DPAPI-protected token, connection/channel preferences and AFK timing are persisted.
     // No relay key, connection code, recruitment data or PIN is saved.
 }

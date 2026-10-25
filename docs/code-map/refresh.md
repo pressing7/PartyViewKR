@@ -4,7 +4,7 @@
 
 `ListingRefreshHost`는 여러 partial 파일이 하나의 클래스/세션 상태를 공유한다. mutation counter와 phase는 호출 전에 소비한다. `False` callback 반환만 보고 실패라고 판단하지 않고 UI/저장값 readback을 검사한다.
 
-기준: 0.3.49.0 소스. 기반 main `a34099802f12d6e5c4859489472489319d146e4f` 이후 AFK 설정·Discord 수정창 닫기 변경을 포함한다. 2026-10-25 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
+기준: 0.3.50.0 소스. 기반 main `cc2f36a982bc966653efe25eba93fca74c068899` 이후 AFK 정원 도달과 Discord everyone 알림 변경을 포함한다. 2026-10-25 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
 
 표에는 직접 선언한 메서드·생성자·로컬 함수·계산 속성·인터페이스 메서드를 각각 포함한다. 자동 생성 record 메서드/단순 auto-property accessor는 제외한다. 이름 없는 LINQ/타이머/콜백은 이를 소유한 함수 설명에 포함하며, 중요한 DOM 이벤트 handler와 명명된 테스트 시나리오는 별도로 표시한다.
 

@@ -16,6 +16,7 @@ public sealed partial class Plugin
         LoadAfkSettings();
         afkHost ??= new(this);
         afk.SetEnabled(enabled, afkHost, Environment.TickCount64);
+        UpdateDiscordCompletion();
         RequestRead();
     }
 
@@ -54,6 +55,8 @@ public sealed partial class Plugin
         public bool QuerySucceeded => plugin.listingReader.LastOwnRequestSucceeded;
         public long RequestRevision => plugin.listingReader.RequestRevision;
         public long DetailRevision => plugin.listingReader.DetailRevision;
+        public int RegisteredCapacity => plugin.Listing.Slots is { CountsAgree: true, MappingValid: true } slots
+            ? slots.TotalSlots : 0;
         public bool OwnListingMatches(PartyRoster roster)
         {
             var listing = plugin.Listing;

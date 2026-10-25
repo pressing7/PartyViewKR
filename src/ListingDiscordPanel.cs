@@ -9,6 +9,8 @@ namespace PartyViewKR;
 internal sealed record DiscordInput(ulong Id, ulong ApplicationId, ulong UserId, string Command,
     string CustomId, string[] Values, Dictionary<string, string> Fields)
 {
+    internal ulong GuildId { get; init; }
+    internal ulong ChannelId { get; init; }
     internal Dictionary<string, string[]> Choices { get; init; } = [];
     internal Dictionary<string, bool> Checks { get; init; } = [];
 }
@@ -23,7 +25,7 @@ internal sealed record DiscordDecision(DiscordScreen? Screen = null, Modal? Moda
 // Editors, job details and complete results are separate messages with independent navigation.
 // Only the shared bridge may queue native game operations.
 internal sealed partial class ListingDiscordPanel(ListingWebBridge bridge, ulong applicationId, ulong ownerId,
-    ListingDiscordIcons? iconCatalog = null)
+    ListingDiscordIcons? iconCatalog = null, Func<string>? notificationStatus = null)
 {
     private const long Lifetime = 15 * 60 * 1000;
     private readonly ListingDiscordIcons icons = iconCatalog ?? new();

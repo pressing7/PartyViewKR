@@ -4,7 +4,7 @@ using Discord.WebSocket;
 
 namespace PartyViewKR;
 
-internal sealed class ListingDiscordClient : IDisposable
+internal sealed partial class ListingDiscordClient : IDisposable
 {
     private readonly CancellationTokenSource stop = new();
     private readonly DiscordSocketClient socket;
@@ -23,7 +23,9 @@ internal sealed class ListingDiscordClient : IDisposable
     internal string InviteUrl => Volatile.Read(ref inviteUrl);
     internal Task Completion => lifetime;
 
-    internal ListingDiscordClient(ListingWebBridge bridge, string token, DiscordSocketConfig? config = null)
+    internal ListingDiscordClient(ListingWebBridge bridge, string token, DiscordSocketConfig? config = null,
+        DiscordNotificationTarget? notificationTarget = null,
+        Func<DiscordNotificationTarget, CancellationToken, Task>? saveNotificationTarget = null)
     {
         Bridge = bridge;
         socket = new(config ?? new DiscordSocketConfig {
@@ -34,9 +36,10 @@ internal sealed class ListingDiscordClient : IDisposable
         socket.Connected += Reconnected;
         socket.Disconnected += Disconnected;
         socket.InteractionCreated += Interaction;
-        lifetime = Task.Run(() => Run(token));
+        lifetime = Task.Run(() => Run(token, notificationTarget, saveNotificationTarget));
     }
-    private async Task Run(string token)
+    private async Task Run(string token, DiscordNotificationTarget? notificationTarget,
+        Func<DiscordNotificationTarget, CancellationToken, Task>? saveNotificationTarget)
     {
         var stage = "봇 로그인";
         try
@@ -50,8 +53,12 @@ internal sealed class ListingDiscordClient : IDisposable
                 status = "개인 계정이 소유한 봇을 사용해 주세요. 팀 소유 앱은 지원하지 않습니다."; return;
             }
             var icons = new ListingDiscordIcons();
-            session = new(Bridge, application.Id, application.Owner.Id, stop.Token, iconCatalog: icons);
-            inviteUrl = $"https://discord.com/oauth2/authorize?client_id={application.Id}&scope=bot%20applications.commands&permissions=0";
+            notifications = new(application.Id, new NotificationTransport(this), notificationTarget,
+                saveNotificationTarget ?? ((_, _) => Task.FromException(new InvalidOperationException("Notification settings unavailable"))), stop.Token);
+            session = new(Bridge, application.Id, application.Owner.Id, stop.Token, iconCatalog: icons, notifications: notifications);
+            // View channel + send messages + mention everyone. Existing installs
+            // may grant these only in the explicitly selected notification channel.
+            inviteUrl = $"https://discord.com/oauth2/authorize?client_id={application.Id}&scope=bot%20applications.commands&permissions=134144";
             stage = "Gateway 연결 준비";
             status = "디스코드 Gateway의 연결 준비를 기다리는 중입니다.";
             await socket.StartAsync();
@@ -81,7 +88,7 @@ internal sealed class ListingDiscordClient : IDisposable
         catch (Exception e) { status = "디스코드 연결을 시작하지 못했습니다. " + FailureDetails(stage, e); }
         finally {
             token = ""; Volatile.Write(ref ready, 0); Volatile.Write(ref running, 0);
-            Bridge.Stop(); stop.Cancel(); session?.ClearIfIdle();
+            notifications?.Dispose(); Bridge.Stop(); stop.Cancel(); session?.ClearIfIdle();
             try { await socket.StopAsync(); } catch (Exception) { }
             try { await socket.LogoutAsync(); } catch (Exception) { }
             socket.Dispose();
@@ -172,7 +179,10 @@ internal sealed class ListingDiscordClient : IDisposable
             _ => null
         };
         // Never block Discord's Gateway dispatch/heartbeat waiting for the game.
-        if (input != null) _ = active.Process(input, new Response(interaction, stop.Token));
+        if (input != null) {
+            input = input with { GuildId = interaction.GuildId ?? 0, ChannelId = interaction.ChannelId ?? 0 };
+            _ = active.Process(input, new Response(interaction, stop.Token));
+        }
         return Task.CompletedTask;
     }
     private static DiscordInput ReadModal(SocketModal modal)
@@ -201,7 +211,7 @@ internal sealed class ListingDiscordClient : IDisposable
     public void Dispose()
     {
         if (Interlocked.Exchange(ref disposed, 1) != 0) return;
-        Bridge.Stop(); stop.Cancel(); session?.ClearIfIdle();
+        notifications?.Dispose(); Bridge.Stop(); stop.Cancel(); session?.ClearIfIdle();
         // Network teardown is async; do not stall Dalamud's framework thread.
         _ = lifetime.ContinueWith(_ => stop.Dispose(), TaskScheduler.Default);
     }
