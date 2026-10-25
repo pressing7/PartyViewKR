@@ -7,6 +7,9 @@
   <ItemGroup>
     <Compile Include="../src/PartyRoster.cs" Link="PartyRoster.cs" />
     <Compile Include="../src/AfkListingMonitor.cs" Link="AfkListingMonitor.cs" />
+    <Compile Include="../src/AfkSettings.cs" Link="AfkSettings.cs" />
+    <Compile Include="../src/ListingWebBridge.Recovery.cs" Link="ListingWebBridge.Recovery.cs" />
+    <Compile Include="../src/ListingDiscordSession.Recovery.cs" Link="ListingDiscordSession.Recovery.cs" />
     <PackageReference Include="Discord.Net.WebSocket" Version="3.20.2" />
     <Compile Include="../src/RelayConfiguration.cs" Link="RelayConfiguration.cs" />
     <Compile Include="../src/ListingDiscordPanel.cs" Link="ListingDiscordPanel.cs" />

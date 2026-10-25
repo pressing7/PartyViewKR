@@ -12,7 +12,7 @@ internal sealed record DiscordInput(ulong Id, ulong ApplicationId, ulong UserId,
     internal Dictionary<string, string[]> Choices { get; init; } = [];
     internal Dictionary<string, bool> Checks { get; init; } = [];
 }
-internal sealed record DiscordWork(bool Query, string Id, string Session, byte[]? Body);
+internal sealed record DiscordWork(bool Query, string Id, string Session, byte[]? Body, long RecoveryRevision = 0);
 internal sealed record DiscordScreen(string Text, MessageComponent Components)
 {
     internal bool HasControls => ListingDiscordCard.Walk(Components.Components).Any(c => c is ButtonComponent or SelectMenuComponent);
@@ -68,7 +68,7 @@ internal sealed partial class ListingDiscordPanel(ListingWebBridge bridge, ulong
         if (input.Command == "pvkr") {
             if (editor is { Changes.Count: > 0 }) return new(Render(editor, now, "작성 중인 편집 카드를 다시 열었습니다."), Replace: false);
             Clear();
-            return current.CanQuery ? new(Work: new(true, RequestId(input.Id), current.Session, null)) : Complete(now);
+            return current.CanQuery ? new(Work: new(true, RequestId(input.Id), current.Session, null, bridge.RecoveryRevision)) : Complete(now);
         }
         if (input.Command.Length > 0) return Error("지원하지 않는 명령입니다.");
         var parts = input.CustomId.Split(':');
@@ -91,7 +91,7 @@ internal sealed partial class ListingDiscordPanel(ListingWebBridge bridge, ulong
             return Error("새 편집 카드에 변경사항이 있습니다. 편집 카드에서 ‘적용 및 갱신’을 눌러 주세요.");
         if (action == "query" && p.Kind == PanelKind.Overview) {
             if (!current.CanQuery) return Error(current.Reason);
-            Clear(); return new(Work: new(true, RequestId(input.Id), current.Session, null));
+            Clear(); return new(Work: new(true, RequestId(input.Id), current.Session, null, bridge.RecoveryRevision));
         }
         if (action == "group") {
             if (p.Kind == PanelKind.Overview) return Error("조회 카드에는 모든 파티를 표시합니다. 직업 상세에서 파티를 선택해 주세요.");
@@ -121,7 +121,7 @@ internal sealed partial class ListingDiscordPanel(ListingWebBridge bridge, ulong
             if (!current.CanRefresh) return Error(current.RefreshReason);
             if (p.Changes.Values.Any(c => c["field"]?.GetValue<string>() == "job" && c["jobs"]!.AsArray().Count == 0)) return Error("각 자리의 허용 직업을 하나 이상 선택해 주세요.");
             var body = JsonSerializer.SerializeToUtf8Bytes(new { revision = model.Revision, changes = p.Changes.Values.ToArray() });
-            Clear(); return new(Work: new(false, RequestId(input.Id), current.Session, body));
+            Clear(); return new(Work: new(false, RequestId(input.Id), current.Session, body, bridge.RecoveryRevision));
         }
         if (!p.Editing) return Error("‘수정’을 눌러 새 편집 카드를 열어 주세요.");
         if (action == "form" && parts.Length == 4) {
@@ -161,7 +161,7 @@ internal sealed partial class ListingDiscordPanel(ListingWebBridge bridge, ulong
         return Error("지원하지 않는 조작입니다. /pvkr로 다시 열어 주세요.");
     }
 
-    internal WebReply Start(DiscordWork work, long now) => work.Query ? bridge.QueueQuery(work.Id, work.Session, now) : bridge.QueueApply(work.Id, work.Session, work.Body ?? [], now);
+    internal WebReply Start(DiscordWork work, long now) => work.Query ? bridge.QueueQuery(work.Id, work.Session, now, work.RecoveryRevision) : bridge.QueueApply(work.Id, work.Session, work.Body ?? [], now, work.RecoveryRevision);
     internal WebReply Progress(DiscordWork work) => work.Query ? bridge.ReadQuery(work.Id) : bridge.ReadOperation(work.Id);
     internal DiscordDecision Complete(long now, string notice = "")
     {

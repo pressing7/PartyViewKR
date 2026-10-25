@@ -48,7 +48,7 @@ internal sealed partial class ListingWebBridge
         lock (gate) return history.TryGetValue(id, out var query) ? new(200, query) : Error(404, "해당 조회 요청을 찾지 못했습니다.");
     }
 
-    internal WebReply QueueQuery(string id, string session, long now)
+    internal WebReply QueueQuery(string id, string session, long now, long? recoveryRevision = null)
     {
         lock (gate)
         {
@@ -57,8 +57,9 @@ internal sealed partial class ListingWebBridge
             id = parsed.ToString("D");
             if (session != view.Session) return Error(409, "게임 접속 상태가 바뀌었습니다. 화면을 다시 확인해 주세요.");
             if (history.TryGetValue(id, out var existing)) return new(200, existing);
+            if (recoveryRevision.HasValue && recoveryRevision != this.recoveryRevision) return Error(409, "수정창 닫기 요청으로 이전 작업을 중단했습니다.");
             if (now - publishedTick > 5000) return Error(409, "게임 응답을 기다리는 중입니다.");
-            if (!view.CanQuery || Active || WriteActive) return Error(409, view.Reason.Length > 0 ? view.Reason : "다른 작업을 처리하는 중입니다.");
+            if (!view.CanQuery || Active || WriteActive || RecoveryActive) return Error(409, view.Reason.Length > 0 ? view.Reason : "다른 작업을 처리하는 중입니다.");
             if (now < nextQueryTick) return Error(429, "잠시 후 다시 조회해 주세요.");
             requestedTick = now; nextQueryTick = now + 2000;
             SetQuery(new(id, "queued", "게임에 조회를 요청하는 중입니다."));
@@ -79,8 +80,10 @@ internal sealed partial class ListingWebBridge
                 self = currentSelf;
                 history.Clear(); historyOrder.Clear(); nextQueryTick = 0;
                 ClearEdits();
+                ClearRecovery();
                 view = Empty("게임 접속 상태가 바뀌었습니다.");
             }
+            ProcessRecovery(host as IListingRecoveryHost, now);
             var listing = self != 0 && host.Listing.ViewerContentId == self ? host.Listing : ListingSnapshot.Empty;
             // Do not execute an old request after the game has been paused or
             // its framework thread has stalled. Character changes clear it too.
@@ -108,7 +111,7 @@ internal sealed partial class ListingWebBridge
                     SetQuery(running with { State = "failed", Message = "내 모집글 조회를 확인하지 못했습니다. 게임의 모집 상태를 확인해 주세요." });
             }
             UpdateOperation(host as IListingWebEditHost, now);
-            var reason = host.QueryBlockReason ?? (WriteActive ? "갱신 요청을 처리하는 중입니다." : Active ? "조회 요청을 처리하는 중입니다." : "");
+            var reason = RecoveryActive ? "수정창을 닫는 중입니다." : host.QueryBlockReason ?? (WriteActive ? "갱신 요청을 처리하는 중입니다." : Active ? "조회 요청을 처리하는 중입니다." : "");
             var loggedIn = self != 0;
             if (!loggedIn) reason = "게임에 로그인해 주세요.";
             view = view with {
@@ -142,6 +145,7 @@ internal sealed partial class ListingWebBridge
         {
             stopped = true; self = 0; history.Clear(); historyOrder.Clear();
             ClearEdits();
+            ClearRecovery();
             view = Empty("브라우저 조회가 꺼져 있습니다."); Serialize();
         }
     }

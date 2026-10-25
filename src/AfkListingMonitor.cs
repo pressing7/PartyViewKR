@@ -19,7 +19,6 @@ internal interface IAfkListingHost
 // editing/submit/refresh capability in its host contract.
 internal sealed class AfkListingMonitor
 {
-    internal const long SupplementInterval = 60000;
     private const long QueryTimeout = 15000;
     private const long MinimumQueryInterval = 2000;
     private readonly ListingWebRequestGuard ownedQuery = new();
@@ -28,6 +27,9 @@ internal sealed class AfkListingMonitor
     private long generation, requestedGeneration, requestRevision = -1, detailBefore;
     private long started, nextAttempt, nextSupplement;
     private bool readable;
+    private bool failed;
+    private long confirmedGeneration, failedGeneration;
+    internal AfkSettings Settings { get; private set; } = new();
     private int failures, queries, successes, changes;
     internal bool Enabled { get; private set; }
     internal bool Pending { get; private set; }
@@ -36,7 +38,25 @@ internal sealed class AfkListingMonitor
     internal string Diagnostic => $"afkEnabled={Enabled}; afkPending={Pending}; afkInFlight={InFlight}; " +
         $"afkRosterReadable={readable}; afkMemberCount={observed?.Count ?? 0}; afkChanges={changes}; " +
         $"afkQueryCalls={queries}; afkSuccesses={successes}; afkFailures={failures}; " +
-        $"afkGeneration={generation}; afkRequestedGeneration={requestedGeneration}; afkSupplementMs={SupplementInterval}";
+        $"afkGeneration={generation}; afkRequestedGeneration={requestedGeneration}; " +
+        $"afkPeriodicEnabled={Settings.PeriodicEnabled}; afkPeriodMinutes={Settings.PeriodMinutes}; " +
+        $"afkRetryEnabled={Settings.RetryEnabled}; afkRetrySeconds={Settings.RetrySeconds}; afkFailed={failed}";
+
+    internal void Configure(AfkSettings settings, long now)
+    {
+        settings = settings.Normalize();
+        if (settings.PeriodicEnabled != Settings.PeriodicEnabled || settings.PeriodMinutes != Settings.PeriodMinutes)
+            nextSupplement = now + settings.PeriodMilliseconds;
+        if (failed && (settings.RetryEnabled != Settings.RetryEnabled || settings.RetrySeconds != Settings.RetrySeconds))
+        {
+            nextAttempt = now + settings.RetryMilliseconds;
+            Status = settings.RetryEnabled ? $"조회 실패 · {settings.RetrySeconds}초 후 재시도합니다." : "조회 실패 · 자동 재시도가 꺼져 있습니다.";
+        }
+        Settings = settings;
+    }
+
+    private string Watching => $"명단 감시 중 · {observed!.Count}명" +
+        (Settings.PeriodicEnabled ? $" · {Settings.PeriodMinutes}분마다 추가 조회" : " · 주기 조회 꺼짐");
 
     internal bool SetEnabled(bool enabled, IAfkListingHost host, long now)
     {
@@ -46,8 +66,9 @@ internal sealed class AfkListingMonitor
         CancelOwned(host);
         Enabled = enabled; Pending = enabled; self = enabled ? host.SelfId : 0;
         observed = null; readable = false; generation = requestedGeneration = 0;
+        confirmedGeneration = failedGeneration = 0; failed = false;
         failures = queries = successes = changes = 0;
-        nextAttempt = now; nextSupplement = now + SupplementInterval;
+        nextAttempt = now; nextSupplement = now + Settings.PeriodMilliseconds;
         Status = enabled ? "명단을 읽고 내 모집글을 조회합니다." : "AFK 모드가 꺼져 있습니다.";
         return true;
     }
@@ -79,7 +100,9 @@ internal sealed class AfkListingMonitor
         }
         else if (readable) { generation++; Pending = true; }
         readable = hasRoster;
-        if (now >= nextSupplement) Pending = true;
+        var periodicDue = Settings.PeriodicEnabled && now >= nextSupplement;
+        if (failed && generation != failedGeneration) { failed = false; nextAttempt = now; }
+        Pending = InFlight || generation != confirmedGeneration || failed || periodicDue;
 
         if (InFlight)
         {
@@ -99,11 +122,12 @@ internal sealed class AfkListingMonitor
                 readable && host.OwnListingMatches(observed!))
             {
                 ownedQuery.Clear(); requestRevision = -1;
-                successes++; failures = 0; nextSupplement = now + SupplementInterval;
+                successes++; failures = 0; failed = false; nextSupplement = now + Settings.PeriodMilliseconds;
+                confirmedGeneration = requestedGeneration;
                 nextAttempt = now + MinimumQueryInterval;
                 // A -> B -> A while the request was running is still a change.
                 Pending = generation != requestedGeneration;
-                Status = Pending ? "조회 중 명단이 바뀌어 다시 확인합니다." : $"명단 감시 중 · {observed!.Count}명 · 60초마다 보완 조회";
+                Status = Pending ? "조회 중 명단이 바뀌어 다시 확인합니다." : Watching;
             }
             else if (now - started >= QueryTimeout)
             {
@@ -115,12 +139,15 @@ internal sealed class AfkListingMonitor
         }
 
         if (!readable) { Status = "명단을 읽을 수 없어 마지막 정상 명단을 유지합니다."; return; }
-        if (!Pending) { Status = $"명단 감시 중 · {observed!.Count}명 · 60초마다 보완 조회"; return; }
-        if (now < nextAttempt) return;
+        if (!Pending) { Status = Watching; return; }
+        if (failed && !Settings.RetryEnabled && !periodicDue)
+        { Status = "조회 실패 · 자동 재시도 꺼짐 · " + (Settings.PeriodicEnabled ? "새 명단 변화 또는 주기 조회 대기" : "새 명단 변화 대기"); return; }
+        if (now < nextAttempt && !periodicDue) return;
         if (host.QueryBlockReason(false) is { } reason)
         { Status = "자동 조회 대기 · " + reason; return; }
 
         detailBefore = host.DetailRevision; requestedGeneration = generation; started = now;
+        nextSupplement = now + Settings.PeriodMilliseconds;
         nextAttempt = now + MinimumQueryInterval; queries++;
         var before = host.RequestRevision;
         try
@@ -171,9 +198,11 @@ internal sealed class AfkListingMonitor
     private void Retry(long now, string message)
     {
         Pending = true;
+        failed = true; failedGeneration = generation;
         failures = Math.Min(failures + 1, 5);
-        var wait = Math.Min(60000, 5000L << (failures - 1));
+        var wait = Settings.RetryMilliseconds;
         nextAttempt = now + wait;
-        Status = $"{message} ({wait / 1000}초 후 재시도)";
+        nextSupplement = now + Settings.PeriodMilliseconds;
+        Status = Settings.RetryEnabled ? $"{message} ({wait / 1000}초 후 재시도)" : "조회 실패 · 자동 재시도가 꺼져 있습니다.";
     }
 }

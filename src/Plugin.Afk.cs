@@ -5,14 +5,41 @@ public sealed partial class Plugin
     private readonly AfkListingMonitor afk = new();
     private readonly PartyRosterReader afkReader = new();
     private AfkHost? afkHost;
+    private bool afkSettingsLoaded;
+    internal string AfkSettingsError { get; private set; } = "";
+    internal AfkSettings AfkOptions { get { LoadAfkSettings(); return afk.Settings; } }
     internal bool AfkEnabled => afk.Enabled;
     internal string AfkStatus => afk.Status;
 
     internal void SetAfkEnabled(bool enabled)
     {
+        LoadAfkSettings();
         afkHost ??= new(this);
         afk.SetEnabled(enabled, afkHost, Environment.TickCount64);
         RequestRead();
+    }
+
+    private void LoadAfkSettings()
+    {
+        if (afkSettingsLoaded) return;
+        afkSettingsLoaded = true;
+        try {
+            var config = PluginInterface.GetPluginConfig() as RelayConfiguration ?? new();
+            afk.Configure(config.ReadAfkSettings(), Environment.TickCount64);
+        }
+        catch (Exception) { AfkSettingsError = "AFK 설정을 읽지 못해 기본값을 사용합니다."; }
+    }
+
+    internal void SaveAfkSettings(AfkSettings settings)
+    {
+        LoadAfkSettings();
+        try {
+            var config = PluginInterface.GetPluginConfig() as RelayConfiguration ?? new();
+            config.WriteAfkSettings(settings); PluginInterface.SavePluginConfig(config);
+            afk.Configure(config.ReadAfkSettings(), Environment.TickCount64);
+            AfkSettingsError = ""; RequestRead();
+        }
+        catch (Exception) { AfkSettingsError = "AFK 설정을 저장하지 못했습니다. 다시 시도해 주세요."; }
     }
 
     private sealed class AfkHost(Plugin plugin) : IAfkListingHost

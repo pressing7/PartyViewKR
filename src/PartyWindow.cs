@@ -63,7 +63,26 @@ internal sealed class PartyWindow : Window
         if (enabled)
         {
             ImGui.TextWrapped(plugin.AfkStatus);
-            ImGui.TextDisabled("명단 변화 시 조회 · 60초마다 보완 조회 · 직업 변경은 비교하지 않음");
+            ImGui.TextDisabled("명단 변화 시 조회 · 직업 변경은 비교하지 않음");
+        }
+        if (ImGui.TreeNode("AFK 조회 설정"))
+        {
+            var settings = plugin.AfkOptions;
+            var periodic = settings.PeriodicEnabled; var minutes = settings.PeriodMinutes;
+            var retry = settings.RetryEnabled; var seconds = settings.RetrySeconds;
+            var changed = ImGui.Checkbox("주기적으로 추가 조회", ref periodic);
+            ImGui.BeginDisabled(!periodic);
+            ImGui.SetNextItemWidth(160);
+            changed |= ImGui.InputInt("조회 주기 (1~55분)", ref minutes);
+            ImGui.EndDisabled();
+            changed |= ImGui.Checkbox("조회 실패 시 자동 재시도", ref retry);
+            ImGui.BeginDisabled(!retry);
+            ImGui.SetNextItemWidth(160);
+            changed |= ImGui.InputInt("재시도 대기 (1~3600초)", ref seconds);
+            ImGui.EndDisabled();
+            if (changed) plugin.SaveAfkSettings(new(periodic, minutes, retry, seconds));
+            if (plugin.AfkSettingsError.Length > 0) ImGui.TextWrapped(plugin.AfkSettingsError);
+            ImGui.TreePop();
         }
         ImGui.Separator();
     }

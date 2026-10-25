@@ -4,9 +4,10 @@ static class AfkListingMonitorTests
 {
     internal static void Run(Action<string, Action> test, Action<bool, string> check)
     {
-        (AfkListingMonitor m, AfkFakeHost h) Start(bool complete = false)
+        (AfkListingMonitor m, AfkFakeHost h) Start(bool complete = false, AfkSettings? settings = null)
         {
             var h = new AfkFakeHost(); var m = new AfkListingMonitor();
+            if (settings != null) m.Configure(settings, 0);
             check(m.SetEnabled(true, h, 0), "enable"); m.Update(h, 0);
             if (complete) { h.Complete(); m.Update(h, 1000); }
             return (m, h);
@@ -70,7 +71,7 @@ static class AfkListingMonitorTests
             check(h.Queries == 2 && !m.Pending, "followup not completed");
         });
         test("AFK supplement catches unobserved leave and rejoin with unchanged identities", () => {
-            var (m, h) = Start(true);
+            var (m, h) = Start(true, new(PeriodicEnabled: true));
             m.Update(h, 60999); check(h.Queries == 1, "early supplement");
             m.Update(h, 61000); check(h.Queries == 2 && m.Pending, "missing periodic supplement");
             h.Complete(); m.Update(h, 61500); m.Update(h, 121499);
@@ -84,11 +85,11 @@ static class AfkListingMonitorTests
             m.Update(h, 5500); check(h.Queries == 2, "no retry on unchanged roster");
             h.Complete(); m.Update(h, 6000); check(!m.Pending, "retry success not consumed");
         });
-        test("AFK repeated start failures back off and retain pending work", () => {
+        test("AFK repeated start failures use the configured fixed delay", () => {
             var h = new AfkFakeHost { Reject = true }; var m = new AfkListingMonitor(); m.SetEnabled(true, h, 0);
             m.Update(h, 0); m.Update(h, 4999); check(h.Queries == 1, "first backoff");
-            m.Update(h, 5000); m.Update(h, 14999); check(h.Queries == 2, "second backoff");
-            m.Update(h, 15000); check(h.Queries == 3 && m.Pending, "retry pending lost");
+            m.Update(h, 5000); m.Update(h, 9999); check(h.Queries == 2, "second fixed delay");
+            m.Update(h, 10000); check(h.Queries == 3 && m.Pending, "retry pending lost");
         });
         test("AFK editor or manual work defers pending queries", () => {
             var h = new AfkFakeHost { Blocked = "busy" }; var m = new AfkListingMonitor(); m.SetEnabled(true, h, 0);

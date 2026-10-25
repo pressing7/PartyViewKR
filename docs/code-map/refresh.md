@@ -4,7 +4,7 @@
 
 `ListingRefreshHost`는 여러 partial 파일이 하나의 클래스/세션 상태를 공유한다. mutation counter와 phase는 호출 전에 소비한다. `False` callback 반환만 보고 실패라고 판단하지 않고 UI/저장값 readback을 검사한다.
 
-기준: 0.3.48.0 소스. 기반 main `1ef1c969e8dea0d58babf71a80698880b8fcc0dc` 이후 AFK 감시 변경을 포함한다. 2026-10-25 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
+기준: 0.3.49.0 소스. 기반 main `a34099802f12d6e5c4859489472489319d146e4f` 이후 AFK 설정·Discord 수정창 닫기 변경을 포함한다. 2026-10-25 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
 
 표에는 직접 선언한 메서드·생성자·로컬 함수·계산 속성·인터페이스 메서드를 각각 포함한다. 자동 생성 record 메서드/단순 auto-property accessor는 제외한다. 이름 없는 LINQ/타이머/콜백은 이를 소유한 함수 설명에 포함하며, 중요한 DOM 이벤트 handler와 명명된 테스트 시나리오는 별도로 표시한다.
 
@@ -23,6 +23,7 @@
 - [src/ListingRuleEditHost.cs](#file-src-listingruleedithost-cs)
 - [src/ListingSlotEditHost.cs](#file-src-listingslotedithost-cs)
 - [src/ListingUniqueJobsEditHost.cs](#file-src-listinguniquejobsedithost-cs)
+- [src/Plugin.Recovery.cs](#file-src-plugin-recovery-cs)
 
 <a id="file-src-listingbatchedithost-cs"></a>
 ## src/ListingBatchEditHost.cs
@@ -354,3 +355,24 @@
 | <a id="symbol-src-listinguniquejobsedithost-cs-93-c457f6dc06"></a><code>ListingRefreshHost.ValidateUniqueJobsGuard</code><br><code>bool ValidateUniqueJobsGuard(AddonLookingForGroupCondition* addon, AgentLookingForGroup* agent, UniqueJobsSession session, bool final, out AtkEvent clickEvent, out string error)</code> | 메서드 | 같은 캐릭터·Addon/Agent/컨트롤 주소·닫힘 revision·Refresh 모드와 변경 제외 필드를 검사한다. final이면 잡 중복 없음 UI/저장값 일치까지 요구한다. | [L93](../../src/ListingUniqueJobsEditHost.cs#L93) |
 | <a id="symbol-src-listinguniquejobsedithost-cs-121-4b6f89bef8"></a><code>ListingRefreshHost.ReadUniqueJobsControl</code><br><code>bool ReadUniqueJobsControl(AddonLookingForGroupCondition* addon, AgentLookingForGroup* agent, out AtkComponentCheckBox* checkbox, out CheckboxUiState state, out AtkEvent clickEvent, out string error)</code> | 메서드 | 잡 중복 없음 컨트롤의 포인터·소유관계·표시·활성·등록 event 경로를 확인하고 관리형 UI state를 읽는다. 사용할 수 없으면 원인 코드를 남긴다. | [L121](../../src/ListingUniqueJobsEditHost.cs#L121) |
 | <a id="symbol-src-listinguniquejobsedithost-cs-139-4a421fcabd"></a><code>ListingRefreshHost.UniqueJobsInvariant</code><br><code>string UniqueJobsInvariant(AgentLookingForGroup* agent)</code> | 메서드 | DraftInvariant에서 잡 중복 없음로 변경할 필드만 제외하고 모든 슬롯 raw mask를 추가해 다른 조건의 변경을 탐지한다. | [L139](../../src/ListingUniqueJobsEditHost.cs#L139) |
+
+<a id="file-src-plugin-recovery-cs"></a>
+## src/Plugin.Recovery.cs
+
+[소스 파일](../../src/Plugin.Recovery.cs) · 명명된 항목/진입점 11개
+
+디스코드 닫기 queue를 실제 게임 창에 연결한다. 반복 중단/제출 기능이 아니라 사용자가 명시적으로 요청한 모집 수정창 닫기만 수행한다.
+
+| 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
+|---|---|---|---|
+| <a id="symbol-src-plugin-recovery-cs-8-f19e6d478b"></a><code>Plugin.ActiveBridge</code><br><code>ListingWebBridge? ActiveBridge</code> | 계산 속성 | 현재 활성 loopback/relay/Discord bridge 하나를 반환한다. 계산식: <code>WebEnabled ? webServer!.Bridge : RelayEnabled ? relayClient!.Bridge : DiscordEnabled ? discordClient!.Bridge : null</code>. | [L8](../../src/Plugin.Recovery.cs#L8) |
+| <a id="symbol-src-plugin-recovery-cs-9-648322ef0d"></a><code>Plugin.Recovering</code><br><code>bool Recovering</code> | 계산 속성 | 현재 bridge에 처리 중인 닫기가 있는지 확인해 새 query 및 일반 refresh 진행을 막는다. 계산식: <code>ActiveBridge?.RecoveryActive == true</code>. | [L9](../../src/Plugin.Recovery.cs#L9) |
+| <a id="symbol-src-plugin-recovery-cs-10-c5351a63d2"></a><code>Plugin.ProcessRecovery</code><br><code>void ProcessRecovery(long now)</code> | 메서드 | 활성 bridge의 우선 닫기 처리를 실제 WebHost로 호출한다. OnUpdate에서 일반 읽기와 제출보다 먼저 실행된다. | [L10](../../src/Plugin.Recovery.cs#L10) |
+| <a id="symbol-src-plugin-recovery-cs-15-cea548fb47"></a><code>Plugin.StopForRecovery</code><br><code>void StopForRecovery()</code> | 메서드 | Refresh/ListingReader/수동 trace를 중단하고 편집 진입 예약·PVKR 초안·대기 변경을 비운다. 이미 제출된 게임 변경은 되돌리지 않는다. | [L15](../../src/Plugin.Recovery.cs#L15) |
+| <a id="symbol-src-plugin-recovery-cs-28-69be75cc88"></a><code>Plugin.WebHost.RecoveryBlockReason</code><br><code>string? RecoveryBlockReason</code> | 계산 속성 | 종료·로그인·ABI·지역 이동을 검사한다. 일반 query의 editor-visible/busy 차단을 재사용하지 않아 막힌 수정창도 닫을 수 있다. | [L28](../../src/Plugin.Recovery.cs#L28) |
+| <a id="symbol-src-plugin-recovery-cs-32-79b58e2a62"></a><code>Plugin.WebHost.StopForRecovery</code><br><code>void StopForRecovery()</code> | 메서드 | Plugin의 중단 작업 후 외부 query/refresh 소유 guard를 해제한다. | [L32](../../src/Plugin.Recovery.cs#L32) |
+| <a id="symbol-src-plugin-recovery-cs-33-5c6cb3783c"></a><code>Plugin.WebHost.ReadRecoveryWindows</code><br><code>bool ReadRecoveryWindows(out RecruitmentWindows windows)</code> | 메서드 | 게임 스레드에서 native refresh host의 창 ticket 읽기를 연결한다. | [L33](../../src/Plugin.Recovery.cs#L33) |
+| <a id="symbol-src-plugin-recovery-cs-34-e8adb25707"></a><code>Plugin.WebHost.CloseRecoveryWindow</code><br><code>bool CloseRecoveryWindow(RecruitmentWindow kind, RecruitmentWindowTicket ticket, out string error)</code> | 메서드 | 지정한 종류/ticket의 닫기1회를 native host에 연결한다. | [L34](../../src/Plugin.Recovery.cs#L34) |
+| <a id="symbol-src-plugin-recovery-cs-41-951c681a9a"></a><code>ListingRefreshHost.ReadRecoveryWindows</code><br><code>bool ReadRecoveryWindows(out RecruitmentWindows windows)</code> | 메서드 | 두 모집 관련 창의 안전한 ticket 읽기가 모두 성공했을 때 상태를 반환한다. | [L41](../../src/Plugin.Recovery.cs#L41) |
+| <a id="symbol-src-plugin-recovery-cs-48-7e6ef6f7ce"></a><code>ListingRefreshHost.ReadRecoveryWindow</code><br><code>bool ReadRecoveryWindow(RecruitmentWindow kind, out RecruitmentWindowTicket ticket)</code> | 메서드 | 정해진 모집 수정창/직업 선택창만 찾고 포인터 읽기·표시 상태와 PreFinalize revision을 기록한다. 없는 창은0 ticket이다. | [L48](../../src/Plugin.Recovery.cs#L48) |
+| <a id="symbol-src-plugin-recovery-cs-59-b2a2685f2a"></a><code>ListingRefreshHost.CloseRecoveryWindow</code><br><code>bool CloseRecoveryWindow(RecruitmentWindow kind, RecruitmentWindowTicket ticket, out string error)</code> | 메서드 | 호환성·같은 ticket·준비 상태·vtable 읽기를 재검사한 뒤 AtkUnitBase.Close(true)를 호출한다. 갱신/생성/다른 확인창 버튼은 누르지 않는다. | [L59](../../src/Plugin.Recovery.cs#L59) |

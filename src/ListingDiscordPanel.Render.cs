@@ -13,7 +13,8 @@ internal sealed partial class ListingDiscordPanel
         if (p.Kind == PanelKind.Overview) {
             card.Row(Button(p, "query", "조회", disabled: !p.View.CanQuery),
                 Button(p, "apply", "갱신", ButtonStyle.Success, !p.View.CanRefresh),
-                Button(p, "settings", "수정", ButtonStyle.Primary, p.View.Editor == null || !p.View.CanRefresh));
+                Button(p, "settings", "수정", ButtonStyle.Primary, p.View.Editor == null || !p.View.CanRefresh),
+                CloseButton(p.View.Session, !p.View.LoggedIn));
         } else card.Text(p.Editing ? "## PVKR · 모집 수정" : "## PVKR · 직업 상세");
         if (notice.Length > 0) card.Text(Escape(notice));
         if (p.Kind == PanelKind.Overview && p.ResultPages.Length > 0)
@@ -101,6 +102,14 @@ internal sealed partial class ListingDiscordPanel
 
     private static ButtonBuilder Button(Panel p, string action, string label, ButtonStyle style = ButtonStyle.Secondary, bool disabled = false) =>
         new(label, Id(p, action), style, isDisabled: disabled);
+    internal const string ClosePrefix = "pvkr:close:";
+    internal static ButtonBuilder CloseButton(string session, bool disabled = false) =>
+        new("수정창 닫기", ClosePrefix + session, ButtonStyle.Secondary, isDisabled: disabled);
+    internal static DiscordScreen RecoveryMessage(string message, string session)
+    {
+        var card = new ListingDiscordCard(new Color(0x5865F2));
+        card.Text(message); card.Row(CloseButton(session)); return card.Build();
+    }
     private static void GroupMenu(ListingDiscordCard card, Panel p)
     {
         var groups = p.View.Listing?.Groups ?? [];

@@ -271,7 +271,9 @@ static partial class ListingDiscordTests
         public Task Modal(Modal modal) => Task.CompletedTask;
         public Task Screen(DiscordScreen screen, bool replace, bool deferred) {
             Last = screen;
-            if (deferred && !screen.HasControls) OnProgress?.Invoke();
+            if (deferred && (!screen.HasControls || ListingDiscordCard.Walk(screen.Components.Components)
+                .OfType<ButtonComponent>().Any(b => b.CustomId.StartsWith(ListingDiscordPanel.ClosePrefix, StringComparison.Ordinal)) &&
+                !ListingDiscordCard.Walk(screen.Components.Components).OfType<ButtonComponent>().Any(b => b.CustomId.EndsWith(":query", StringComparison.Ordinal)))) OnProgress?.Invoke();
             return Task.CompletedTask;
         }
     }

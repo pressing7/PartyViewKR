@@ -13,7 +13,7 @@ internal interface IDiscordResponse
 
 // One editor per personal bot. This class is independent of the Gateway so ACK
 // failures, repeated events and shutdown can be tested without a real token.
-internal sealed class ListingDiscordSession(ListingWebBridge bridge, ulong appId, ulong ownerId,
+internal sealed partial class ListingDiscordSession(ListingWebBridge bridge, ulong appId, ulong ownerId,
     CancellationToken cancellation, Func<long>? clock = null, ListingDiscordIcons? iconCatalog = null)
 {
     private readonly ListingDiscordPanel panel = new(bridge, appId, ownerId, iconCatalog);
@@ -29,16 +29,18 @@ internal sealed class ListingDiscordSession(ListingWebBridge bridge, ulong appId
         if (!panel.Authorized(input)) {
             await SafeScreen(response, Message("이 개인 봇은 봇 소유자만 사용할 수 있습니다.")); return;
         }
+        // Recovery must remain usable even while another interaction is polling
+        // the game or waiting for a failed Discord response.
+        if (input.Command.Length == 0 && input.CustomId.StartsWith(ListingDiscordPanel.ClosePrefix, StringComparison.Ordinal))
+        { await CloseEditor(input, response); return; }
         if (Interlocked.CompareExchange(ref handling, 1, 0) != 0) {
-            await SafeScreen(response, Message("앞선 요청을 처리 중입니다. 완료 후 다시 눌러 주세요.")); return;
+            await SafeScreen(response, ListingDiscordPanel.RecoveryMessage("앞선 요청을 처리 중입니다.", bridge.ReadView().Session)); return;
         }
         DiscordWork? work = null;
         var deferred = false;
         try
         {
-            if (!seen.Add(input.Id)) { await SafeScreen(response, Message("이미 접수한 요청입니다.")); return; }
-            seenOrder.Enqueue(input.Id);
-            while (seenOrder.Count > 1024) seen.Remove(seenOrder.Dequeue());
+            if (!Remember(input.Id)) { await SafeScreen(response, Message("이미 접수한 요청입니다.")); return; }
             var decision = panel.Handle(input, Now);
             if (decision.Modal != null) { await response.Modal(decision.Modal); return; }
             work = decision.Work;
@@ -52,7 +54,7 @@ internal sealed class ListingDiscordSession(ListingWebBridge bridge, ulong appId
             var reply = panel.Start(work, Now);
             if (work.Body != null) CryptographicOperations.ZeroMemory(work.Body);
             if (Pending(reply)) {
-                await response.Screen(Message(work.Query ? "게임에서 내 모집글을 조회하고 있습니다." : "변경사항을 적용하고 모집글을 갱신하고 있습니다."), true, true);
+                await response.Screen(ListingDiscordPanel.RecoveryMessage(work.Query ? "게임에서 내 모집글을 조회하고 있습니다." : "변경사항을 적용하고 모집글을 갱신하고 있습니다.", work.Session), true, true);
                 var started = Environment.TickCount64;
                 do {
                     await Task.Delay(400, cancellation);
@@ -91,12 +93,13 @@ internal sealed class ListingDiscordSession(ListingWebBridge bridge, ulong appId
         if (cancellation.IsCancellationRequested) return;
         try { await response.Screen(screen, false, deferred); } catch (Exception) { }
     }
-    private static bool Pending(WebReply reply) => reply.Body is WebQuery { State: "queued" or "running" } or WebOperation { State: "queued" or "running" };
+    private static bool Pending(WebReply reply) => reply.Body is WebQuery { State: "queued" or "running" } or WebOperation { State: "queued" or "running" } or WebRecovery { State: "queued" or "running" };
     internal static string ResultSummary(WebOperation operation) => operation.Results.Length == 0 ? "" :
         $"적용 {operation.Results.Count(r => r.Applied == true)}개 · 미적용 {operation.Results.Count(r => r.Applied == false)}개 · 확인 필요 {operation.Results.Count(r => r.Applied == null)}개";
     internal static string Describe(WebReply reply)
     {
         if (reply.Body is WebQuery query) return query.Message;
+        if (reply.Body is WebRecovery recovery) return recovery.Message;
         if (reply.Body is WebOperation operation) {
             var summary = ResultSummary(operation);
             return (summary.Length > 0 ? summary + "\n" : "") + operation.Message +

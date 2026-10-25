@@ -24,7 +24,7 @@ internal sealed partial class ListingWebBridge
         }
     }
 
-    internal WebReply QueueApply(string id, string session, ReadOnlyMemory<byte> body, long now)
+    internal WebReply QueueApply(string id, string session, ReadOnlyMemory<byte> body, long now, long? recoveryRevision = null)
     {
         lock (gate)
         {
@@ -33,8 +33,9 @@ internal sealed partial class ListingWebBridge
             id = parsed.ToString("D");
             if (session != view.Session) return Error(409, "게임 접속 상태가 바뀌었습니다. 화면을 다시 확인해 주세요.");
             if (writeIds.Contains(id)) return ReadOperation(id);
+            if (recoveryRevision.HasValue && recoveryRevision != this.recoveryRevision) return Error(409, "수정창 닫기 요청으로 이전 작업을 중단했습니다.");
             if (now - publishedTick > 5000) return Error(409, "게임 응답을 기다리는 중입니다.");
-            if (!view.CanRefresh || Active || WriteActive || source == null)
+            if (!view.CanRefresh || Active || WriteActive || RecoveryActive || source == null)
                 return Error(409, view.RefreshReason.Length > 0 ? view.RefreshReason : "다른 작업을 처리하는 중입니다.");
             if (writeIds.Count >= 1024) return Error(409, "브라우저 연결을 껐다 켠 뒤 새 접속 링크로 열어 주세요.");
             if (!ListingWebEdit.Decode(body, source, sourceRevision, out var changes, out var error)) return Error(400, error);
@@ -86,7 +87,7 @@ internal sealed partial class ListingWebBridge
     private void PublishEditor(IListingWebEditHost? host, ListingSnapshot listing)
     {
         if (host == null || self == 0 || listing.Owner != ListingOwner.Self) source = null;
-        if (!WriteActive && !Active && host != null && self != 0 && listing.Owner == ListingOwner.Self)
+        if (!WriteActive && !Active && !RecoveryActive && host != null && self != 0 && listing.Owner == ListingOwner.Self)
         {
             var captured = host.CaptureEditTarget();
             if (captured != null && captured.SelfId == self && captured.Slots.MappingValid && captured.Slots.CountsAgree)
@@ -98,7 +99,7 @@ internal sealed partial class ListingWebBridge
             // actual refresh queries again and compares all fields and members.
             else if (listing.IsLive && host.RefreshBlockReason == null) source = null;
         }
-        var reason = WriteActive ? "갱신 요청을 처리하는 중입니다." : Active ? "조회 요청을 처리하는 중입니다." :
+        var reason = RecoveryActive ? "수정창을 닫는 중입니다." : WriteActive ? "갱신 요청을 처리하는 중입니다." : Active ? "조회 요청을 처리하는 중입니다." :
             host?.RefreshBlockReason ?? (source == null ? "내 모집글을 조회해 주세요." : "");
         if (self == 0) reason = "게임에 로그인해 주세요.";
         if (writeIds.Count >= 1024) reason = "브라우저 연결을 껐다 켠 뒤 새 접속 링크로 열어 주세요.";

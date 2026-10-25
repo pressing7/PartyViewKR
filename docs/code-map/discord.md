@@ -4,7 +4,7 @@
 
 개인 봇 owner만 조작할 수 있다. interaction ACK가 성공한 뒤 공통 Bridge에 게임 작업을 넣는다. 카드/모달/이모지는 각자의 책임이며 토큰은 Windows CurrentUser DPAPI ciphertext로만 저장한다.
 
-기준: 0.3.48.0 소스. 기반 main `1ef1c969e8dea0d58babf71a80698880b8fcc0dc` 이후 AFK 감시 변경을 포함한다. 2026-10-25 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
+기준: 0.3.49.0 소스. 기반 main `a34099802f12d6e5c4859489472489319d146e4f` 이후 AFK 설정·Discord 수정창 닫기 변경을 포함한다. 2026-10-25 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
 
 표에는 직접 선언한 메서드·생성자·로컬 함수·계산 속성·인터페이스 메서드를 각각 포함한다. 자동 생성 record 메서드/단순 auto-property accessor는 제외한다. 이름 없는 LINQ/타이머/콜백은 이를 소유한 함수 설명에 포함하며, 중요한 DOM 이벤트 handler와 명명된 테스트 시나리오는 별도로 표시한다.
 
@@ -17,6 +17,7 @@
 - [src/ListingDiscordPanel.Render.cs](#file-src-listingdiscordpanel-render-cs)
 - [src/ListingDiscordPanel.Results.cs](#file-src-listingdiscordpanel-results-cs)
 - [src/ListingDiscordPanel.cs](#file-src-listingdiscordpanel-cs)
+- [src/ListingDiscordSession.Recovery.cs](#file-src-listingdiscordsession-recovery-cs)
 - [src/ListingDiscordSession.cs](#file-src-listingdiscordsession-cs)
 - [src/Plugin.Discord.cs](#file-src-plugin-discord-cs)
 - [src/RelayConfiguration.cs](#file-src-relayconfiguration-cs)
@@ -110,33 +111,35 @@ embedded PNG 80개의 asset key·읽기 쉬운 이름·legacy 이름 매핑 및 
 <a id="file-src-listingdiscordpanel-render-cs"></a>
 ## src/ListingDiscordPanel.Render.cs
 
-[소스 파일](../../src/ListingDiscordPanel.Render.cs) · 명명된 항목/진입점 21개
+[소스 파일](../../src/ListingDiscordPanel.Render.cs) · 명명된 항목/진입점 23개
 
 모바일 조회/수정/상세 카드와 Components V2 공통 builder. 조회에는 전체 그룹 아이콘을 한 번에 표시한다.
 
 | 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
 |---|---|---|---|
 | <a id="symbol-src-listingdiscordpanel-render-cs-8-5cb2960b35"></a><code>ListingDiscordPanel.Render</code><br><code>DiscordScreen Render(Panel p, long now, string notice = "")</code> | 메서드 | panel 종류에 따라 조회·편집·직업 상세·결과 UI를 구성하고 갱신된 nonce를 사용한다. 상단 조회/갱신/수정, 임무 앞 🔒/🌱, 활성 설정과 소개말 순서를 관리한다. | [L8](../../src/ListingDiscordPanel.Render.cs#L8) |
-| <a id="symbol-src-listingdiscordpanel-render-cs-63-de0e9a1fef"></a><code>ListingDiscordPanel.DrawActiveSettings</code><br><code>void DrawActiveSettings(ListingDiscordCard card, WebListing listing)</code> | 메서드 | 켜진 설정만 지정된 두 줄 태그로 표시한다. 비공개/초보자는 임무 앞 아이콘으로 표현한다. | [L63](../../src/ListingDiscordPanel.Render.cs#L63) |
-| <a id="symbol-src-listingdiscordpanel-render-cs-65-c206b3faf5"></a><code>ListingDiscordPanel.DrawActiveSettings.Tags</code><br><code>string Tags(params string[] keys)</code> | 로컬 함수 | 활성화된 설정 label들을 대괄호 태그 문자열로 묶는다. | [L65](../../src/ListingDiscordPanel.Render.cs#L65) |
-| <a id="symbol-src-listingdiscordpanel-render-cs-79-4c6e2e5cf6"></a><code>ListingDiscordPanel.Remaining</code><br><code>string Remaining(WebListing listing)</code> | 메서드 | ReadAt와 읽은 잔여초를 고정 종료시각으로 바꿔 Discord 상대시간 timestamp를 만든다. 카드 다시 그리기만으로 시간이 리셋되지 않는다. | [L79](../../src/ListingDiscordPanel.Render.cs#L79) |
-| <a id="symbol-src-listingdiscordpanel-render-cs-88-59ba10adf4"></a><code>ListingDiscordPanel.DrawJobDetails</code><br><code>void DrawJobDetails(ListingDiscordCard card, Panel p)</code> | 메서드 | 선택 그룹 슬롯의 허용 직업 텍스트와 참가 여부를 읽기 전용 상세 카드로 표시한다. | [L88](../../src/ListingDiscordPanel.Render.cs#L88) |
-| <a id="symbol-src-listingdiscordpanel-render-cs-102-25b937a6d0"></a><code>ListingDiscordPanel.Button</code><br><code>ButtonBuilder Button(Panel p, string action, string label, ButtonStyle style = ButtonStyle.Secondary, bool disabled = false)</code> | 메서드 | 동작 ID·label·style·비활성 상태를 가진 버튼을 구성한다. | [L102](../../src/ListingDiscordPanel.Render.cs#L102) |
-| <a id="symbol-src-listingdiscordpanel-render-cs-104-ff38988afe"></a><code>ListingDiscordPanel.GroupMenu</code><br><code>void GroupMenu(ListingDiscordCard card, Panel p)</code> | 메서드 | 24/48인/친선 그룹 선택 메뉴를 만든다. 조회 overview의 전체 그룹 표시는 이 선택에 제한되지 않는다. | [L104](../../src/ListingDiscordPanel.Render.cs#L104) |
-| <a id="symbol-src-listingdiscordpanel-render-cs-111-19fa2d25a3"></a><code>ListingDiscordPanel.Setting</code><br><code>string Setting(Panel p, string key)</code> | 메서드 | 필드별 원래 값/대기 값을 편집 목록 한 항목으로 표시한다. | [L111](../../src/ListingDiscordPanel.Render.cs#L111) |
-| <a id="symbol-src-listingdiscordpanel-render-cs-113-971177e687"></a><code>ListingDiscordPanel.Pending</code><br><code>void Pending(ListingDiscordCard card, Panel p)</code> | 메서드 | 해당 필드가 원본과 다른 대기 변경인지 표시한다. | [L113](../../src/ListingDiscordPanel.Render.cs#L113) |
-| <a id="symbol-src-listingdiscordpanel-render-cs-120-33e62e73d6"></a><code>ListingDiscordPanel.DrawSettings</code><br><code>void DrawSettings(ListingDiscordCard card, Panel p)</code> | 메서드 | 목적·모집 참가 조건·임무 찾기·모집 범위·모집 역할 순으로 설정 편집 카드를 그린다. | [L120](../../src/ListingDiscordPanel.Render.cs#L120) |
-| <a id="symbol-src-listingdiscordpanel-render-cs-144-606c658b65"></a><code>ListingDiscordPanel.DrawSettings.SettingsSection</code><br><code>void SettingsSection(string title, params string[] keys)</code> | 로컬 함수 | 설정 섹션 제목/본문/수정 버튼을 공통 형식으로 추가한다. | [L144](../../src/ListingDiscordPanel.Render.cs#L144) |
-| <a id="symbol-src-listingdiscordpanel-render-cs-151-706869816d"></a><code>ListingDiscordPanel.DrawJobs</code><br><code>void DrawJobs(ListingDiscordCard card, Panel p)</code> | 메서드 | 자리와 직업 분류별 선택 메뉴 및 방어·회복·공격 preset을 그린다. | [L151](../../src/ListingDiscordPanel.Render.cs#L151) |
-| <a id="symbol-src-listingdiscordpanel-render-cs-180-b18a5f0df9"></a><code>ListingDiscordCard</code><br><code>ListingDiscordCard(Color color)</code> | 주 생성자/모델 | 이 파일의 역할에 필요한 값과 의존성을 묶어 초기화한다. 전달 항목은 왼쪽 생성자 signature가 기준이다. | [L180](../../src/ListingDiscordPanel.Render.cs#L180) |
-| <a id="symbol-src-listingdiscordpanel-render-cs-185-ec8008a22b"></a><code>ListingDiscordCard.Display</code><br><code>TextDisplayBuilder Display(string value)</code> | 메서드 | 한 카드에 누적된 표시 길이를 확인한다. | [L185](../../src/ListingDiscordPanel.Render.cs#L185) |
-| <a id="symbol-src-listingdiscordpanel-render-cs-190-be48135bf2"></a><code>ListingDiscordCard.Text</code><br><code>void Text(string value)</code> | 메서드 | 남은 카드 표시 예산 안에서 TextDisplay component를 추가한다. | [L190](../../src/ListingDiscordPanel.Render.cs#L190) |
-| <a id="symbol-src-listingdiscordpanel-render-cs-191-902c1f057c"></a><code>ListingDiscordCard.Section</code><br><code>void Section(string value, ButtonBuilder button)</code> | 메서드 | 텍스트와 보조 버튼 accessory를 가진 Section component를 추가한다. | [L191](../../src/ListingDiscordPanel.Render.cs#L191) |
-| <a id="symbol-src-listingdiscordpanel-render-cs-192-9f50060abc"></a><code>ListingDiscordCard.Divider</code><br><code>void Divider()</code> | 메서드 | 시각 구분용 separator를 넣는다. | [L192](../../src/ListingDiscordPanel.Render.cs#L192) |
-| <a id="symbol-src-listingdiscordpanel-render-cs-193-205e54a16f"></a><code>ListingDiscordCard.Row</code><br><code>void Row(params IMessageComponentBuilder[] controls)</code> | 메서드 | 버튼/select 등을 ActionRow에 넣는다. | [L193](../../src/ListingDiscordPanel.Render.cs#L193) |
-| <a id="symbol-src-listingdiscordpanel-render-cs-194-2916dc3036"></a><code>ListingDiscordCard.Build</code><br><code>DiscordScreen Build()</code> | 메서드 | 모아둔 component를 Container로 완성한다. | [L194](../../src/ListingDiscordPanel.Render.cs#L194) |
-| <a id="symbol-src-listingdiscordpanel-render-cs-195-3850e78e61"></a><code>ListingDiscordCard.Message</code><br><code>DiscordScreen Message(string value)</code> | 메서드 | 간단한 텍스트 응답을 Components V2 메시지로 만든다. | [L195](../../src/ListingDiscordPanel.Render.cs#L195) |
-| <a id="symbol-src-listingdiscordpanel-render-cs-196-52c08983f1"></a><code>ListingDiscordCard.Walk</code><br><code>IEnumerable&lt;IMessageComponent&gt; Walk(IEnumerable&lt;IMessageComponent&gt; components)</code> | 메서드 | 중첩 Container/Section/Row component를 재귀 순회한다. 컨트롤 존재 여부와 테스트 검사에 사용한다. | [L196](../../src/ListingDiscordPanel.Render.cs#L196) |
+| <a id="symbol-src-listingdiscordpanel-render-cs-64-58a7c6252b"></a><code>ListingDiscordPanel.DrawActiveSettings</code><br><code>void DrawActiveSettings(ListingDiscordCard card, WebListing listing)</code> | 메서드 | 켜진 설정만 지정된 두 줄 태그로 표시한다. 비공개/초보자는 임무 앞 아이콘으로 표현한다. | [L64](../../src/ListingDiscordPanel.Render.cs#L64) |
+| <a id="symbol-src-listingdiscordpanel-render-cs-66-64066aa6c8"></a><code>ListingDiscordPanel.DrawActiveSettings.Tags</code><br><code>string Tags(params string[] keys)</code> | 로컬 함수 | 활성화된 설정 label들을 대괄호 태그 문자열로 묶는다. | [L66](../../src/ListingDiscordPanel.Render.cs#L66) |
+| <a id="symbol-src-listingdiscordpanel-render-cs-80-d356546a55"></a><code>ListingDiscordPanel.Remaining</code><br><code>string Remaining(WebListing listing)</code> | 메서드 | ReadAt와 읽은 잔여초를 고정 종료시각으로 바꿔 Discord 상대시간 timestamp를 만든다. 카드 다시 그리기만으로 시간이 리셋되지 않는다. | [L80](../../src/ListingDiscordPanel.Render.cs#L80) |
+| <a id="symbol-src-listingdiscordpanel-render-cs-89-53467d99b8"></a><code>ListingDiscordPanel.DrawJobDetails</code><br><code>void DrawJobDetails(ListingDiscordCard card, Panel p)</code> | 메서드 | 선택 그룹 슬롯의 허용 직업 텍스트와 참가 여부를 읽기 전용 상세 카드로 표시한다. | [L89](../../src/ListingDiscordPanel.Render.cs#L89) |
+| <a id="symbol-src-listingdiscordpanel-render-cs-103-df8a41a9f7"></a><code>ListingDiscordPanel.Button</code><br><code>ButtonBuilder Button(Panel p, string action, string label, ButtonStyle style = ButtonStyle.Secondary, bool disabled = false)</code> | 메서드 | 동작 ID·label·style·비활성 상태를 가진 버튼을 구성한다. | [L103](../../src/ListingDiscordPanel.Render.cs#L103) |
+| <a id="symbol-src-listingdiscordpanel-render-cs-106-e904dd448f"></a><code>ListingDiscordPanel.CloseButton</code><br><code>ButtonBuilder CloseButton(string session, bool disabled = false)</code> | 메서드 | session에 연결한 수정창 닫기 버튼을 만든다. overview nonce/편집 revision 만료와 무관하게 현재 session에서 복구할 수 있다. | [L106](../../src/ListingDiscordPanel.Render.cs#L106) |
+| <a id="symbol-src-listingdiscordpanel-render-cs-108-a924f6519d"></a><code>ListingDiscordPanel.RecoveryMessage</code><br><code>DiscordScreen RecoveryMessage(string message, string session)</code> | 메서드 | 조회·갱신 진행/다른 요청 busy 화면에 닫기 버튼을 유지하는 V2 카드를 만든다. | [L108](../../src/ListingDiscordPanel.Render.cs#L108) |
+| <a id="symbol-src-listingdiscordpanel-render-cs-113-cae1616b63"></a><code>ListingDiscordPanel.GroupMenu</code><br><code>void GroupMenu(ListingDiscordCard card, Panel p)</code> | 메서드 | 24/48인/친선 그룹 선택 메뉴를 만든다. 조회 overview의 전체 그룹 표시는 이 선택에 제한되지 않는다. | [L113](../../src/ListingDiscordPanel.Render.cs#L113) |
+| <a id="symbol-src-listingdiscordpanel-render-cs-120-78c6805e8e"></a><code>ListingDiscordPanel.Setting</code><br><code>string Setting(Panel p, string key)</code> | 메서드 | 필드별 원래 값/대기 값을 편집 목록 한 항목으로 표시한다. | [L120](../../src/ListingDiscordPanel.Render.cs#L120) |
+| <a id="symbol-src-listingdiscordpanel-render-cs-122-5a18060bf9"></a><code>ListingDiscordPanel.Pending</code><br><code>void Pending(ListingDiscordCard card, Panel p)</code> | 메서드 | 해당 필드가 원본과 다른 대기 변경인지 표시한다. | [L122](../../src/ListingDiscordPanel.Render.cs#L122) |
+| <a id="symbol-src-listingdiscordpanel-render-cs-129-ac45f81ee5"></a><code>ListingDiscordPanel.DrawSettings</code><br><code>void DrawSettings(ListingDiscordCard card, Panel p)</code> | 메서드 | 목적·모집 참가 조건·임무 찾기·모집 범위·모집 역할 순으로 설정 편집 카드를 그린다. | [L129](../../src/ListingDiscordPanel.Render.cs#L129) |
+| <a id="symbol-src-listingdiscordpanel-render-cs-153-160d0514c2"></a><code>ListingDiscordPanel.DrawSettings.SettingsSection</code><br><code>void SettingsSection(string title, params string[] keys)</code> | 로컬 함수 | 설정 섹션 제목/본문/수정 버튼을 공통 형식으로 추가한다. | [L153](../../src/ListingDiscordPanel.Render.cs#L153) |
+| <a id="symbol-src-listingdiscordpanel-render-cs-160-37e42a72da"></a><code>ListingDiscordPanel.DrawJobs</code><br><code>void DrawJobs(ListingDiscordCard card, Panel p)</code> | 메서드 | 자리와 직업 분류별 선택 메뉴 및 방어·회복·공격 preset을 그린다. | [L160](../../src/ListingDiscordPanel.Render.cs#L160) |
+| <a id="symbol-src-listingdiscordpanel-render-cs-189-c008a6adfd"></a><code>ListingDiscordCard</code><br><code>ListingDiscordCard(Color color)</code> | 주 생성자/모델 | 이 파일의 역할에 필요한 값과 의존성을 묶어 초기화한다. 전달 항목은 왼쪽 생성자 signature가 기준이다. | [L189](../../src/ListingDiscordPanel.Render.cs#L189) |
+| <a id="symbol-src-listingdiscordpanel-render-cs-194-7c5d704f3f"></a><code>ListingDiscordCard.Display</code><br><code>TextDisplayBuilder Display(string value)</code> | 메서드 | 한 카드에 누적된 표시 길이를 확인한다. | [L194](../../src/ListingDiscordPanel.Render.cs#L194) |
+| <a id="symbol-src-listingdiscordpanel-render-cs-199-1ade6dbe6d"></a><code>ListingDiscordCard.Text</code><br><code>void Text(string value)</code> | 메서드 | 남은 카드 표시 예산 안에서 TextDisplay component를 추가한다. | [L199](../../src/ListingDiscordPanel.Render.cs#L199) |
+| <a id="symbol-src-listingdiscordpanel-render-cs-200-d095288fcf"></a><code>ListingDiscordCard.Section</code><br><code>void Section(string value, ButtonBuilder button)</code> | 메서드 | 텍스트와 보조 버튼 accessory를 가진 Section component를 추가한다. | [L200](../../src/ListingDiscordPanel.Render.cs#L200) |
+| <a id="symbol-src-listingdiscordpanel-render-cs-201-53ad399484"></a><code>ListingDiscordCard.Divider</code><br><code>void Divider()</code> | 메서드 | 시각 구분용 separator를 넣는다. | [L201](../../src/ListingDiscordPanel.Render.cs#L201) |
+| <a id="symbol-src-listingdiscordpanel-render-cs-202-a7803d0ad3"></a><code>ListingDiscordCard.Row</code><br><code>void Row(params IMessageComponentBuilder[] controls)</code> | 메서드 | 버튼/select 등을 ActionRow에 넣는다. | [L202](../../src/ListingDiscordPanel.Render.cs#L202) |
+| <a id="symbol-src-listingdiscordpanel-render-cs-203-3c477d479d"></a><code>ListingDiscordCard.Build</code><br><code>DiscordScreen Build()</code> | 메서드 | 모아둔 component를 Container로 완성한다. | [L203](../../src/ListingDiscordPanel.Render.cs#L203) |
+| <a id="symbol-src-listingdiscordpanel-render-cs-204-17c2e4acfc"></a><code>ListingDiscordCard.Message</code><br><code>DiscordScreen Message(string value)</code> | 메서드 | 간단한 텍스트 응답을 Components V2 메시지로 만든다. | [L204](../../src/ListingDiscordPanel.Render.cs#L204) |
+| <a id="symbol-src-listingdiscordpanel-render-cs-205-aef8c2cdfb"></a><code>ListingDiscordCard.Walk</code><br><code>IEnumerable&lt;IMessageComponent&gt; Walk(IEnumerable&lt;IMessageComponent&gt; components)</code> | 메서드 | 중첩 Container/Section/Row component를 재귀 순회한다. 컨트롤 존재 여부와 테스트 검사에 사용한다. | [L205](../../src/ListingDiscordPanel.Render.cs#L205) |
 
 <a id="file-src-listingdiscordpanel-results-cs"></a>
 ## src/ListingDiscordPanel.Results.cs
@@ -161,7 +164,7 @@ SDK와 게임 메모리에서 분리된 카드/session 상태 모델. Overview·
 | 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
 |---|---|---|---|
 | <a id="symbol-src-listingdiscordpanel-cs-9-344fdc2d8a"></a><code>DiscordInput</code><br><code>DiscordInput(ulong Id, ulong ApplicationId, ulong UserId, string Command, string CustomId, string[] Values, Dictionary&lt;string, string&gt; Fields)</code> | 주 생성자/모델 | SDK interaction을 종류·ID·owner/application·custom ID·선택/폼 값의 관리형 입력으로 변환한 모델이다. | [L9](../../src/ListingDiscordPanel.cs#L9) |
-| <a id="symbol-src-listingdiscordpanel-cs-15-e697cc96fd"></a><code>DiscordWork</code><br><code>DiscordWork(bool Query, string Id, string Session, byte[]? Body)</code> | 주 생성자/모델 | 조회 또는 apply 작업의 요청 ID·session·body 등 실행 대상을 묶는다. | [L15](../../src/ListingDiscordPanel.cs#L15) |
+| <a id="symbol-src-listingdiscordpanel-cs-15-0f259e7f13"></a><code>DiscordWork</code><br><code>DiscordWork(bool Query, string Id, string Session, byte[]? Body, long RecoveryRevision = 0)</code> | 주 생성자/모델 | 조회 또는 apply 작업의 요청 ID·session·body 등 실행 대상을 묶는다. | [L15](../../src/ListingDiscordPanel.cs#L15) |
 | <a id="symbol-src-listingdiscordpanel-cs-16-71f21b6a30"></a><code>DiscordScreen</code><br><code>DiscordScreen(string Text, MessageComponent Components)</code> | 주 생성자/모델 | 텍스트와 Components V2 컴포넌트를 함께 보관한다. HasControls는 버튼/select 존재를 판정하며, 메시지 교체 여부는 별도 DiscordDecision에 있다. | [L16](../../src/ListingDiscordPanel.cs#L16) |
 | <a id="symbol-src-listingdiscordpanel-cs-18-f2855686b2"></a><code>DiscordScreen.HasControls</code><br><code>bool HasControls</code> | 계산 속성 | 중첩 카드 component에 사용자 조작 컨트롤이 있는지 검사한다. 계산식: <code>ListingDiscordCard.Walk(Components.Components).Any(c =&gt; c is ButtonComponent or SelectMenuComponent)</code>. | [L18](../../src/ListingDiscordPanel.cs#L18) |
 | <a id="symbol-src-listingdiscordpanel-cs-20-f5e78d0fb3"></a><code>DiscordDecision</code><br><code>DiscordDecision(DiscordScreen? Screen = null, Modal? Modal = null, DiscordWork? Work = null, bool Replace = true)</code> | 주 생성자/모델 | 입력을 처리한 결과로 화면/modal/지연 게임 작업 중 무엇을 수행할지 전달한다. | [L20](../../src/ListingDiscordPanel.cs#L20) |
@@ -173,7 +176,7 @@ SDK와 게임 메모리에서 분리된 카드/session 상태 모델. Overview·
 | <a id="symbol-src-listingdiscordpanel-cs-59-9c3b3c0ed7"></a><code>ListingDiscordPanel.Error</code><br><code>DiscordDecision Error(string message)</code> | 메서드 | 오류 메시지 전용 화면을 Replace=false 결정으로 반환해 기존 카드를 덮어쓰지 않는다. 현재 패널의 재렌더링은 하지 않는다. | [L59](../../src/ListingDiscordPanel.cs#L59) |
 | <a id="symbol-src-listingdiscordpanel-cs-60-6fabe38738"></a><code>ListingDiscordPanel.Current</code><br><code>bool Current(Panel p, WebView view, long now)</code> | 메서드 | 카드의 만료 시각·session·editor revision을 현재 View와 비교한다. custom ID의 nonce 검사는 Handle에서 별도로 수행한다. | [L60](../../src/ListingDiscordPanel.cs#L60) |
 | <a id="symbol-src-listingdiscordpanel-cs-63-d8bb69c1a4"></a><code>ListingDiscordPanel.Handle</code><br><code>DiscordDecision Handle(DiscordInput input, long now)</code> | 메서드 | 조회·갱신·새 수정 카드·직업 상세·결과 페이지·설정 modal·그룹/자리/직업 선택을 라우팅한다. 적용 시 변경을 strict JSON body로 만들고 현재 초안을 소비한다. | [L63](../../src/ListingDiscordPanel.cs#L63) |
-| <a id="symbol-src-listingdiscordpanel-cs-164-3a675f067f"></a><code>ListingDiscordPanel.Start</code><br><code>WebReply Start(DiscordWork work, long now)</code> | 메서드 | 결정된 조회 또는 apply 작업을 공통 ListingWebBridge 큐에 한 번 넣는다. | [L164](../../src/ListingDiscordPanel.cs#L164) |
+| <a id="symbol-src-listingdiscordpanel-cs-164-3a675f067f"></a><code>ListingDiscordPanel.Start</code><br><code>WebReply Start(DiscordWork work, long now)</code> | 메서드 | DiscordWork를 공통 query/apply queue에 전달하며 캡처한 recovery revision을 같은 lock에서 검사하도록 한다. | [L164](../../src/ListingDiscordPanel.cs#L164) |
 | <a id="symbol-src-listingdiscordpanel-cs-165-9ce475bf7d"></a><code>ListingDiscordPanel.Progress</code><br><code>WebReply Progress(DiscordWork work)</code> | 메서드 | 앞서 발행한 요청 ID의 query/operation 결과를 읽는다. 명령을 재발송하지 않는다. | [L165](../../src/ListingDiscordPanel.cs#L165) |
 | <a id="symbol-src-listingdiscordpanel-cs-166-5a687cdb28"></a><code>ListingDiscordPanel.Complete</code><br><code>DiscordDecision Complete(long now, string notice = "")</code> | 메서드 | 작업 결과를 panel과 조회 카드에 반영하고 전체 결과 텍스트를 별도 페이지로 보관한다. | [L166](../../src/ListingDiscordPanel.cs#L166) |
 | <a id="symbol-src-listingdiscordpanel-cs-183-5f01e878db"></a><code>ListingDiscordPanel.Clear</code><br><code>void Clear()</code> | 메서드 | 편집 원본·nonce·선택·PIN 포함 초안·최근 결과 상태를 지운다. | [L183](../../src/ListingDiscordPanel.cs#L183) |
@@ -194,6 +197,18 @@ SDK와 게임 메모리에서 분리된 카드/session 상태 모델. Overview·
 | <a id="symbol-src-listingdiscordpanel-cs-236-cec221d941"></a><code>ListingDiscordPanel.Escape</code><br><code>string Escape(string value)</code> | 메서드 | Discord Markdown에 영향을 주는 문자를 escape한다. | [L236](../../src/ListingDiscordPanel.cs#L236) |
 | <a id="symbol-src-listingdiscordpanel-cs-242-646e4ed6b4"></a><code>ListingDiscordPanel.Limit</code><br><code>string Limit(string text, int max = 1900)</code> | 메서드 | 최대 길이에 맞춰 문자열을 줄이되 Unicode surrogate/rune 경계를 보존한다. 긴 작업 결과 본문은 별도 PaginateResult 경로를 사용한다. | [L242](../../src/ListingDiscordPanel.cs#L242) |
 
+<a id="file-src-listingdiscordsession-recovery-cs"></a>
+## src/ListingDiscordSession.Recovery.cs
+
+[소스 파일](../../src/ListingDiscordSession.Recovery.cs) · 명명된 항목/진입점 2개
+
+일반 interaction의 handling 잠금과 별도로 닫기 interaction을 처리한다. 개인 봇 owner/app 인증은 Process에서 먼저 수행하고 session·ACK를 추가 검증한다.
+
+| 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
+|---|---|---|---|
+| <a id="symbol-src-listingdiscordsession-recovery-cs-8-89236b771f"></a><code>ListingDiscordSession.Remember</code><br><code>bool Remember(ulong id)</code> | 메서드 | 일반/닫기 경로가 공유하는 interaction ID 중복 방지 집합을 lock으로 보호하며 최근1024개를 유지한다. | [L8](../../src/ListingDiscordSession.Recovery.cs#L8) |
+| <a id="symbol-src-listingdiscordsession-recovery-cs-19-0838803c38"></a><code>ListingDiscordSession.CloseEditor</code><br><code>Task CloseEditor(DiscordInput input, IDiscordResponse response)</code> | 메서드 | 독립적인 닫기 처리 잠금으로 busy 중에도 진입한다. session 검사와 ACK 성공 후에만 공통 queue에 넣고 닫힘 결과를 기다린다. 중복/ACK 실패/취소는 새 게임 조작을 시작하지 않는다. | [L19](../../src/ListingDiscordSession.Recovery.cs#L19) |
+
 <a id="file-src-listingdiscordsession-cs"></a>
 ## src/ListingDiscordSession.cs
 
@@ -209,12 +224,12 @@ SDK와 게임 메모리에서 분리된 카드/session 상태 모델. Overview·
 | <a id="symbol-src-listingdiscordsession-cs-16-576bccc2fe"></a><code>ListingDiscordSession</code><br><code>ListingDiscordSession(ListingWebBridge bridge, ulong appId, ulong ownerId, CancellationToken cancellation, Func&lt;long&gt;? clock = null, ListingDiscordIcons? iconCatalog = null)</code> | 주 생성자/모델 | 해당 편집의 원본/요청/expected, 불변식, 컨트롤 주소와 UI 진행 상태를 시작 시점에 고정한다. 이후 guard와 1회 실행 counter의 기준이다. | [L16](../../src/ListingDiscordSession.cs#L16) |
 | <a id="symbol-src-listingdiscordsession-cs-23-48a3409a6b"></a><code>ListingDiscordSession.Now</code><br><code>long Now</code> | 계산 속성 | 단조 시계 Environment.TickCount64를 반환해 UI session 만료/작업 대기를 계산한다. 계산식: <code>clock?.Invoke() ?? Environment.TickCount64</code>. | [L23](../../src/ListingDiscordSession.cs#L23) |
 | <a id="symbol-src-listingdiscordsession-cs-24-6071ec2a62"></a><code>ListingDiscordSession.Message</code><br><code>DiscordScreen Message(string text)</code> | 메서드 | 단순 메시지를 DiscordScreen 형태로 만든다. | [L24](../../src/ListingDiscordSession.cs#L24) |
-| <a id="symbol-src-listingdiscordsession-cs-26-a5110dd151"></a><code>ListingDiscordSession.Process</code><br><code>Task Process(DiscordInput input, IDiscordResponse response)</code> | 메서드 | owner/application 검사, 처리 중 lock, interaction ID 중복 제거, panel 결정 후 ACK를 먼저 보낸다. 게임 요청을 1회 시작하고 400ms 간격으로 최대 180초 결과를 관찰한다. PIN body는 finally에서 지운다. | [L26](../../src/ListingDiscordSession.cs#L26) |
-| <a id="symbol-src-listingdiscordsession-cs-84-87a0b4a417"></a><code>ListingDiscordSession.ClearIfIdle</code><br><code>void ClearIfIdle()</code> | 메서드 | 진행 중 interaction이 없을 때 panel 상태를 비우고, 진행 중이면 안전한 정리를 예약한다. | [L84](../../src/ListingDiscordSession.cs#L84) |
-| <a id="symbol-src-listingdiscordsession-cs-89-b269fce21f"></a><code>ListingDiscordSession.SafeScreen</code><br><code>Task SafeScreen(IDiscordResponse response, DiscordScreen screen, bool deferred = false)</code> | 메서드 | 응답 갱신 실패가 상위 처리 흐름을 깨지 않도록 best-effort로 화면을 보낸다. | [L89](../../src/ListingDiscordSession.cs#L89) |
-| <a id="symbol-src-listingdiscordsession-cs-94-c73a216661"></a><code>ListingDiscordSession.Pending</code><br><code>bool Pending(WebReply reply)</code> | 메서드 | Bridge query/write 상태가 queued 또는 running인지 검사한다. | [L94](../../src/ListingDiscordSession.cs#L94) |
-| <a id="symbol-src-listingdiscordsession-cs-95-7c3b4851d2"></a><code>ListingDiscordSession.ResultSummary</code><br><code>string ResultSummary(WebOperation operation)</code> | 메서드 | 조회/갱신 응답의 최종 요약을 카드에 사용할 문자열로 변환한다. | [L95](../../src/ListingDiscordSession.cs#L95) |
-| <a id="symbol-src-listingdiscordsession-cs-97-138bcc23b6"></a><code>ListingDiscordSession.Describe</code><br><code>string Describe(WebReply reply)</code> | 메서드 | 작업 상태와 항목별 적용/실패 결과를 사용자에게 설명한다. 긴 결과는 생략하지 않고 별도 결과 카드 경로로 넘긴다. | [L97](../../src/ListingDiscordSession.cs#L97) |
+| <a id="symbol-src-listingdiscordsession-cs-26-a5110dd151"></a><code>ListingDiscordSession.Process</code><br><code>Task Process(DiscordInput input, IDiscordResponse response)</code> | 메서드 | owner/app 확인 후 닫기 요청은 독립 경로로 보낸다. 일반 작업은 단일 handling 및 공통 중복 방지/ACK를 거쳐 queue에 넣고 결과를 기다린다. 진행 화면에 닫기를 유지한다. | [L26](../../src/ListingDiscordSession.cs#L26) |
+| <a id="symbol-src-listingdiscordsession-cs-86-74d8262ab3"></a><code>ListingDiscordSession.ClearIfIdle</code><br><code>void ClearIfIdle()</code> | 메서드 | 진행 중 interaction이 없을 때 panel 상태를 비우고, 진행 중이면 안전한 정리를 예약한다. | [L86](../../src/ListingDiscordSession.cs#L86) |
+| <a id="symbol-src-listingdiscordsession-cs-91-012c33ae35"></a><code>ListingDiscordSession.SafeScreen</code><br><code>Task SafeScreen(IDiscordResponse response, DiscordScreen screen, bool deferred = false)</code> | 메서드 | 응답 갱신 실패가 상위 처리 흐름을 깨지 않도록 best-effort로 화면을 보낸다. | [L91](../../src/ListingDiscordSession.cs#L91) |
+| <a id="symbol-src-listingdiscordsession-cs-96-3b77121bb9"></a><code>ListingDiscordSession.Pending</code><br><code>bool Pending(WebReply reply)</code> | 메서드 | query·apply·recovery 결과가 queued/running인지 판정한다. | [L96](../../src/ListingDiscordSession.cs#L96) |
+| <a id="symbol-src-listingdiscordsession-cs-97-a541db3b4d"></a><code>ListingDiscordSession.ResultSummary</code><br><code>string ResultSummary(WebOperation operation)</code> | 메서드 | 조회/갱신 응답의 최종 요약을 카드에 사용할 문자열로 변환한다. | [L97](../../src/ListingDiscordSession.cs#L97) |
+| <a id="symbol-src-listingdiscordsession-cs-99-b3229b3705"></a><code>ListingDiscordSession.Describe</code><br><code>string Describe(WebReply reply)</code> | 메서드 | 작업 상태와 항목별 적용/실패 결과를 사용자에게 설명한다. 긴 결과는 생략하지 않고 별도 결과 카드 경로로 넘긴다. | [L99](../../src/ListingDiscordSession.cs#L99) |
 
 <a id="file-src-plugin-discord-cs"></a>
 ## src/Plugin.Discord.cs
@@ -242,13 +257,15 @@ SDK와 게임 메모리에서 분리된 카드/session 상태 모델. Overview·
 <a id="file-src-relayconfiguration-cs"></a>
 ## src/RelayConfiguration.cs
 
-[소스 파일](../../src/RelayConfiguration.cs) · 명명된 항목/진입점 4개
+[소스 파일](../../src/RelayConfiguration.cs) · 명명된 항목/진입점 6개
 
 기존 설정 type identity를 유지하는 Version=1 설정 모델. 서버 주소, DPAPI ciphertext, 토큰 기억/자동 연결만 저장한다. PIN/모집글/relay 연결 키는 저장하지 않는다.
 
 | 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
 |---|---|---|---|
-| <a id="symbol-src-relayconfiguration-cs-14-1868c14a5d"></a><code>RelayConfiguration.HasSavedDiscordToken</code><br><code>bool HasSavedDiscordToken</code> | 계산 속성 | 저장 ciphertext가 존재하는지 반환한다. 복호화 가능 여부를 미리 보장하지 않는다. 계산식: <code>!string.IsNullOrEmpty(EncryptedDiscordToken)</code>. | [L14](../../src/RelayConfiguration.cs#L14) |
-| <a id="symbol-src-relayconfiguration-cs-15-1ff140f733"></a><code>RelayConfiguration.ShouldAutoConnectDiscord</code><br><code>bool ShouldAutoConnectDiscord</code> | 계산 속성 | DiscordAutoConnect와 저장 ciphertext 존재 여부를 합쳐 시작 시 연결 복원 대상인지 판정한다. PrepareDiscordConnection이 기억 옵션과 자동 연결을 함께 저장한다. 계산식: <code>DiscordAutoConnect &amp;&amp; HasSavedDiscordToken</code>. | [L15](../../src/RelayConfiguration.cs#L15) |
-| <a id="symbol-src-relayconfiguration-cs-17-7b9f00a385"></a><code>RelayConfiguration.PrepareDiscordConnection</code><br><code>bool PrepareDiscordConnection(string input, bool remember, Func&lt;string, string&gt; protect, Func&lt;string, string&gt; unprotect, out string token)</code> | 메서드 | 명시 token 또는 saved token 경로를 검증하고 protect/unprotect를 통해 새 설정을 준비한다. 암호화 실패 전에 기존 저장 설정을 변경하지 않는다. | [L17](../../src/RelayConfiguration.cs#L17) |
-| <a id="symbol-src-relayconfiguration-cs-33-cc9413afd9"></a><code>RelayConfiguration.ForgetDiscordToken</code><br><code>void ForgetDiscordToken()</code> | 메서드 | EncryptedDiscordToken을 비우고 자동 연결을 끈다. | [L33](../../src/RelayConfiguration.cs#L33) |
+| <a id="symbol-src-relayconfiguration-cs-18-bd75014676"></a><code>RelayConfiguration.ReadAfkSettings</code><br><code>AfkSettings ReadAfkSettings()</code> | 메서드 | 저장된 네 AFK 옵션을 정규화한 불변 정책으로 읽는다. 이전 JSON의 누락 값은 기본값을 사용한다. | [L18](../../src/RelayConfiguration.cs#L18) |
+| <a id="symbol-src-relayconfiguration-cs-20-d15633c41f"></a><code>RelayConfiguration.WriteAfkSettings</code><br><code>void WriteAfkSettings(AfkSettings settings)</code> | 메서드 | 정규화한 주기·재시도 옵션만 설정 객체에 복사한다. 토큰·연결 설정은 보존하고 저장 자체는 Plugin이 수행한다. | [L20](../../src/RelayConfiguration.cs#L20) |
+| <a id="symbol-src-relayconfiguration-cs-26-11ad051cee"></a><code>RelayConfiguration.HasSavedDiscordToken</code><br><code>bool HasSavedDiscordToken</code> | 계산 속성 | 저장 ciphertext가 존재하는지 반환한다. 복호화 가능 여부를 미리 보장하지 않는다. 계산식: <code>!string.IsNullOrEmpty(EncryptedDiscordToken)</code>. | [L26](../../src/RelayConfiguration.cs#L26) |
+| <a id="symbol-src-relayconfiguration-cs-27-d1c504e468"></a><code>RelayConfiguration.ShouldAutoConnectDiscord</code><br><code>bool ShouldAutoConnectDiscord</code> | 계산 속성 | DiscordAutoConnect와 저장 ciphertext 존재 여부를 합쳐 시작 시 연결 복원 대상인지 판정한다. PrepareDiscordConnection이 기억 옵션과 자동 연결을 함께 저장한다. 계산식: <code>DiscordAutoConnect &amp;&amp; HasSavedDiscordToken</code>. | [L27](../../src/RelayConfiguration.cs#L27) |
+| <a id="symbol-src-relayconfiguration-cs-29-1d8f49a175"></a><code>RelayConfiguration.PrepareDiscordConnection</code><br><code>bool PrepareDiscordConnection(string input, bool remember, Func&lt;string, string&gt; protect, Func&lt;string, string&gt; unprotect, out string token)</code> | 메서드 | 명시 token 또는 saved token 경로를 검증하고 protect/unprotect를 통해 새 설정을 준비한다. 암호화 실패 전에 기존 저장 설정을 변경하지 않는다. | [L29](../../src/RelayConfiguration.cs#L29) |
+| <a id="symbol-src-relayconfiguration-cs-45-d6b35a2840"></a><code>RelayConfiguration.ForgetDiscordToken</code><br><code>void ForgetDiscordToken()</code> | 메서드 | EncryptedDiscordToken을 비우고 자동 연결을 끈다. | [L45](../../src/RelayConfiguration.cs#L45) |

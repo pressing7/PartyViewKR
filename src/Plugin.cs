@@ -406,6 +406,7 @@ public sealed partial class Plugin : IDalamudPlugin
         var readParty = readRequested || window.IsOpen;
         readRequested = false;
         lastRead = now;
+        ProcessRecovery(now);
         try
         {
             if (!ClientState.IsLoggedIn) Snapshot = PartySnapshot.Empty;
@@ -440,7 +441,11 @@ public sealed partial class Plugin : IDalamudPlugin
         if (!ClientState.IsLoggedIn || !PlayerState.IsLoaded ||
             PendingChanges.Items.FirstOrDefault() is { } pending && pending.Original.SelfId != PlayerState.ContentId)
             PendingChanges.Clear();
-        try { PrepareJobDraft(); PrepareDescriptionDraft(); PrepareObjectiveDraft(); PrepareBeginnerDraft(); PrepareUniqueJobsDraft(); PreparePrivateDraft(); PrepareCompletionDraft(); PrepareItemLevelDraft(); PrepareRuleDraft(); Refresh.Update(now); }
+        try {
+            if (!Recovering) {
+                PrepareJobDraft(); PrepareDescriptionDraft(); PrepareObjectiveDraft(); PrepareBeginnerDraft(); PrepareUniqueJobsDraft(); PreparePrivateDraft(); PrepareCompletionDraft(); PrepareItemLevelDraft(); PrepareRuleDraft(); Refresh.Update(now);
+            }
+        }
         catch (Exception ex)
         {
             Refresh.Fail(ex.GetBaseException().Message);

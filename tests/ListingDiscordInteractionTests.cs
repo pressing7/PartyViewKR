@@ -234,7 +234,8 @@ static partial class ListingDiscordConnectionTests
                     var data = response.Method == "PATCH" ? response.Body :
                         response.Body.TryGetProperty("data", out var d) ? d : default;
                     if (data.ValueKind != JsonValueKind.Object || !data.TryGetProperty("components", out var c)) continue;
-                    if (controls && !WalkJson(c).Any(x => x.GetProperty("type").GetInt32() is 2 or 3)) continue;
+                    if (controls && !WalkJson(c).Any(x => x.GetProperty("type").GetInt32() is 2 or 3 &&
+                        (!x.TryGetProperty("custom_id", out var cid) || !cid.GetString()!.StartsWith(ListingDiscordPanel.ClosePrefix, StringComparison.Ordinal)))) continue;
                     result = data;
                 }
                 return result.HasValue;

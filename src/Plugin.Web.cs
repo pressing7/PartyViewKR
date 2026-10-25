@@ -15,6 +15,7 @@ public sealed partial class Plugin
     private string? GetQueryUnavailableReason(bool ownQueryInProgress)
     {
         if (disposed) return "플러그인이 종료 중입니다.";
+        if (Recovering) return "수정창을 닫는 중입니다.";
         if (refreshHost.BlockReason is { } reason) return reason;
         if (Refresh.Busy || !ownQueryInProgress && ListingBusy) return "모집글 조회 또는 갱신을 처리하는 중입니다.";
         if (refreshHost.EditorVisible) return "게임의 파티 모집 수정창을 먼저 닫아 주세요.";
@@ -71,7 +72,7 @@ public sealed partial class Plugin
         catch (Exception) { bridge.PublicationFailed(); }
     }
 
-    private sealed class WebHost(Plugin plugin) : IListingWebEditHost
+    private sealed partial class WebHost(Plugin plugin) : IListingWebEditHost
     {
         private readonly ListingWebRequestGuard ownedQuery = new();
         private readonly ListingWebRefreshGuard ownedRefresh = new();
