@@ -20,6 +20,7 @@ public sealed partial class Plugin : IDalamudPlugin
     [PluginService] internal static ICondition Condition { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
     [PluginService] internal static IGameGui GameGui { get; private set; } = null!;
+    [PluginService] internal static IChatGui ChatGui { get; private set; } = null!;
     [PluginService] internal static IAddonLifecycle AddonLifecycle { get; private set; } = null!;
     [PluginService] internal static IGameInteropProvider GameInterop { get; private set; } = null!;
 
@@ -89,6 +90,7 @@ public sealed partial class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenMainUi += Open;
         PluginInterface.UiBuilder.OpenConfigUi += Open;
         Framework.Update += OnUpdate;
+        InitializeChatCapture();
         AddonLifecycle.RegisterListener(AddonEvent.PostSetup, "LookingForGroupDetail", OnDetailUpdated);
         AddonLifecycle.RegisterListener(AddonEvent.PostRefresh, "LookingForGroupDetail", OnDetailUpdated);
         AddonLifecycle.RegisterListener(AddonEvent.PostSetup, "LookingForGroupCondition", OnEditorUpdated);
@@ -400,6 +402,7 @@ public sealed partial class Plugin : IDalamudPlugin
     {
         if (disposed) return;
         RestoreDiscordConnection();
+        UpdateDiscordChat();
         ObjectiveTrace.Update();
         var now = Environment.TickCount64;
         if (!readRequested && now - lastRead < 500) return;
@@ -454,11 +457,13 @@ public sealed partial class Plugin : IDalamudPlugin
         UpdateWeb(now);
         if (afkHost != null) afk.Update(afkHost, now);
         UpdateDiscordCompletion();
+        UpdateDiscordChat();
     }
 
     public void Dispose()
     {
         disposed = true;
+        chatCapture?.Dispose();
         if (afkHost != null) afk.SetEnabled(false, afkHost, Environment.TickCount64);
         StopWeb();
         ObjectiveTrace.Dispose();

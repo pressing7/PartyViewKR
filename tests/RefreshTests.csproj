@@ -11,6 +11,12 @@
     <Compile Include="../src/ListingDiscordNotifications.cs" Link="ListingDiscordNotifications.cs" />
     <Compile Include="../src/ListingDiscordClient.Notifications.cs" Link="ListingDiscordClient.Notifications.cs" />
     <Compile Include="../src/ListingDiscordSession.Notifications.cs" Link="ListingDiscordSession.Notifications.cs" />
+    <Compile Include="../src/DiscordChatSettings.cs" Link="DiscordChatSettings.cs" />
+    <Compile Include="../src/GameChatCapture.cs" Link="GameChatCapture.cs" />
+    <Compile Include="../src/DiscordChatFormatting.cs" Link="DiscordChatFormatting.cs" />
+    <Compile Include="../src/ListingDiscordChat.cs" Link="ListingDiscordChat.cs" />
+    <Compile Include="../src/ListingDiscordClient.Chat.cs" Link="ListingDiscordClient.Chat.cs" />
+    <Compile Include="../src/ListingDiscordSession.Chat.cs" Link="ListingDiscordSession.Chat.cs" />
     <Compile Include="../src/ListingWebBridge.Recovery.cs" Link="ListingWebBridge.Recovery.cs" />
     <Compile Include="../src/ListingDiscordSession.Recovery.cs" Link="ListingDiscordSession.Recovery.cs" />
     <PackageReference Include="Discord.Net.WebSocket" Version="3.20.2" />

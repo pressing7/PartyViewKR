@@ -52,13 +52,13 @@ static partial class ListingDiscordConnectionTests
     {
         internal readonly ConcurrentQueue<JsonElement> NotificationMessages = new();
         internal bool DropEveryoneMention;
-        internal Task NotificationGuild(ulong permissions = 134144) => Receive(JsonSerializer.Serialize(new {
+        internal Task NotificationGuild(ulong permissions = 134144, ulong[]? channelIds = null) => Receive(JsonSerializer.Serialize(new {
             op = 0, s = ++sequence, t = "GUILD_CREATE", d = new {
                 id = "700", name = "offline notification tests", owner_id = "600", unavailable = false,
                 roles = new[] { new { id = "700", name = "@everyone", permissions = permissions.ToString(), position = 0,
                     color = 0, hoist = false, managed = false, mentionable = false } },
-                channels = new[] { new { id = "800", guild_id = "700", type = 0, name = "alerts", position = 0,
-                    permission_overwrites = Array.Empty<object>() } },
+                channels = (channelIds ?? [800UL]).Select(id => new { id = id.ToString(), guild_id = "700", type = 0, name = "chat-" + id, position = 0,
+                    permission_overwrites = Array.Empty<object>() }).ToArray(),
                 members = new[] { new { user = new { id = "500", username = "PVKR", discriminator = "0", bot = true },
                     roles = Array.Empty<string>(), joined_at = DateTimeOffset.UtcNow, deaf = false, mute = false } },
                 guild_scheduled_events = Array.Empty<object>(), emojis = Array.Empty<object>(), features = Array.Empty<string>(), voice_states = Array.Empty<object>(),

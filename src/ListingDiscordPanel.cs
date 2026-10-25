@@ -11,6 +11,7 @@ internal sealed record DiscordInput(ulong Id, ulong ApplicationId, ulong UserId,
 {
     internal ulong GuildId { get; init; }
     internal ulong ChannelId { get; init; }
+    internal DiscordChatCommand? ChatCommand { get; init; }
     internal Dictionary<string, string[]> Choices { get; init; } = [];
     internal Dictionary<string, bool> Checks { get; init; } = [];
 }

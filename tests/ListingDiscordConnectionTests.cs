@@ -28,10 +28,10 @@ static partial class ListingDiscordConnectionTests
             transport.Ready().GetAwaiter().GetResult();
             Wait(() => client.Connected || !client.Running);
             check(client.Connected, client.Status);
-            check(transport.Commands.SequenceEqual(["applications/500/commands"]), "missing or incorrect application ID");
+            check(transport.Commands.SequenceEqual(["applications/500/commands", "applications/500/commands"]), "missing or incorrect application ID");
             check(client.Status.StartsWith("연결됨") && client.InviteUrl.Contains("client_id=500"), "connected status missing");
             transport.Ready().GetAwaiter().GetResult();
-            check(transport.Commands.Count == 1, "repeated READY registered the command again");
+            check(transport.Commands.Count == 2, "repeated READY registered the commands again");
             client.Dispose(); client.Completion.WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
         });
         test("discord cancellation before READY never registers commands", () => {
@@ -144,12 +144,14 @@ static partial class ListingDiscordConnectionTests
         });
         RunInteractions(test, check);
         RunNotificationSdk(test, check);
+        RunChatSdk(test, check);
     }
 
     private sealed partial class OfflineTransport : IRestClient, IWebSocketClient
     {
         internal readonly TaskCompletionSource Identified = new(TaskCreationOptions.RunContinuationsAsynchronously);
         internal readonly ConcurrentQueue<string> Commands = new();
+        internal readonly ConcurrentQueue<JsonElement> CommandBodies = new();
         internal readonly ConcurrentQueue<string> EmojiCalls = new();
         internal Dictionary<string, ulong>? SavedEmojis;
         internal string? MissingEmoji, LegacyEmoji;
@@ -257,19 +259,23 @@ static partial class ListingDiscordConnectionTests
             }
             else if (method == "POST" && endpoint.EndsWith("/commands")) {
                 Commands.Enqueue(endpoint);
+                using var command = JsonDocument.Parse(json!); CommandBodies.Enqueue(command.RootElement.Clone());
                 if (endpoint != "applications/500/commands" || RejectCommands) {
                     code = HttpStatusCode.Forbidden; body = JsonSerializer.Serialize(new { code = 50001, message = FakeToken });
                 }
-                else body = """{"id":"700","application_id":"500","name":"pvkr","type":1,"description":"PVKR","version":"1"}""";
+                else body = JsonSerializer.Serialize(new { id = "700", application_id = "500", name = command.RootElement.GetProperty("name").GetString(), type = 1, description = "PVKR", version = "1" });
             }
-            else if (method == "POST" && endpoint == "channels/800/messages") {
+            else if (method == "POST" && endpoint is "channels/800/messages" or "channels/801/messages" or "channels/802/messages") {
                 using var parsed = JsonDocument.Parse(json!);
-                NotificationMessages.Enqueue(parsed.RootElement.Clone());
+                if (parsed.RootElement.TryGetProperty("embeds", out var embeds) && embeds.GetArrayLength() > 0)
+                    ChatMessages.Enqueue((endpoint, parsed.RootElement.Clone()));
+                else NotificationMessages.Enqueue(parsed.RootElement.Clone());
+                var content = parsed.RootElement.TryGetProperty("content", out var text) ? text.GetString() : null;
                 body = JsonSerializer.Serialize(new {
-                    id = "990", channel_id = "800", type = 0,
+                    id = (++messageId).ToString(), channel_id = endpoint.Split('/')[1], type = 0,
                     author = new { id = "500", username = "PVKR", discriminator = "0", bot = true },
-                    timestamp = DateTimeOffset.UtcNow, content = parsed.RootElement.GetProperty("content").GetString(),
-                    mention_everyone = !DropEveryoneMention, mentions = Array.Empty<object>(), mention_roles = Array.Empty<string>(),
+                    timestamp = DateTimeOffset.UtcNow, content,
+                    mention_everyone = !DropEveryoneMention && content?.StartsWith("@everyone") == true, mentions = Array.Empty<object>(), mention_roles = Array.Empty<string>(),
                     attachments = Array.Empty<object>(), embeds = Array.Empty<object>(), flags = 0
                 });
             }

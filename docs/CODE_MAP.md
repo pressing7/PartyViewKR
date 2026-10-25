@@ -4,14 +4,14 @@
 
 ## 기준과 범위
 
-- 정리일: 2026-10-25. 플러그인 `0.3.50.0`, Dalamud API `15`.
-- 소스 기준: `0.3.50.0`. 기반 main [`cc2f36a982bc966653efe25eba93fca74c068899`](https://github.com/pressing7/PartyViewKR/commit/cc2f36a982bc966653efe25eba93fca74c068899) 이후 AFK 정원 도달 판정과 Discord everyone 알림 변경을 포함한다.
-- 문서 자체와 신규 AFK 설정·복구 파일을 포함한 추적 파일 247개 전체를 [파일 지도](code-map/files.md)에 분류했다. 소스 위치는 이 버전의 행 번호다.
-- C# Roslyn 구문 분석, JavaScript Acorn 구문 분석, Python AST로 **1,337개 명명된 항목/진입점**을 대조했다: C# 1,215, JS 91, Python 31. 메서드뿐 아니라 생성자·로컬 함수·계산 속성·인터페이스 선언을 포함한 숫자다.
+- 정리일: 2026-10-25. 플러그인 `0.3.51.0`, Dalamud API `15`.
+- 소스 기준: `0.3.51.0`. 기반 main [`d20552c31ca57632c60e451801ed412acb010e50`](https://github.com/pressing7/PartyViewKR/commit/d20552c31ca57632c60e451801ed412acb010e50) 이후 AFK 게임 채팅 수신·종류별 채널/멘션 명령·일반 임베드 전송 변경을 포함한다.
+- 문서 자체와 신규 채팅 파일을 포함한 추적 파일 257개 전체를 [파일 지도](code-map/files.md)에 분류했다. 소스 위치는 이 버전의 행 번호다.
+- C# Roslyn 구문 분석, JavaScript Acorn 구문 분석, Python AST로 **1,419개 명명된 항목/진입점**을 대조했다: C# 1,297, JS 91, Python 31. 메서드뿐 아니라 생성자·로컬 함수·계산 속성·인터페이스 선언을 포함한 숫자다.
 - 자동 생성 record 메서드와 단순 auto-property accessor는 별도 함수로 세지 않는다. 이름 없는 LINQ/콜백은 소유 함수에서 설명하고, 중요한 DOM handler와 테스트 시나리오는 따로 연결했다.
-- 현재 C# 등록 테스트는 442개, Node 등록 테스트는 15개, Python `test_*` 메서드는 12개다. 등록 범위와 실행 결과를 구분하며 이번 AFK 변경의 검증 환경은 아래에 기록한다.
+- 현재 C# 등록 테스트는 467개, Node 등록 테스트는 15개, Python `test_*` 메서드는 12개다. 등록 범위와 실행 결과를 구분하며 이번 채팅 변경의 검증 환경은 아래에 기록한다.
 
-현재 구현은 **기존 본인 모집글의 조회·수정·수동 갱신 및 AFK 명단 감시에 따른 자동 조회**다. AFK 모집 완료 everyone 알림을 제공한다. 새 모집 시작과 콘텐츠/파티 유형 변경은 아직 구현하지 않았다. 루트의 `PartyViewKR.dll/json/deps.json`은 이전 수동 배포본이다. 빌드 기준은 `src/PartyViewKR.csproj`와 `src/PartyViewKR.json`, 설치 대상은 Releases ZIP이다.
+현재 구현은 **기존 본인 모집글의 조회·수정·수동 갱신 및 AFK 명단 감시에 따른 자동 조회**다. AFK 모집 완료 everyone 알림과 파티·받은 귓속말·연합파티 채팅 전달을 제공한다. 새 모집 시작과 콘텐츠/파티 유형 변경은 아직 구현하지 않았다. 루트의 `PartyViewKR.dll/json/deps.json`은 이전 수동 배포본이다. 빌드 기준은 `src/PartyViewKR.csproj`와 `src/PartyViewKR.json`, 설치 대상은 Releases ZIP이다.
 
 ## 함수별 문서
 
@@ -20,7 +20,7 @@
 | [플러그인 수명·조회·자리 매핑](code-map/core.md) | `Plugin`, `PartyReader`, `ListingReader`, AFK `PartyRosterReader`/`AfkListingMonitor`, ownership/소개말, 슬롯·직업·친선 padding, 인게임 UI |
 | [편집 모델·대기 변경·상태 기계](code-map/edits.md) | `Draft`, `Edit`, `Expected`, typed 조건, `ListingChange`, checkbox/dropdown/numeric UI 순서 |
 | [갱신 흐름·네이티브 UI](code-map/refresh.md) | 단일/배치 갱신, `ListingRefreshHost` partial 전체, native 이벤트·guard·최종 제출 |
-| [Discord](code-map/discord.md) | Gateway/REST·ACK·카드·모달·전체 결과·이모지 동기화·DPAPI 토큰 복원 |
+| [Discord](code-map/discord.md) | Gateway/REST·ACK·카드·모달·전체 결과·이모지 동기화·DPAPI 토큰 복원·종류별 채팅 경로/명령/전송 |
 | [공통 브리지·웹·중계](code-map/web-relay.md) | 외부 요청 큐·소유권·HTTP·WebSocket·브라우저 JS·Cloudflare Worker |
 | [호환 검사·진단·배포](code-map/compat-release.md) | ABI 계약·포인터 읽기·수동 trace·reference/ZIP/release/feed 도구 |
 | [테스트 함수·시나리오](code-map/tests.md) | fake host/SDK/HTTP fixture와 모든 등록 시나리오의 소스 위치 |
@@ -44,7 +44,7 @@ flowchart TD
   V --> B
 ```
 
-`Plugin.OnUpdate`가 게임 스레드에서 처리한다. 저장 Discord 연결 복원과 trace를 먼저 진행하고, 기본 500ms 간격 또는 `RequestRead`에 따라 우선 수정창 닫기 → 현재 파티 표시용 읽기 → 외부/AFK 요청 guard → 모집글 읽기 → 초안 준비 → 갱신 상태 기계 → 외부 snapshot 발행 → AFK 감시를 수행한다. 닫기 진행 중에는 일반 초안/갱신 진행을 건너뛴다. 기존 현재 파티·직업 읽기는 PVKR 창을 표시하거나 명시 읽기를 요청했을 때만 진행한다. AFK 전용 전체 CID 읽기는 AFK가 켜진 동안만 진행한다.
+`Plugin.OnUpdate`가 게임 스레드에서 처리한다. 저장 Discord 연결 복원·채팅 AFK/캐릭터 상태·trace를 먼저 진행하고, 기본 500ms 간격 또는 `RequestRead`에 따라 우선 수정창 닫기 → 현재 파티 표시용 읽기 → 외부/AFK 요청 guard → 모집글 읽기 → 초안 준비 → 갱신 상태 기계 → 외부 snapshot 발행 → AFK 감시를 수행한다. 닫기 진행 중에는 일반 초안/갱신 진행을 건너뛴다. 기존 현재 파티·직업 읽기는 PVKR 창을 표시하거나 명시 읽기를 요청했을 때만 진행한다. AFK 전용 전체 CID 읽기는 AFK가 켜진 동안만 진행한다.
 
 네트워크 callback은 네이티브 포인터를 읽지 않는다. `ListingWebBridge`의 lock 안에서 관리형 snapshot을 읽고 작업을 예약한다. 실제 `RequestQuery`/`StartRefresh`는 Framework에서 실행된다. `ListingWebRequestGuard`/`ListingWebRefreshGuard`는 **이 외부 연결이 시작한 revision**만 취소하므로 이후의 수동 요청까지 취소하면 안 된다.
 
@@ -147,6 +147,7 @@ PIN은 `ExtraCriteria`나 외부 snapshot에 넣지 않는다. 수정창 passwor
 | Worker static assets | 최초 페이지 이동을 허용하기 위해 public static GET을 API의 cross-origin 검사 전에 처리한다. API는 인증/Origin 경계를 유지한다. |
 | Relay 재접속 | transport만 backoff 재연결한다. 이미 넘긴 게임 명령을 재발송하지 않는다. host 교체 close4001은 이전 연결을 중단한다. |
 | Discord | 개인 application owner만 허용한다. `Defer` 성공 뒤에만 Bridge 작업을 넣는다. 응답 timeout 때문에 같은 게임 작업을 재제출하지 않는다. |
+| 채팅 | 공개 ChatMessage에서 managed 복사→종류별 queue→bot 채널 POST. 설정 명령은 owner/app/ACK 검사 뒤 실행하며 채팅 메시지는 ephemeral 카드가 아니다. |
 | 카드 | Overview/Editor/Details/Results는 독립 카드다. nonce, session, editor revision,15분 수명을 검사한다. 긴 결과는 전체 페이지로 보관한다. |
 | 이모지 | embedded PNG80개를 봇 application에 등록한다. 매 연결에서 목록을 읽어 재사용/정확한 legacy rename/누락 업로드만 한다. runtime ID를 고정 저장하지 않는다. |
 | 저장 token | `RelayConfiguration`의 DPAPI ciphertext와 자동 연결 설정. 명시 ‘끄기’는 자동 연결을 끄고, 플러그인 Dispose는 저장 token을 삭제하지 않는다. |
@@ -157,6 +158,8 @@ PIN은 `ExtraCriteria`나 외부 snapshot에 넣지 않는다. 수정창 passwor
 
 | 증상 / diagnostic | 먼저 볼 함수 | 이어서 볼 검증 |
 |---|---|---|
+| AFK 채팅이 오지 않음 | `GameChatCapture.Current/Legacy`, `Plugin.UpdateDiscordChat`, `ListingDiscordChat.Pump` | `/pvkr-chat 상태`·인게임 구독 오류·AFK 본인/종류/앱·채널 권한·Gateway 연결을 순서대로 확인 |
+| 채팅의 서버명/색/멘션이 다름 | `GameChatCapture.Emit`, `DiscordChatFormatting.Render`, `ChatTransport.Send` | PlayerPayload.World.RowId·종류별 색·첫 part content 및 allowed_mentions. 서버명을 현재 서버로 추측하지 않는다. |
 | 구조 DLL 버전이 다른데 읽기가 차단됨 | `NativeCompatibility.Check`, `NativeContract.Differences` | MVID만 비교하지 말고 `nativeDifferences`, 파일/로드 MVID, native+interop 두 계약 |
 | 서버 초월/연합에서 현재 파티 인원이 일부만 나옴 | `PartyReader.ReadCrossRealm` | 현재 local group만 읽는 경계. 전체 모집은 `ListingSlots.Read` |
 | AFK에서 다른 그룹의 가입/탈퇴가 감지되지 않음 | `PartyRosterReader.ReadCrossRealm/ReadRegular` | `afkRosterSource`, 전체 그룹 범위·CID 완전성·`afkRosterReason`. 기존 현재 직업 표시의 local group 읽기와 구분 |
@@ -185,7 +188,7 @@ PIN은 `ExtraCriteria`나 외부 snapshot에 넣지 않는다. 수정창 passwor
 
 ## 검증과 문서 갱신
 
-0.3.50 AFK 정원 도달·Discord 알림 변경에서 관리형 테스트442개와 Python 배포 테스트12개를 통과했다. 실제 SDK의 everyone POST 직렬화·권한 부족·서버 mention 확인도 포함한다. NuGet 캐시/WindowsDesktop 참조 팩이 없는 환경이므로 기존0.3.47 build의 의존 DLL을 직접 참조하는 별도 오프라인 프로젝트로 테스트 및 전체 C# 소스 컴파일을 수행했다. 소스 컴파일은 `net10.0`+Windows platform attribute에서 경고0/오류0이었으며, 정식 `net10.0-windows` 패키지 빌드/Actions 실행이나 인게임 검증을 대신하지 않는다. 기존 native ABI1088개 항목의 차이는0이었다.
+0.3.51 AFK 채팅 변경에서 관리형 테스트467개와 Python 배포 테스트12개를 통과했다. 공개 채팅 이벤트 두 형태·일반/서버 초월 분류·원본 미변경·AFK/캐릭터/앱별 경로·저장 실패 보존·ACK/권한·큐 순서/취소/overflow·Unicode 분할 및 실제 SDK slash/색상 embed/allowed_mentions 직렬화를 검사했다. NuGet 캐시/WindowsDesktop 참조 팩이 없는 환경이므로 기존0.3.47 build의 의존 DLL을 직접 참조하는 별도 오프라인 프로젝트로 테스트 및 전체 C# 소스 컴파일을 수행했다. 소스 컴파일은 `net10.0`+Windows platform attribute에서 경고0/오류0이었으며, 정식 `net10.0-windows` 패키지 빌드/Actions 실행이나 인게임 검증을 대신하지 않는다. 이번 변경은 native ABI 계약을 추가하거나 변경하지 않는다.
 
 기능 변경 후 해당 모델/host/외부 어댑터와 관련 테스트를 함께 확인한다. 다음은 필요할 때 개발 환경에서 실행하는 명령이다. GitHub Actions 실행은 사용자가 담당한다.
 
@@ -243,3 +246,17 @@ AFK의 `IAfkListingHost`에는 수정/제출 계약이 없다. 모집 완료 알
 `NotificationTransport`는 Gateway 캐시의 선택 서버 텍스트 채널과 봇의 ViewChannel/SendMessages/MentionEveryone 권한을 설정 시·전송 전에 확인한다. 고정 내용 **`@everyone 파티모집완료`**, AllowedMentionTypes.Everyone만 허용한 새 bot message로 전송하고 응답의 MentionedEveryone을 확인한다. 기존 V2/ephemeral 조회·수정 응답의 AllowedMentions.None은 유지한다. 연결 종료·AFK 종료·캐릭터 변경·읽기 불가·빈자리 관측은 아직 진행 중인 전송을 취소한다. 이미 도착한 메시지를 회수하거나 앱/휴대폰의 알림 설정을 우회하지 않는다.
 
 함수 시작점은 [AFK controller](code-map/core.md#file-src-afklistingmonitor-cs), [알림 controller](code-map/discord.md#file-src-listingdiscordnotifications-cs), [SDK 전송](code-map/discord.md#file-src-listingdiscordclient-notifications-cs), [채널 선택](code-map/discord.md#file-src-listingdiscordsession-notifications-cs)이다. [AFK 완료 회귀](code-map/tests.md#file-tests-afkcompletiontests-cs), [알림 상태 회귀](code-map/tests.md#file-tests-listingdiscordnotificationtests-cs), [SDK 직렬화 회귀](code-map/tests.md#file-tests-listingdiscordnotificationsdktests-cs)가 자동 종료/재조회 실패/미등록 정원/중복/권한/취소/실제 요청 형태를 검증한다.
+
+## AFK 게임 채팅과 채널 설정 (0.3.51)
+
+`GameChatCapture`는 런타임 IChatGui의 **공개 ChatMessage 이벤트**에 구독한다. 한섭/공개 DLL의 delegate 차이 때문에 이벤트 signature를 읽어 legacy5인자와 현재 message1인자를 각각 연결한다. 새 오프셋이나 packet hook을 사용하지 않는다. API15 채팅 코드14·32는 파티,13은 받은 귓속말,15는 연합파티다. 다른 종류와 보낸 귓속말12는 제외한다. `IsHandled`/`PreventOriginal` 또는 SeString을 바꾸지 않아 게임 화면 출력에 간섭하지 않는다.
+
+`Plugin.WantsCapturedChat`에서 AFK·로그인·현재 캐릭터·해당 종류의 경로가 있는지 먼저 확인한다. 필요한 채팅만 SeString.TextValue와 발신자 PlayerPayload의 PlayerName·World.RowId를 읽어 `GameChatMessage`로 복사한다. 서버 이름은 기존 `RuntimeRows.World` 경로로 해석한다. 서버 ID가 없으면 자기 서버로 추정하지 않고 표시 단계에서 ‘서버 미상’을 사용한다. 이 callback은 Discord 네트워크 요청을 하지 않는다. AFK가 기억한 자기 ID를 사용하므로 일시적인 PlayerState unloaded는 종료가 아니지만 로그아웃/캐릭터 변경은 전송을 중단한다. 모집글 조회 성공이나 모집 완료 여부는 채팅 수신의 조건이 아니다.
+
+`ListingDiscordChat`의 단일 worker는 route snapshot·본인 ID와 함께 받은 항목을 순서대로 보낸다. 동일 본문도 서로 다른 채팅 이벤트라면 보존한다. 큐 최대200건, 메시지 본문16384자·이름/서버 각512자 입력 상한, 항목당30초 전송 예산을 둔다. Gateway 단절은 큐를 유지하고 복구를 기다린다. 초과 대기는 가장 오래된 것을 제외해 상태에 기록한다. AFK 종료/본인 변경/Dispose는 큐를 지우고 진행 전송을 취소한다. 설정 변경은 변경된 종류의 대기만 제거하며 과거 메시지를 새 목적지로 재지정하지 않는다. 불확실한 POST는 다시 보내지 않고 다음 메시지를 처리한다.
+
+서버 전용 `/pvkr-chat`의 `설정`/`멘션`/`해제`/`상태`는 기존 `/pvkr`와 별도로 등록된다. SDK가 반환한 옵션 타입·값·채널을 엄격히 파싱하고 세션 owner/app 인증과 ACK 성공 뒤 controller에 전달한다. 설정 변경은15초 예산으로 직렬 처리하며 채널 확인→Framework 설정 저장→활성 경로 변경 순서다. `RelayConfiguration.DiscordChat`에는 앱 ID·종류별 서버/채널·멘션 여부만 저장한다. 명령/조회 카드는 그대로 본인에게만 응답하고 설정 자체가 메시지/멘션을 보내지 않는다.
+
+`ChatTransport`는 서버 일반 텍스트 채널에서 ViewChannel/SendMessages/EmbedLinks와 선택적 MentionEveryone을 확인한다. 일반 bot POST의 embed는 파랑/분홍/주황 sidebar, `닉네임@서버 : 본문`, 수신 시각을 가진다. `DiscordChatFormatting.Render`는 Unicode scalar/escape token 단위로4000자 이하 description으로 나누어 내용 전체를 보낸다. 첫 part에만 선택적 @everyone content를 붙인다. **allowed_mentions는 꺼진 경우에도 명시적 빈 parse 배열**로 직렬화한다. SDK의 rate limit 재시도만 허용하고 네트워크 오류의 불확실한 POST는 반복하지 않는다. 이미 보낸 채팅은 자동 삭제하지 않으며 기존 Overview/Editor/Details/Results 카드의 수명은 바꾸지 않는다.
+
+함수 시작점은 [공개 이벤트](code-map/core.md#file-src-gamechatcapture-cs), [게임 연결](code-map/core.md#file-src-plugin-chat-cs), [설정/큐](code-map/discord.md#file-src-listingdiscordchat-cs), [SDK 명령/전송](code-map/discord.md#file-src-listingdiscordclient-chat-cs)이다. [수신 이벤트 회귀](code-map/tests.md#file-tests-gamechatcapturetests-cs), [controller 회귀](code-map/tests.md#file-tests-listingdiscordchattests-cs), [실제 SDK 직렬화 회귀](code-map/tests.md#file-tests-listingdiscordchatsdktests-cs)로 연결한다. 실제 한섭 이벤트/발신자 payload와 Android 표시·알림 수신은 인게임 검증이 필요하다.

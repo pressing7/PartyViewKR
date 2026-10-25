@@ -46,7 +46,8 @@ public sealed partial class Plugin
             webHost ??= new WebHost(this);
             stage = "디스코드 클라이언트 생성";
             discordClient = new(new ListingWebBridge(typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "unknown"), token,
-                notificationTarget: config.ReadNotificationTarget(), saveNotificationTarget: SaveDiscordNotificationTarget);
+                notificationTarget: config.ReadNotificationTarget(), saveNotificationTarget: SaveDiscordNotificationTarget,
+                chatSettings: config.DiscordChat, saveChatSettings: SaveDiscordChatSettings);
             stage = "모집글 조회 시작";
             RequestRead(); return true;
         }

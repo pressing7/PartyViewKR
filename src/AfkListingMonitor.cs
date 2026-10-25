@@ -33,6 +33,7 @@ internal sealed class AfkListingMonitor
     internal AfkSettings Settings { get; private set; } = new();
     private int failures, queries, successes, changes;
     internal bool Enabled { get; private set; }
+    internal ulong MonitoredSelfId => Enabled ? self : 0;
     internal bool Pending { get; private set; }
     internal bool InFlight => requestRevision >= 0;
     internal int RecruitmentCapacity { get; private set; }

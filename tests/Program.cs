@@ -242,6 +242,8 @@ AfkListingMonitorTests.Run(Test, Check);
 AfkSettingsTests.Run(Test, Check);
 AfkCompletionTests.Run(Test, Check);
 ListingDiscordNotificationTests.Run(Test, Check);
+GameChatCaptureTests.Run(Test, Check);
+ListingDiscordChatTests.Run(Test, Check);
 ListingRecoveryTests.Run(Test, Check);
 ListingSlotsTests.Run(Test, Check);
 ListingJobRulesTests.Run(Test, Check);

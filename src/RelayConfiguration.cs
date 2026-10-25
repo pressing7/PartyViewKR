@@ -14,6 +14,7 @@ public sealed class RelayConfiguration : IPluginConfiguration
     public ulong DiscordNotificationApplicationId { get; set; }
     public ulong DiscordNotificationGuildId { get; set; }
     public ulong DiscordNotificationChannelId { get; set; }
+    public DiscordChatSettings? DiscordChat { get; set; }
     internal DiscordNotificationTarget ReadNotificationTarget() => new(DiscordNotificationApplicationId,
         DiscordNotificationGuildId, DiscordNotificationChannelId);
     internal void WriteNotificationTarget(DiscordNotificationTarget target)

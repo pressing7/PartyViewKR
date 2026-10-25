@@ -141,6 +141,7 @@ internal sealed class PartyWindow : Window
         if (!discordSettingsLoaded) { rememberDiscordToken = plugin.RememberDiscordToken; discordSettingsLoaded = true; }
         ImGui.TextWrapped(plugin.DiscordStatus);
         if (plugin.DiscordNotificationStatus.Length > 0) ImGui.TextWrapped(plugin.DiscordNotificationStatus);
+        if (plugin.DiscordChatStatus.Length > 0) ImGui.TextWrapped(plugin.DiscordChatStatus);
         if (plugin.DiscordEnabled) {
             if (plugin.DiscordInviteUrl.Length > 0 && ImGui.Button("내 봇 초대 링크 복사")) ImGui.SetClipboardText(plugin.DiscordInviteUrl);
             ImGui.TextWrapped("봇을 본인 서버에 초대한 뒤 봇과의 DM에서 /pvkr를 입력하세요. 서버에서 실행한 화면은 본인에게만 표시됩니다.");

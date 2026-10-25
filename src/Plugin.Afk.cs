@@ -17,6 +17,7 @@ public sealed partial class Plugin
         afkHost ??= new(this);
         afk.SetEnabled(enabled, afkHost, Environment.TickCount64);
         UpdateDiscordCompletion();
+        UpdateDiscordChat();
         RequestRead();
     }
 

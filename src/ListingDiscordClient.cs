@@ -25,7 +25,8 @@ internal sealed partial class ListingDiscordClient : IDisposable
 
     internal ListingDiscordClient(ListingWebBridge bridge, string token, DiscordSocketConfig? config = null,
         DiscordNotificationTarget? notificationTarget = null,
-        Func<DiscordNotificationTarget, CancellationToken, Task>? saveNotificationTarget = null)
+        Func<DiscordNotificationTarget, CancellationToken, Task>? saveNotificationTarget = null,
+        DiscordChatSettings? chatSettings = null, Func<DiscordChatSettings, CancellationToken, Task>? saveChatSettings = null)
     {
         Bridge = bridge;
         socket = new(config ?? new DiscordSocketConfig {
@@ -36,10 +37,11 @@ internal sealed partial class ListingDiscordClient : IDisposable
         socket.Connected += Reconnected;
         socket.Disconnected += Disconnected;
         socket.InteractionCreated += Interaction;
-        lifetime = Task.Run(() => Run(token, notificationTarget, saveNotificationTarget));
+        lifetime = Task.Run(() => Run(token, notificationTarget, saveNotificationTarget, chatSettings, saveChatSettings));
     }
     private async Task Run(string token, DiscordNotificationTarget? notificationTarget,
-        Func<DiscordNotificationTarget, CancellationToken, Task>? saveNotificationTarget)
+        Func<DiscordNotificationTarget, CancellationToken, Task>? saveNotificationTarget,
+        DiscordChatSettings? chatSettings, Func<DiscordChatSettings, CancellationToken, Task>? saveChatSettings)
     {
         var stage = "봇 로그인";
         try
@@ -55,10 +57,12 @@ internal sealed partial class ListingDiscordClient : IDisposable
             var icons = new ListingDiscordIcons();
             notifications = new(application.Id, new NotificationTransport(this), notificationTarget,
                 saveNotificationTarget ?? ((_, _) => Task.FromException(new InvalidOperationException("Notification settings unavailable"))), stop.Token);
-            session = new(Bridge, application.Id, application.Owner.Id, stop.Token, iconCatalog: icons, notifications: notifications);
-            // View channel + send messages + mention everyone. Existing installs
+            chat = new(application.Id, new ChatTransport(this), chatSettings,
+                saveChatSettings ?? ((_, _) => Task.FromException(new InvalidOperationException("Chat settings unavailable"))), stop.Token);
+            session = new(Bridge, application.Id, application.Owner.Id, stop.Token, iconCatalog: icons, notifications: notifications, chat: chat);
+            // View channel + send messages + embed links + mention everyone. Existing installs
             // may grant these only in the explicitly selected notification channel.
-            inviteUrl = $"https://discord.com/oauth2/authorize?client_id={application.Id}&scope=bot%20applications.commands&permissions=134144";
+            inviteUrl = $"https://discord.com/oauth2/authorize?client_id={application.Id}&scope=bot%20applications.commands&permissions=150528";
             stage = "Gateway 연결 준비";
             status = "디스코드 Gateway의 연결 준비를 기다리는 중입니다.";
             await socket.StartAsync();
@@ -73,6 +77,8 @@ internal sealed partial class ListingDiscordClient : IDisposable
                 .WithName("pvkr").WithDescription("내 파티 모집글 조회·수정·갱신")
                 .WithIntegrationTypes(ApplicationIntegrationType.GuildInstall)
                 .WithContextTypes(InteractionContextType.Guild, InteractionContextType.BotDm).Build(), Options());
+            stage = "/pvkr-chat 명령어 등록";
+            await ((IDiscordClient)socket.Rest).CreateGlobalApplicationCommand(ChatCommand(), Options());
             stop.Token.ThrowIfCancellationRequested();
             Volatile.Write(ref ready, 1);
             status = ConnectedStatus;
@@ -88,7 +94,8 @@ internal sealed partial class ListingDiscordClient : IDisposable
         catch (Exception e) { status = "디스코드 연결을 시작하지 못했습니다. " + FailureDetails(stage, e); }
         finally {
             token = ""; Volatile.Write(ref ready, 0); Volatile.Write(ref running, 0);
-            notifications?.Dispose(); Bridge.Stop(); stop.Cancel(); session?.ClearIfIdle();
+            notifications?.Dispose(); chat?.Dispose(); Bridge.Stop(); stop.Cancel(); session?.ClearIfIdle();
+            if (chat != null) await chat.Completion;
             try { await socket.StopAsync(); } catch (Exception) { }
             try { await socket.LogoutAsync(); } catch (Exception) { }
             socket.Dispose();
@@ -171,6 +178,8 @@ internal sealed partial class ListingDiscordClient : IDisposable
         DiscordInput? input = interaction switch {
             SocketSlashCommand command when command.Data.Name == "pvkr" =>
                 new(command.Id, command.ApplicationId, command.User.Id, command.Data.Name, "", [], []),
+            SocketSlashCommand command when command.Data.Name == "pvkr-chat" =>
+                new DiscordInput(command.Id, command.ApplicationId, command.User.Id, command.Data.Name, "", [], []) { ChatCommand = ReadChatCommand(command) },
             SocketMessageComponent component when component.Data.CustomId.StartsWith("pvkr:", StringComparison.Ordinal) =>
                 // Buttons omit values; Discord.Net exposes null, unlike select menus.
                 new(component.Id, component.ApplicationId, component.User.Id, "", component.Data.CustomId, component.Data.Values?.ToArray() ?? [], []),
@@ -211,7 +220,7 @@ internal sealed partial class ListingDiscordClient : IDisposable
     public void Dispose()
     {
         if (Interlocked.Exchange(ref disposed, 1) != 0) return;
-        notifications?.Dispose(); Bridge.Stop(); stop.Cancel(); session?.ClearIfIdle();
+        notifications?.Dispose(); chat?.Dispose(); Bridge.Stop(); stop.Cancel(); session?.ClearIfIdle();
         // Network teardown is async; do not stall Dalamud's framework thread.
         _ = lifetime.ContinueWith(_ => stop.Dispose(), TaskScheduler.Default);
     }
