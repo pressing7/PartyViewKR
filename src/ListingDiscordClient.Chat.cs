@@ -7,6 +7,10 @@ internal sealed partial class ListingDiscordClient
 {
     private ListingDiscordChat? chat;
     internal string ChatStatus => chat?.Status ?? "채팅 연결 준비 중입니다.";
+    internal bool ChatEditable => chat?.Editable == true;
+    internal DiscordChatSettings? ChatSettings => chat?.Settings;
+    internal Task<string> ConfigureChat(GameChatKind kind, bool? enabled, bool? mention) =>
+        chat?.ConfigureLocal(kind, enabled, mention, CancellationToken.None) ?? Task.FromResult("채팅 연결 준비 중입니다.");
     internal void ObserveChat(bool enabled, ulong self) => chat?.Observe(enabled, self);
     internal bool WantsChat(GameChatKind kind) => chat?.Wants(kind) == true;
     internal bool ReceiveChat(ulong self, GameChatMessage message) => chat?.Receive(self, message) == true;
@@ -21,7 +25,7 @@ internal sealed partial class ListingDiscordClient
             .AddChoice("끄기", "off").AddChoice("everyone", "everyone");
         static SlashCommandOptionBuilder Action(string name, string description) => new SlashCommandOptionBuilder()
             .WithName(name).WithDescription(description).WithType(ApplicationCommandOptionType.SubCommand);
-        return new SlashCommandBuilder().WithName("pvkr-chat").WithDescription("AFK 게임 채팅 수신 채널과 멘션 설정")
+        return new SlashCommandBuilder().WithName("pvkr-chat").WithDescription("게임 채팅 수신 채널과 멘션 설정")
             .WithIntegrationTypes(ApplicationIntegrationType.GuildInstall).WithContextTypes(InteractionContextType.Guild)
             .AddOption(Action("설정", "채팅 종류별 수신 채널 지정").AddOption(Kind())
                 .AddOption(new SlashCommandOptionBuilder().WithName("채널").WithDescription("채팅을 받을 서버 텍스트 채널")

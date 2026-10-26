@@ -15,13 +15,15 @@ internal sealed class GameChatCapture : IDisposable
     private readonly Func<GameChatKind, bool> wanted;
     private readonly Action<GameChatMessage> receive;
     private readonly Func<uint, string> worldName;
+    private readonly Func<string> homeWorld;
     private readonly Action<string> error;
     private bool disposed;
 
     internal GameChatCapture(object source, Type contract, Func<GameChatKind, bool> wanted,
-        Action<GameChatMessage> receive, Func<uint, string> worldName, Action<string> error)
+        Action<GameChatMessage> receive, Func<uint, string> worldName, Action<string> error, Func<string>? homeWorld = null)
     {
         this.source = source; this.wanted = wanted; this.receive = receive; this.worldName = worldName; this.error = error;
+        this.homeWorld = homeWorld ?? (() => "");
         chatEvent = contract.GetEvent("ChatMessage") ?? throw new MissingMemberException("ChatMessage");
         var handler = chatEvent.EventHandlerType ?? throw new MissingMemberException("ChatMessage handler");
         var invoke = handler.GetMethod("Invoke")!;
@@ -66,15 +68,22 @@ internal sealed class GameChatCapture : IDisposable
     {
         if (sender == null || message == null || Property(message, "TextValue") is not string text) return;
         var name = Property(sender, "TextValue") as string ?? ""; var world = "";
+        var explicitWorld = false;
+        var crossWorld = name.Contains('@') || name.Contains('＠');
         if (Property(sender, "Payloads") is IEnumerable payloads) {
             foreach (var payload in payloads) {
+                if (payload?.GetType().Name == "IconPayload" && Property(payload, "Icon")?.ToString() == "CrossWorld") crossWorld = true;
                 if (payload == null || payload.GetType().Name != "PlayerPayload") continue;
                 name = Property(payload, "PlayerName") as string ?? name;
                 var row = Property(payload, "World");
-                if (row != null && Property(row, "RowId") is { } id && Convert.ToUInt32(id) is > 0 and var worldId) world = worldName(worldId);
-                break;
+                if (row != null && Property(row, "RowId") is { } id && Convert.ToUInt32(id) is > 0 and var worldId) {
+                    explicitWorld = true; world = worldName(worldId);
+                }
             }
         }
+        // Same-world/local senders can omit the world link. An explicit remote
+        // world always wins, even if its name cannot currently be resolved.
+        if (!explicitWorld && !crossWorld) world = homeWorld();
         receive(new(kind, name, world, text, timestamp > 0 ? DateTimeOffset.FromUnixTimeSeconds(timestamp) : DateTimeOffset.UtcNow));
         error("");
     }

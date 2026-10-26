@@ -16,29 +16,34 @@ internal static class ListingEditorCriteria
 
     internal static bool Matches(RefreshTarget target, string actualCriteria, int draftGroups,
         int draftMainSlots, out int[] acceptedPaddingIndices)
+        => Matches(target, actualCriteria, draftGroups, draftMainSlots, out acceptedPaddingIndices, out _);
+
+    internal static bool Matches(RefreshTarget target, string actualCriteria, int draftGroups,
+        int draftMainSlots, out int[] acceptedPaddingIndices, out int[] acceptedOccupiedIndices)
     {
         acceptedPaddingIndices = [];
+        acceptedOccupiedIndices = [];
         if (target.Criteria == actualCriteria) return true;
         if (target.TotalSlots != target.Slots.TotalSlots ||
-            ListingSlotRoute.Classify(target.Slots) != RecruitmentSlotLayout.FriendlyMatch ||
             !ListingSlotRoute.TryCreate(target.Slots, 1, out var route) ||
             !route.MatchesEditorShape(draftGroups, draftMainSlots)) return false;
-        var expectedFields = target.Criteria.Split('/');
-        var actualFields = actualCriteria.Split('/');
         // Every non-role condition still compares exactly.
-        if (expectedFields.Length != 9 || actualFields.Length != 9 ||
-            !expectedFields.Take(8).SequenceEqual(actualFields.Take(8)) ||
-            !TryReadFlags(target.Criteria, 24, out var expected) ||
-            !TryReadFlags(actualCriteria, 24, out var actual)) return false;
+        if (!ListingRoleNormalization.TryReadPair(target.Criteria, actualCriteria, target.Slots.NativeSlotCount,
+            out var expected, out var actual)) return false;
         var accepted = new List<int>();
+        var occupied = new List<int>();
         for (var i = 0; i < expected.Length; i++)
         {
             if (expected[i] == actual[i]) continue;
+            if (ListingRoleNormalization.IsOccupied(target.Slots, i, expected[i], actual[i])) {
+                occupied.Add(i); continue;
+            }
             if (!IsFriendlyPadding(target.Slots, i) || expected[i] != 0 || actual[i] != FriendlyPaddingFlags)
                 return false;
             accepted.Add(i);
         }
         acceptedPaddingIndices = accepted.ToArray();
+        acceptedOccupiedIndices = occupied.ToArray();
         return true;
     }
 

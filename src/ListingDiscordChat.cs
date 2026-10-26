@@ -28,6 +28,8 @@ internal sealed class ListingDiscordChat : IDisposable
     private string last = "";
     internal Task Completion { get; }
     internal string Status { get { lock (gate) return StatusLocked(); } }
+    internal bool Editable { get { lock (gate) return !disposed && !stop.IsCancellationRequested; } }
+    internal DiscordChatSettings Settings { get { lock (gate) return settings with { Routes = settings.Routes.ToArray() }; } }
     internal int PendingCount { get { lock (gate) return queue.Count + (sending != null ? 1 : 0); } }
 
     internal ListingDiscordChat(ulong applicationId, IDiscordChatTransport transport, DiscordChatSettings? saved,
@@ -39,11 +41,11 @@ internal sealed class ListingDiscordChat : IDisposable
         Completion = Task.Run(Pump);
     }
 
-    internal void Observe(bool afkEnabled, ulong selfId)
+    internal void Observe(bool loggedIn, ulong selfId)
     {
         lock (gate) {
             if (disposed) return;
-            var active = afkEnabled && selfId != 0;
+            var active = loggedIn && selfId != 0;
             if (!active || self != selfId) { dropped += queue.Count; queue.Clear(); sending?.Cancel(); }
             watching = active; self = active ? selfId : 0;
         }
@@ -51,14 +53,14 @@ internal sealed class ListingDiscordChat : IDisposable
 
     internal bool Wants(GameChatKind kind)
     {
-        lock (gate) return !disposed && watching && settings.Routes.Any(r => r.Kind == GameChat.Key(kind));
+        lock (gate) return !disposed && watching && settings.Routes.Any(r => r.Enabled && r.Kind == GameChat.Key(kind));
     }
 
     internal bool Receive(ulong selfId, GameChatMessage message)
     {
         lock (gate) {
             if (disposed || !watching || selfId == 0 || self != selfId || !Enum.IsDefined(message.Kind)) return false;
-            var route = settings.Routes.FirstOrDefault(r => r.Kind == GameChat.Key(message.Kind));
+            var route = settings.Routes.FirstOrDefault(r => r.Enabled && r.Kind == GameChat.Key(message.Kind));
             if (route == null || string.IsNullOrWhiteSpace(message.Text)) return false;
             if (message.Text.Length > 16384 || message.Name.Length > 512 || message.World.Length > 512) {
                 failed++; last = "메시지가 너무 길어 전달하지 못했습니다."; return false;
@@ -92,24 +94,15 @@ internal sealed class ListingDiscordChat : IDisposable
                     return "수신 채널 또는 멘션 설정을 다시 선택해 주세요.";
                 route = new() { Kind = command.Kind, GuildId = guildId,
                     ChannelId = command.Action == "설정" ? command.ChannelId : existing!.ChannelId,
+                    Enabled = command.Action == "설정" || existing!.Enabled,
                     MentionEveryone = command.MentionEveryone ?? existing?.MentionEveryone ?? false };
                 var error = await transport.CheckChannel(route, ct);
                 if (error != null) return error;
             }
             var updated = before with { Routes = before.Routes.Where(r => r.Kind != command.Kind)
                 .Concat(route == null ? [] : new[] { route }).OrderBy(r => r.Kind, StringComparer.Ordinal).ToArray() };
-            ct.ThrowIfCancellationRequested(); await save(updated, ct).WaitAsync(ct); ct.ThrowIfCancellationRequested();
-            lock (gate) {
-                if (disposed) return "디스코드 연결이 종료됐습니다.";
-                settings = updated;
-                if (existing != route) {
-                    var kept = queue.Where(p => p.Route.Kind != command.Kind).ToArray();
-                    dropped += queue.Count - kept.Length; queue.Clear(); foreach (var item in kept) queue.Enqueue(item);
-                    if (sendingKind == command.Kind) sending?.Cancel();
-                }
-                return route == null ? $"{GameChat.Label(kind)} 채팅 수신을 해제했습니다." :
-                    $"{GameChat.Label(kind)} → <#{route.ChannelId}> · 멘션 {(route.MentionEveryone ? "@everyone" : "끄기")}\nAFK 모드에서 새로 받은 채팅부터 전달합니다.";
-            }
+            await Apply(updated, command.Kind, existing != route, ct);
+            return route == null ? $"{GameChat.Label(kind)} 채팅 수신을 해제했습니다." : RouteSummary(kind, route);
         }
         catch (OperationCanceledException) when (!stop.IsCancellationRequested && !cancellation.IsCancellationRequested)
         { return "채팅 설정 시간이 초과됐습니다. 다시 시도해 주세요."; }
@@ -118,13 +111,51 @@ internal sealed class ListingDiscordChat : IDisposable
         finally { if (acquired) editing.Release(); }
     }
 
-    private string StatusLocked() => $"채팅 전달 · {(watching ? "AFK 수신 중" : "AFK 대기")} · 설정 {settings.Routes.Length}/3 · " +
+    // Share the same serialization and latest settings with slash commands.
+    // Turning a category off does not depend on Discord channel permissions.
+    internal async Task<string> ConfigureLocal(GameChatKind kind, bool? enabled, bool? mention, CancellationToken cancellation)
+    {
+        if (!Enum.IsDefined(kind)) return "채팅 종류를 확인해 주세요.";
+        using var budget = CancellationTokenSource.CreateLinkedTokenSource(stop.Token, cancellation);
+        budget.CancelAfter(TimeSpan.FromSeconds(15)); var ct = budget.Token;
+        var acquired = false;
+        try {
+            await editing.WaitAsync(ct); acquired = true;
+            DiscordChatSettings before; lock (gate) before = settings;
+            var route = before.Routes.FirstOrDefault(r => r.Kind == GameChat.Key(kind));
+            if (route == null) return "먼저 /pvkr-chat 설정으로 수신 채널을 지정해 주세요.";
+            var updated = before.WithOptions(kind, enabled, mention);
+            var next = updated.Routes.Single(r => r.Kind == route.Kind);
+            await Apply(updated, route.Kind, route != next, ct);
+            return $"{GameChat.Label(kind)} · 수신 {(next.Enabled ? "켜기" : "끄기")} · 멘션 {(next.MentionEveryone ? "@everyone" : "끄기")}";
+        }
+        catch (OperationCanceledException) when (!stop.IsCancellationRequested && !cancellation.IsCancellationRequested)
+        { return "채팅 설정 시간이 초과됐습니다. 다시 시도해 주세요."; }
+        finally { if (acquired) editing.Release(); }
+    }
+
+    private async Task Apply(DiscordChatSettings updated, string kind, bool changed, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested(); await save(updated, ct).WaitAsync(ct); ct.ThrowIfCancellationRequested();
+        lock (gate) {
+            if (disposed) throw new OperationCanceledException(ct);
+            settings = updated;
+            if (!changed) return;
+            var kept = queue.Where(p => p.Route.Kind != kind).ToArray();
+            dropped += queue.Count - kept.Length; queue.Clear(); foreach (var item in kept) queue.Enqueue(item);
+            if (sendingKind == kind) sending?.Cancel();
+        }
+    }
+
+    private static string RouteSummary(GameChatKind kind, DiscordChatRoute route) =>
+        $"{GameChat.Label(kind)} → <#{route.ChannelId}> · 수신 {(route.Enabled ? "켜기" : "끄기")} · 멘션 {(route.MentionEveryone ? "@everyone" : "끄기")}";
+    private string StatusLocked() => $"채팅 전달 · {(watching ? "수신 대기" : "로그인 대기")} · 수신 켜짐 {settings.Routes.Count(r => r.Enabled)}/3 · " +
         $"전송 {sent} · 실패 {failed} · 제외 {dropped} · 대기 {queue.Count}" + (last.Length == 0 ? "" : "\n" + last);
     private string SummaryLocked() => string.Join("\n", Enum.GetValues<GameChatKind>().Select(kind => {
         var route = settings.Routes.FirstOrDefault(r => r.Kind == GameChat.Key(kind));
-        return GameChat.Label(kind) + (route == null ? " · 수신 꺼짐" : $" → <#{route.ChannelId}> · 멘션 {(route.MentionEveryone ? "@everyone" : "끄기")}");
+        return route == null ? GameChat.Label(kind) + " · 수신 꺼짐" : RouteSummary(kind, route);
     })) + "\n\n" + StatusLocked();
-    private bool Current(Pending pending) => !disposed && watching && self == pending.Self && settings.Routes.Contains(pending.Route);
+    private bool Current(Pending pending) => !disposed && watching && self == pending.Self && pending.Route.Enabled && settings.Routes.Contains(pending.Route);
 
     private async Task Pump()
     {

@@ -4,7 +4,7 @@
 
 `Draft`는 UI 입력, `Edit`는 원본에 묶인 요청, `Expected`는 관리형 예상 결과다. 이 장의 코드는 native 호출 없이 값을 검증/변환한다. `Supports`와 실제 게임 컨트롤 활성화 여부를 구분한다.
 
-기준: 0.3.51.0 소스. 기반 main `d20552c31ca57632c60e451801ed412acb010e50` 이후 AFK 게임 채팅 수신·종류별 채널/멘션 명령·일반 임베드 전송 변경을 포함한다. 2026-10-25 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
+기준: 0.3.52.0 소스. 기반 main `6e6e482b4e56a7c409c7e58fdb0ed5b2d1d24bce` 이후 상시 채팅·인게임 수신/멘션 토글·홈 서버 보완·점유 자리 직업 자동 정규화 검증 변경을 포함한다. 2026-10-26 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
 
 표에는 직접 선언한 메서드·생성자·로컬 함수·계산 속성·인터페이스 메서드를 각각 포함한다. 자동 생성 record 메서드/단순 auto-property accessor는 제외한다. 이름 없는 LINQ/타이머/콜백은 이를 소유한 함수 설명에 포함하며, 중요한 DOM 이벤트 handler와 명명된 테스트 시나리오는 별도로 표시한다.
 
@@ -244,8 +244,8 @@
 | <a id="symbol-src-listingjobedit-cs-35-790b209a45"></a><code>ListingJobEdit.MatchesOriginal</code><br><code>bool MatchesOriginal(RefreshTarget current)</code> | 메서드 | 유효한 요청이고 재조회한 listing ID·전체 모집 조건·슬롯/멤버가 요청의 원본과 같은지 검사한다. | [L35](../../src/ListingJobEdit.cs#L35) |
 | <a id="symbol-src-listingjobedit-cs-39-c6604db365"></a><code>ListingJobEdit.Expected</code><br><code>RefreshTarget Expected(RefreshTarget fresh)</code> | 메서드 | 대상 NativeIndex의 mask만 교체한 Slots/Criteria를 만든다. actualFlags overload는 게임이 실제로 정규화한 raw 값을 보존한다. | [L39](../../src/ListingJobEdit.cs#L39) |
 | <a id="symbol-src-listingjobedit-cs-41-ee77b0fb7c"></a><code>ListingJobEdit.Expected</code><br><code>RefreshTarget Expected(RefreshTarget fresh, ulong actualFlags)</code> | 메서드 | 대상 NativeIndex의 mask만 교체한 Slots/Criteria를 만든다. actualFlags overload는 게임이 실제로 정규화한 raw 값을 보존한다. | [L41](../../src/ListingJobEdit.cs#L41) |
-| <a id="symbol-src-listingjobedit-cs-56-ce4b2ed93d"></a><code>ListingJobEdit.MatchesResult</code><br><code>bool MatchesResult(RefreshTarget before, RefreshTarget after)</code> | 메서드 | 변경한 expected와 재조회 결과의 해당 값·다른 모집 조건·슬롯 보존 여부를 비교한다. | [L56](../../src/ListingJobEdit.cs#L56) |
-| <a id="symbol-src-listingjobedit-cs-68-919ab365f0"></a><code>ListingJobEdit.SameSlots</code><br><code>bool SameSlots(ListingSlots a, ListingSlots b)</code> | 메서드 | 등록 구조·물리 위치·참가자와 변경하지 않아야 하는 슬롯 mask를 비교한다. | [L68](../../src/ListingJobEdit.cs#L68) |
+| <a id="symbol-src-listingjobedit-cs-56-ce4b2ed93d"></a><code>ListingJobEdit.MatchesResult</code><br><code>bool MatchesResult(RefreshTarget before, RefreshTarget after)</code> | 메서드 | 요청한 빈자리의 알려진 허용 직업 집합과 실제 raw mask를 비교한 뒤 Expected를 만든다. 다른 빈자리/설정/참가자는 그대로여야 하며 기존 참가자의 입장 직업 축소는 공통 검증기로 인정한다. | [L56](../../src/ListingJobEdit.cs#L56) |
+| <a id="symbol-src-listingjobedit-cs-68-919ab365f0"></a><code>ListingJobEdit.SameSlots</code><br><code>bool SameSlots(ListingSlots a, ListingSlots b)</code> | 메서드 | 유효한 mapping/인원수·그룹·미등록 인덱스·모든 자리의 위치/CID/등록 직업이 같은지 확인한다. raw mask는 정확히 같거나 원본 점유 자리의 입장 직업 한 bit 축소인 경우만 허용한다. | [L68](../../src/ListingJobEdit.cs#L68) |
 
 <a id="file-src-listinglootui-cs"></a>
 ## src/ListingLootUi.cs

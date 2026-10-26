@@ -142,6 +142,7 @@ internal sealed class PartyWindow : Window
         ImGui.TextWrapped(plugin.DiscordStatus);
         if (plugin.DiscordNotificationStatus.Length > 0) ImGui.TextWrapped(plugin.DiscordNotificationStatus);
         if (plugin.DiscordChatStatus.Length > 0) ImGui.TextWrapped(plugin.DiscordChatStatus);
+        DrawDiscordChatControls();
         if (plugin.DiscordEnabled) {
             if (plugin.DiscordInviteUrl.Length > 0 && ImGui.Button("내 봇 초대 링크 복사")) ImGui.SetClipboardText(plugin.DiscordInviteUrl);
             ImGui.TextWrapped("봇을 본인 서버에 초대한 뒤 봇과의 DM에서 /pvkr를 입력하세요. 서버에서 실행한 화면은 본인에게만 표시됩니다.");
@@ -159,6 +160,39 @@ internal sealed class PartyWindow : Window
         if (plugin.HasSavedDiscordToken && ImGui.Button("저장한 봇 토큰 삭제")) { plugin.ForgetDiscordToken(); rememberDiscordToken = false; }
         if (ImGui.Button("개인 봇 설정 가이드 링크 복사")) ImGui.SetClipboardText("https://github.com/pressing7/PartyViewKR/blob/main/docs/discord.md");
         ImGui.TextWrapped("각자 만든 봇의 소유자만 조작할 수 있습니다. 게임과 PVKR이 켜져 있어야 하며 다른 원격 연결과 번갈아 사용합니다.");
+    }
+
+    private void DrawDiscordChatControls()
+    {
+        ImGui.Separator();
+        ImGui.TextUnformatted("디스코드 채팅 전달");
+        ImGui.TextWrapped("AFK 모드와 관계없이 전달합니다. 수신 채널은 서버에서 /pvkr-chat 설정으로 지정하세요.");
+        var settings = plugin.DiscordChatSettings;
+        if (!ImGui.BeginTable("discord-chat-settings", 4, ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.RowBg)) return;
+        ImGui.TableSetupColumn("채팅 종류");
+        ImGui.TableSetupColumn("수신");
+        ImGui.TableSetupColumn("@everyone 멘션");
+        ImGui.TableSetupColumn("수신 채널");
+        ImGui.TableHeadersRow();
+        foreach (var kind in Enum.GetValues<GameChatKind>()) {
+            var route = settings.Routes.FirstOrDefault(r => r.Kind == GameChat.Key(kind));
+            ImGui.PushID(GameChat.Key(kind));
+            ImGui.TableNextRow(); Cell(GameChat.Label(kind));
+            ImGui.TableNextColumn();
+            ImGui.BeginDisabled(route == null || !plugin.CanConfigureDiscordChat);
+            var enabled = route?.Enabled == true;
+            if (ImGui.Checkbox("##receive", ref enabled)) plugin.SetDiscordChat(kind, enabled: enabled);
+            ImGui.EndDisabled();
+            ImGui.TableNextColumn();
+            ImGui.BeginDisabled(route == null || !plugin.CanConfigureDiscordChat);
+            var mention = route?.MentionEveryone == true;
+            if (ImGui.Checkbox("##mention", ref mention)) plugin.SetDiscordChat(kind, mention: mention);
+            ImGui.EndDisabled();
+            Cell(route == null ? "미설정" : route.ChannelId.ToString());
+            ImGui.PopID();
+        }
+        ImGui.EndTable();
+        ImGui.Separator();
     }
 
     private void DrawCurrentParty()

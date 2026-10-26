@@ -6,6 +6,7 @@ public sealed record DiscordChatRoute
     public string Kind { get; init; } = "";
     public ulong GuildId { get; init; }
     public ulong ChannelId { get; init; }
+    public bool Enabled { get; init; } = true;
     public bool MentionEveryone { get; init; }
 }
 
@@ -19,6 +20,11 @@ public sealed record DiscordChatSettings
         Routes = ApplicationId == app && app != 0
             ? (Routes ?? []).Where(r => r != null && GameChat.TryKind(r.Kind, out _) && r.GuildId != 0 && r.ChannelId != 0)
                 .GroupBy(r => r.Kind).Select(g => g.Last()).OrderBy(r => r.Kind, StringComparer.Ordinal).ToArray() : []
+    };
+
+    internal DiscordChatSettings WithOptions(GameChatKind kind, bool? enabled, bool? mention) => this with {
+        Routes = Routes.Select(r => r.Kind == GameChat.Key(kind)
+            ? r with { Enabled = enabled ?? r.Enabled, MentionEveryone = mention ?? r.MentionEveryone } : r).ToArray()
     };
 }
 

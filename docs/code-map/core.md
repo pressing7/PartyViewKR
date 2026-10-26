@@ -4,7 +4,7 @@
 
 게임 상태 읽기는 `Plugin.OnUpdate`에서 한다. `PartySnapshot`은 현재 파티, `ListingSnapshot`/`RefreshTarget`은 모집글이다. 직업 수정과 표시의 기준은 후자다.
 
-기준: 0.3.51.0 소스. 기반 main `d20552c31ca57632c60e451801ed412acb010e50` 이후 AFK 게임 채팅 수신·종류별 채널/멘션 명령·일반 임베드 전송 변경을 포함한다. 2026-10-25 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
+기준: 0.3.52.0 소스. 기반 main `6e6e482b4e56a7c409c7e58fdb0ed5b2d1d24bce` 이후 상시 채팅·인게임 수신/멘션 토글·홈 서버 보완·점유 자리 직업 자동 정규화 검증 변경을 포함한다. 2026-10-26 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
 
 표에는 직접 선언한 메서드·생성자·로컬 함수·계산 속성·인터페이스 메서드를 각각 포함한다. 자동 생성 record 메서드/단순 auto-property accessor는 제외한다. 이름 없는 LINQ/타이머/콜백은 이를 소유한 함수 설명에 포함하며, 중요한 DOM 이벤트 handler와 명명된 테스트 시나리오는 별도로 표시한다.
 
@@ -14,12 +14,14 @@
 - [src/AfkListingMonitor.cs](#file-src-afklistingmonitor-cs)
 - [src/AfkSettings.cs](#file-src-afksettings-cs)
 - [src/GameChatCapture.cs](#file-src-gamechatcapture-cs)
+- [src/GameChatSession.cs](#file-src-gamechatsession-cs)
 - [src/ListingDescription.cs](#file-src-listingdescription-cs)
 - [src/ListingEditorCriteria.cs](#file-src-listingeditorcriteria-cs)
 - [src/ListingIdentity.cs](#file-src-listingidentity-cs)
 - [src/ListingJobRules.cs](#file-src-listingjobrules-cs)
 - [src/ListingReader.cs](#file-src-listingreader-cs)
 - [src/ListingRoleComparison.cs](#file-src-listingrolecomparison-cs)
+- [src/ListingRoleNormalization.cs](#file-src-listingrolenormalization-cs)
 - [src/ListingSlotRoute.cs](#file-src-listingslotroute-cs)
 - [src/ListingSlots.cs](#file-src-listingslots-cs)
 - [src/ListingSnapshot.cs](#file-src-listingsnapshot-cs)
@@ -92,13 +94,13 @@ Dalamud 진입점. 서비스 주입, UI·명령·Addon 수명 이벤트 등록, 
 | <a id="symbol-src-plugin-cs-351-45dc738a65"></a><code>Plugin.PrepareCompletionDraft</code><br><code>void PrepareCompletionDraft()</code> | 메서드 | 완료조건 편집 예약을 소비하고 현재 Self 모집/차단 사유/지원 여부를 검사한다. 같은 필드의 대기 변경이 있으면 초안에 복원한다. | [L351](../../src/Plugin.cs#L351) |
 | <a id="symbol-src-plugin-cs-367-004af35645"></a><code>Plugin.PrepareItemLevelDraft</code><br><code>void PrepareItemLevelDraft()</code> | 메서드 | 평균 아이템 레벨 편집 예약을 소비하고 현재 Self 모집/차단 사유/지원 여부를 검사한다. 같은 필드의 대기 변경이 있으면 초안에 복원한다. | [L367](../../src/Plugin.cs#L367) |
 | <a id="symbol-src-plugin-cs-384-15b79325cf"></a><code>Plugin.PrepareRuleDraft</code><br><code>void PrepareRuleDraft()</code> | 메서드 | 임무 찾기/전리품 규칙 편집 예약을 소비하고 현재 Self 모집/차단 사유/지원 여부를 검사한다. 같은 필드의 대기 변경이 있으면 초안에 복원한다. | [L384](../../src/Plugin.cs#L384) |
-| <a id="symbol-src-plugin-cs-401-f2a2c4a75e"></a><code>Plugin.OnUpdate</code><br><code>void OnUpdate(IFramework framework)</code> | 메서드 | 저장 Discord 연결과 매 frame 채팅 AFK/캐릭터 상태를 갱신한다.500ms 또는 명시 요청마다 복구→파티/모집 읽기→초안·갱신→외부 snapshot→AFK 감시 순서로 진행하고 완료/채팅 상태를 반영한다. | [L401](../../src/Plugin.cs#L401) |
+| <a id="symbol-src-plugin-cs-401-f2a2c4a75e"></a><code>Plugin.OnUpdate</code><br><code>void OnUpdate(IFramework framework)</code> | 메서드 | 저장 Discord 연결과 매 frame 채팅 로그인/CID를 갱신한다.500ms 또는 명시 요청마다 복구→파티/모집 읽기→초안·갱신→외부 snapshot→AFK 감시 순서로 진행한다. 채팅은 AFK와 독립적이다. | [L401](../../src/Plugin.cs#L401) |
 | <a id="symbol-src-plugin-cs-463-9e83c079fe"></a><code>Plugin.Dispose</code><br><code>void Dispose()</code> | 메서드 | 채팅 이벤트를 해제하고 AFK·외부 연결·trace·갱신 및 모든 Addon/Framework/UI 이벤트·명령·창을 정리한다. 저장 토큰 삭제와는 별개다. | [L463](../../src/Plugin.cs#L463) |
 
 <a id="file-src-afklistingmonitor-cs"></a>
 ## src/AfkListingMonitor.cs
 
-[소스 파일](../../src/AfkListingMonitor.cs) · 명명된 항목/진입점 19개
+[소스 파일](../../src/AfkListingMonitor.cs) · 명명된 항목/진입점 18개
 
 AFK 감시의 순수 상태 기계. CID 명단 변화와 선택한 주기로 내 모집글을 조회하고 실패한 필요 상태를 보존한다. host 계약에는 수정/제출 기능이 없다.
 
@@ -111,20 +113,19 @@ AFK 감시의 순수 상태 기계. CID 명단 변화와 선택한 주기로 내
 | <a id="symbol-src-afklistingmonitor-cs-13-d514b3dc36"></a><code>IAfkListingHost.OwnListingMatches</code><br><code>bool OwnListingMatches(PartyRoster roster)</code> | 인터페이스 계약 | fresh own 상세의 참가 CID가 현재 관측 명단과 일치하는지 확인하는 계약이다. 현재 직업은 검사하지 않는다. | [L13](../../src/AfkListingMonitor.cs#L13) |
 | <a id="symbol-src-afklistingmonitor-cs-15-cdfe098651"></a><code>IAfkListingHost.RequestQuery</code><br><code>bool RequestQuery(out string error)</code> | 인터페이스 계약 | 기존 조회 경로에1회 예약하고 요청 revision을 전진시키는 계약이다. 실제 native dispatch는 다음 읽기에서 일어난다. | [L15](../../src/AfkListingMonitor.cs#L15) |
 | <a id="symbol-src-afklistingmonitor-cs-16-f32b5c1fab"></a><code>IAfkListingHost.CancelQuery</code><br><code>void CancelQuery(long revision)</code> | 인터페이스 계약 | 지정한 request revision과 같은 자기 요청만 취소하는 계약이다. 이후 수동/외부 요청을 취소하면 안 된다. | [L16](../../src/AfkListingMonitor.cs#L16) |
-| <a id="symbol-src-afklistingmonitor-cs-36-72345581d4"></a><code>AfkListingMonitor.MonitoredSelfId</code><br><code>ulong MonitoredSelfId</code> | 계산 속성 | AFK가 켜진 동안 마지막 확인한 자기 CID를 반환한다. 채팅 전달의 캐릭터 경계이며 외부 메시지에는 노출하지 않는다. 계산식: <code>Enabled ? self : 0</code>. | [L36](../../src/AfkListingMonitor.cs#L36) |
-| <a id="symbol-src-afklistingmonitor-cs-38-3f82bd50fd"></a><code>AfkListingMonitor.InFlight</code><br><code>bool InFlight</code> | 계산 속성 | AFK가 소유한 query revision을 기다리는 중인지 반환한다. 계산식: <code>requestRevision &gt;= 0</code>. | [L38](../../src/AfkListingMonitor.cs#L38) |
-| <a id="symbol-src-afklistingmonitor-cs-41-5d0527f5f4"></a><code>AfkListingMonitor.RecruitmentComplete</code><br><code>bool RecruitmentComplete</code> | 계산 속성 | AFK 켜짐·현재 명단 읽기 성공·가득 참 latch가 모두 충족돼야 완료 상태를 반환한다. 계산식: <code>Enabled &amp;&amp; readable &amp;&amp; complete</code>. | [L41](../../src/AfkListingMonitor.cs#L41) |
-| <a id="symbol-src-afklistingmonitor-cs-45-27a50328c9"></a><code>AfkListingMonitor.Diagnostic</code><br><code>string Diagnostic</code> | 계산 속성 | 활성/필요/진행·명단 신뢰도/인원·변화/시도/성공/실패 횟수와 generation을 출력한다. 멤버 CID 원문은 제외한다. | [L45](../../src/AfkListingMonitor.cs#L45) |
-| <a id="symbol-src-afklistingmonitor-cs-53-a06614368e"></a><code>AfkListingMonitor.Configure</code><br><code>void Configure(AfkSettings settings, long now)</code> | 메서드 | 정규화한 정책을 교체한다. 주기 변경은 현재 시각부터 새 간격을 잡고, 실패 대기 중 재시도 설정 변경은 새 대기 시간으로 예약한다. | [L53](../../src/AfkListingMonitor.cs#L53) |
-| <a id="symbol-src-afklistingmonitor-cs-66-7aa7f4a234"></a><code>AfkListingMonitor.Watching</code><br><code>string Watching</code> | 계산 속성 | 현재 인원과 선택한 추가 조회 간격 또는 주기 조회 꺼짐 상태를 표시한다. | [L66](../../src/AfkListingMonitor.cs#L66) |
-| <a id="symbol-src-afklistingmonitor-cs-69-e972c20b6f"></a><code>AfkListingMonitor.SetEnabled</code><br><code>bool SetEnabled(bool enabled, IAfkListingHost host, long now)</code> | 메서드 | 접속한 캐릭터에 AFK를 묶고 첫 조회를 예약한다. 끌 때 자기 query만 취소하고 기준 명단/재시도 상태를 초기화한다. 설정을 영구 저장하거나 자동 재활성화하지 않는다. | [L69](../../src/AfkListingMonitor.cs#L69) |
-| <a id="symbol-src-afklistingmonitor-cs-87-ef54fb0b5d"></a><code>AfkListingMonitor.BeforeRead</code><br><code>void BeforeRead(IAfkListingHost host, long now)</code> | 메서드 | native 지연 dispatch 전에 소유권·접속·기존 조회 guard와5/15초 대기를 재검사한다. 차단되면 자기 요청만 취소하고 재시도 필요 상태를 남긴다. | [L87](../../src/AfkListingMonitor.cs#L87) |
-| <a id="symbol-src-afklistingmonitor-cs-98-fdcb207f90"></a><code>AfkListingMonitor.Update</code><br><code>void Update(IAfkListingHost host, long now)</code> | 메서드 | 명단을 읽고 신규 본인 응답의 등록 정원을 기억한다. 현재 명단이 정원에 도달하면 새 조회 성공을 기다리지 않고 완료 세대를 올리며 자기 조회를 취소하고 주기/실패 조회를 멈춘다. 빈자리는 재무장하며 나머지 경우 기존 generation/주기/고정 재시도 정책으로 조회를 예약한다. | [L98](../../src/AfkListingMonitor.cs#L98) |
-| <a id="symbol-src-afklistingmonitor-cs-209-7629de2e01"></a><code>AfkListingMonitor.CheckCompletion</code><br><code>bool CheckCompletion(int members)</code> | 메서드 | 기억한 등록 정원과 현재 유효 CID 명단의 인원을 비교한다. 가득 참 진입 시 단조 CompletionRevision을 올리고, 실제 빈자리 관측에서 재무장한다. 정원 초과는 기준을 폐기하며 읽기 실패는 호출하지 않는다. | [L209](../../src/AfkListingMonitor.cs#L209) |
-| <a id="symbol-src-afklistingmonitor-cs-220-9196241bd0"></a><code>AfkListingMonitor.RememberCapacity</code><br><code>void RememberCapacity(IAfkListingHost host)</code> | 메서드 | 새 본인 조회가 전체 명단과 일치할 때1~48의 등록 정원과 request/detail revision을 기억한다. 정원 자체는 알림을 보내지 않는다. | [L220](../../src/AfkListingMonitor.cs#L220) |
-| <a id="symbol-src-afklistingmonitor-cs-227-ca58a82b28"></a><code>AfkListingMonitor.CheckSession</code><br><code>bool CheckSession(IAfkListingHost host)</code> | 메서드 | 실제 로그아웃 또는0이 아닌 다른 self CID를 감지하면 AFK를 끈다. 일시적 PlayerState 부재(SelfId0)는 기존 guard에 맡기며 모드를 끄지 않는다. | [L227](../../src/AfkListingMonitor.cs#L227) |
-| <a id="symbol-src-afklistingmonitor-cs-241-73daa2ec95"></a><code>AfkListingMonitor.CancelOwned</code><br><code>void CancelOwned(IAfkListingHost host)</code> | 메서드 | 기록한 revision만 host에 취소 요청하고 소유 guard를 비운다. 다른 owner의 요청이나 이미 제출한 게임 수정은 건드리지 않는다. | [L241](../../src/AfkListingMonitor.cs#L241) |
-| <a id="symbol-src-afklistingmonitor-cs-247-111de22ee9"></a><code>AfkListingMonitor.Retry</code><br><code>void Retry(long now, string message)</code> | 메서드 | 실패 필요 상태와 해당 generation을 보관한다. 선택한 고정 초 간격으로 다음 시각을 잡고 재시도 꺼짐이면 명단 변화 또는 별도 주기 trigger를 기다린다. | [L247](../../src/AfkListingMonitor.cs#L247) |
+| <a id="symbol-src-afklistingmonitor-cs-37-a08ace5a5d"></a><code>AfkListingMonitor.InFlight</code><br><code>bool InFlight</code> | 계산 속성 | AFK가 소유한 query revision을 기다리는 중인지 반환한다. 계산식: <code>requestRevision &gt;= 0</code>. | [L37](../../src/AfkListingMonitor.cs#L37) |
+| <a id="symbol-src-afklistingmonitor-cs-40-d26a654756"></a><code>AfkListingMonitor.RecruitmentComplete</code><br><code>bool RecruitmentComplete</code> | 계산 속성 | AFK 켜짐·현재 명단 읽기 성공·가득 참 latch가 모두 충족돼야 완료 상태를 반환한다. 계산식: <code>Enabled &amp;&amp; readable &amp;&amp; complete</code>. | [L40](../../src/AfkListingMonitor.cs#L40) |
+| <a id="symbol-src-afklistingmonitor-cs-44-096a008585"></a><code>AfkListingMonitor.Diagnostic</code><br><code>string Diagnostic</code> | 계산 속성 | 활성/필요/진행·명단 신뢰도/인원·변화/시도/성공/실패 횟수와 generation을 출력한다. 멤버 CID 원문은 제외한다. | [L44](../../src/AfkListingMonitor.cs#L44) |
+| <a id="symbol-src-afklistingmonitor-cs-52-7beb029e76"></a><code>AfkListingMonitor.Configure</code><br><code>void Configure(AfkSettings settings, long now)</code> | 메서드 | 정규화한 정책을 교체한다. 주기 변경은 현재 시각부터 새 간격을 잡고, 실패 대기 중 재시도 설정 변경은 새 대기 시간으로 예약한다. | [L52](../../src/AfkListingMonitor.cs#L52) |
+| <a id="symbol-src-afklistingmonitor-cs-65-cb9373679f"></a><code>AfkListingMonitor.Watching</code><br><code>string Watching</code> | 계산 속성 | 현재 인원과 선택한 추가 조회 간격 또는 주기 조회 꺼짐 상태를 표시한다. | [L65](../../src/AfkListingMonitor.cs#L65) |
+| <a id="symbol-src-afklistingmonitor-cs-68-205240c834"></a><code>AfkListingMonitor.SetEnabled</code><br><code>bool SetEnabled(bool enabled, IAfkListingHost host, long now)</code> | 메서드 | 접속한 캐릭터에 AFK를 묶고 첫 조회를 예약한다. 끌 때 자기 query만 취소하고 기준 명단/재시도 상태를 초기화한다. 설정을 영구 저장하거나 자동 재활성화하지 않는다. | [L68](../../src/AfkListingMonitor.cs#L68) |
+| <a id="symbol-src-afklistingmonitor-cs-86-8cad35b86d"></a><code>AfkListingMonitor.BeforeRead</code><br><code>void BeforeRead(IAfkListingHost host, long now)</code> | 메서드 | native 지연 dispatch 전에 소유권·접속·기존 조회 guard와5/15초 대기를 재검사한다. 차단되면 자기 요청만 취소하고 재시도 필요 상태를 남긴다. | [L86](../../src/AfkListingMonitor.cs#L86) |
+| <a id="symbol-src-afklistingmonitor-cs-97-54cba3b3de"></a><code>AfkListingMonitor.Update</code><br><code>void Update(IAfkListingHost host, long now)</code> | 메서드 | 명단을 읽고 신규 본인 응답의 등록 정원을 기억한다. 현재 명단이 정원에 도달하면 새 조회 성공을 기다리지 않고 완료 세대를 올리며 자기 조회를 취소하고 주기/실패 조회를 멈춘다. 빈자리는 재무장하며 나머지 경우 기존 generation/주기/고정 재시도 정책으로 조회를 예약한다. | [L97](../../src/AfkListingMonitor.cs#L97) |
+| <a id="symbol-src-afklistingmonitor-cs-208-88f53ad7ab"></a><code>AfkListingMonitor.CheckCompletion</code><br><code>bool CheckCompletion(int members)</code> | 메서드 | 기억한 등록 정원과 현재 유효 CID 명단의 인원을 비교한다. 가득 참 진입 시 단조 CompletionRevision을 올리고, 실제 빈자리 관측에서 재무장한다. 정원 초과는 기준을 폐기하며 읽기 실패는 호출하지 않는다. | [L208](../../src/AfkListingMonitor.cs#L208) |
+| <a id="symbol-src-afklistingmonitor-cs-219-8124294a39"></a><code>AfkListingMonitor.RememberCapacity</code><br><code>void RememberCapacity(IAfkListingHost host)</code> | 메서드 | 새 본인 조회가 전체 명단과 일치할 때1~48의 등록 정원과 request/detail revision을 기억한다. 정원 자체는 알림을 보내지 않는다. | [L219](../../src/AfkListingMonitor.cs#L219) |
+| <a id="symbol-src-afklistingmonitor-cs-226-0b727ce393"></a><code>AfkListingMonitor.CheckSession</code><br><code>bool CheckSession(IAfkListingHost host)</code> | 메서드 | 실제 로그아웃 또는0이 아닌 다른 self CID를 감지하면 AFK를 끈다. 일시적 PlayerState 부재(SelfId0)는 기존 guard에 맡기며 모드를 끄지 않는다. | [L226](../../src/AfkListingMonitor.cs#L226) |
+| <a id="symbol-src-afklistingmonitor-cs-240-3ddc8c6049"></a><code>AfkListingMonitor.CancelOwned</code><br><code>void CancelOwned(IAfkListingHost host)</code> | 메서드 | 기록한 revision만 host에 취소 요청하고 소유 guard를 비운다. 다른 owner의 요청이나 이미 제출한 게임 수정은 건드리지 않는다. | [L240](../../src/AfkListingMonitor.cs#L240) |
+| <a id="symbol-src-afklistingmonitor-cs-246-ae302dcc4f"></a><code>AfkListingMonitor.Retry</code><br><code>void Retry(long now, string message)</code> | 메서드 | 실패 필요 상태와 해당 generation을 보관한다. 선택한 고정 초 간격으로 다음 시각을 잡고 재시도 꺼짐이면 명단 변화 또는 별도 주기 trigger를 기다린다. | [L246](../../src/AfkListingMonitor.cs#L246) |
 
 <a id="file-src-afksettings-cs"></a>
 ## src/AfkSettings.cs
@@ -153,12 +154,23 @@ AFK 감시의 순수 상태 기계. CID 명단 변화와 선택한 주기로 내
 
 | 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
 |---|---|---|---|
-| <a id="symbol-src-gamechatcapture-cs-21-851cb28167"></a><code>GameChatCapture.GameChatCapture</code><br><code>GameChatCapture(object source, Type contract, Func&lt;GameChatKind, bool&gt; wanted, Action&lt;GameChatMessage&gt; receive, Func&lt;uint, string&gt; worldName, Action&lt;string&gt; error)</code> | 생성자 | 실제 공개 이벤트의 delegate signature를 검사하고 읽기 전용 Expression delegate를 만들어 구독한다. 지원하지 않는 signature는 명확히 실패한다. | [L21](../../src/GameChatCapture.cs#L21) |
-| <a id="symbol-src-gamechatcapture-cs-43-df0edb7791"></a><code>GameChatCapture.Property</code><br><code>object? Property(object value, string name)</code> | 메서드 | 실제 객체의 공개 속성 또는 구현 interface의 속성을 읽는다. explicit interface 및 inherited IChatMessage에도 대응한다. | [L43](../../src/GameChatCapture.cs#L43) |
-| <a id="symbol-src-gamechatcapture-cs-50-50c49f7481"></a><code>GameChatCapture.Current</code><br><code>void Current(object message)</code> | 메서드 | 현재1인자 이벤트의 LogKind를 먼저 필터하고 AFK/수신 경로가 있으면 Timestamp·Sender·Message를 읽는다. 예외는 타입 이름만 상태로 전달한다. | [L50](../../src/GameChatCapture.cs#L50) |
-| <a id="symbol-src-gamechatcapture-cs-58-6f6cbf4c8a"></a><code>GameChatCapture.Legacy</code><br><code>void Legacy(ushort type, int timestamp, object sender, object message)</code> | 메서드 | legacy type/timestamp/ref SeString 이벤트를 필터해 복사한다. handled flag와 SeString을 수정하지 않는다. | [L58](../../src/GameChatCapture.cs#L58) |
-| <a id="symbol-src-gamechatcapture-cs-65-fdbb608218"></a><code>GameChatCapture.Emit</code><br><code>void Emit(GameChatKind kind, int timestamp, object? sender, object? message)</code> | 메서드 | SeString TextValue와 발신자 PlayerPayload의 PlayerName·World.RowId를 복사한다. 서버 이름은 RuntimeRows에 위임하며 확인 불가일 때 자기 서버로 대체하지 않는다. managed 메시지를 수신기로 넘긴다. | [L65](../../src/GameChatCapture.cs#L65) |
-| <a id="symbol-src-gamechatcapture-cs-81-37e939ed10"></a><code>GameChatCapture.Dispose</code><br><code>void Dispose()</code> | 메서드 | 동일 delegate를 공개 이벤트에서 한 번 해제한다. 게임 채팅 출력을 변경하지 않는다. | [L81](../../src/GameChatCapture.cs#L81) |
+| <a id="symbol-src-gamechatcapture-cs-22-c95f8084ab"></a><code>GameChatCapture.GameChatCapture</code><br><code>GameChatCapture(object source, Type contract, Func&lt;GameChatKind, bool&gt; wanted, Action&lt;GameChatMessage&gt; receive, Func&lt;uint, string&gt; worldName, Action&lt;string&gt; error, Func&lt;string&gt;? homeWorld = null)</code> | 생성자 | 실제 공개 이벤트의 delegate signature를 검사하고 읽기 전용 Expression delegate를 만들어 구독한다. 지원하지 않는 signature는 명확히 실패한다. | [L22](../../src/GameChatCapture.cs#L22) |
+| <a id="symbol-src-gamechatcapture-cs-45-6bd0e2e134"></a><code>GameChatCapture.Property</code><br><code>object? Property(object value, string name)</code> | 메서드 | 실제 객체의 공개 속성 또는 구현 interface의 속성을 읽는다. explicit interface 및 inherited IChatMessage에도 대응한다. | [L45](../../src/GameChatCapture.cs#L45) |
+| <a id="symbol-src-gamechatcapture-cs-52-32e43089f0"></a><code>GameChatCapture.Current</code><br><code>void Current(object message)</code> | 메서드 | 현재1인자 이벤트의 LogKind를 먼저 필터하고 로그인/활성 수신 경로가 있으면 Timestamp·Sender·Message를 읽는다. 예외는 타입 이름만 상태로 전달한다. | [L52](../../src/GameChatCapture.cs#L52) |
+| <a id="symbol-src-gamechatcapture-cs-60-2c5cde808b"></a><code>GameChatCapture.Legacy</code><br><code>void Legacy(ushort type, int timestamp, object sender, object message)</code> | 메서드 | legacy type/timestamp/ref SeString 이벤트를 필터해 복사한다. handled flag와 SeString을 수정하지 않는다. | [L60](../../src/GameChatCapture.cs#L60) |
+| <a id="symbol-src-gamechatcapture-cs-67-9e1ba4c39b"></a><code>GameChatCapture.Emit</code><br><code>void Emit(GameChatKind kind, int timestamp, object? sender, object? message)</code> | 메서드 | 본문과 PlayerPayload의 이름/명시 서버를 복사한다. 서버 ID가 생략/0인 같은 서버 발신자는 GameChatSession의 홈 서버로 보완한다. 명시된 원격 서버나 CrossWorld/@ 표시는 자기 서버로 덮지 않는다. SeString이나 원본 게임 출력은 수정하지 않는다. | [L67](../../src/GameChatCapture.cs#L67) |
+| <a id="symbol-src-gamechatcapture-cs-90-bdf5c110f9"></a><code>GameChatCapture.Dispose</code><br><code>void Dispose()</code> | 메서드 | 동일 delegate를 공개 이벤트에서 한 번 해제한다. 게임 채팅 출력을 변경하지 않는다. | [L90](../../src/GameChatCapture.cs#L90) |
+
+<a id="file-src-gamechatsession-cs"></a>
+## src/GameChatSession.cs
+
+[소스 파일](../../src/GameChatSession.cs) · 명명된 항목/진입점 1개
+
+AFK와 별개로 채팅 수신 캐릭터와 홈 서버 이름을 보관한다. 게임 스레드에서만 갱신하며 지역 이동의 일시적인 PlayerState 공백을 보존한다.
+
+| 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
+|---|---|---|---|
+| <a id="symbol-src-gamechatsession-cs-10-f9ad544e6e"></a><code>GameChatSession.Observe</code><br><code>void Observe(bool loggedIn, bool loaded, ulong self, Func&lt;string&gt; readHomeWorld)</code> | 메서드 | 로그아웃은 CID/홈 서버를 지우고, loaded 캐릭터가 바뀌면 이전 서버를 폐기한다. unloaded 중에는 마지막 정상 값을 유지한다. 홈 서버는 알려지지 않았을 때만 callback으로 읽고 값이 생기면 반복 조회하지 않는다. | [L10](../../src/GameChatSession.cs#L10) |
 
 <a id="file-src-listingdescription-cs"></a>
 ## src/ListingDescription.cs
@@ -175,7 +187,7 @@ AFK 감시의 순수 상태 기계. CID 명단 변화와 선택한 주기로 내
 <a id="file-src-listingeditorcriteria-cs"></a>
 ## src/ListingEditorCriteria.cs
 
-[소스 파일](../../src/ListingEditorCriteria.cs) · 명명된 항목/진입점 3개
+[소스 파일](../../src/ListingEditorCriteria.cs) · 명명된 항목/진입점 4개
 
 조회 시 0으로 보이는 친선경기 A/B 6~8번 padding과 수정창의 PvP 기본 마스크 차이만 한정적으로 허용한다.
 
@@ -184,8 +196,9 @@ AFK 감시의 순수 상태 기계. CID 명단 변화와 선택한 주기로 내
 | 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
 |---|---|---|---|
 | <a id="symbol-src-listingeditorcriteria-cs-13-b7a66e6ee2"></a><code>ListingEditorCriteria.IsFriendlyPadding</code><br><code>bool IsFriendlyPadding(ListingSlots slots, int index)</code> | 메서드 | 친선경기의 물리 인덱스 5~7, 13~15인지 판정한다. 실제 등록/미등록 자리를 일괄 면제하는 함수가 아니다. | [L13](../../src/ListingEditorCriteria.cs#L13) |
-| <a id="symbol-src-listingeditorcriteria-cs-17-1f43f9aadc"></a><code>ListingEditorCriteria.Matches</code><br><code>bool Matches(RefreshTarget target, string actualCriteria, int draftGroups, int draftMainSlots, out int[] acceptedPaddingIndices)</code> | 메서드 | 9개 criteria 필드와 슬롯을 비교한다. 검증된 친선 형태에서 padding의 expected=0→actual=0xFDFFFFFE만 허용하고 수락한 인덱스를 반환한다. | [L17](../../src/ListingEditorCriteria.cs#L17) |
-| <a id="symbol-src-listingeditorcriteria-cs-45-b2aac9a6d2"></a><code>ListingEditorCriteria.TryReadFlags</code><br><code>bool TryReadFlags(string criteria, int count, out ulong[] flags)</code> | 메서드 | criteria의 마지막 hex 필드를 정해진 슬롯 수의 little-endian ulong 배열로 엄격히 복원한다. | [L45](../../src/ListingEditorCriteria.cs#L45) |
+| <a id="symbol-src-listingeditorcriteria-cs-17-1f43f9aadc"></a><code>ListingEditorCriteria.Matches</code><br><code>bool Matches(RefreshTarget target, string actualCriteria, int draftGroups, int draftMainSlots, out int[] acceptedPaddingIndices)</code> | 메서드 | 정확히 같은 조건은 통과한다. 차이가 있으면 검증된 그룹 형태와 모든 비역할 필드를 확인하고, 친선의 여섯 padding 기본값 또는 동일 CID 참가자의 입장 직업 한 bit 축소만 허용한다. 승인한 padding/점유 물리 인덱스를 각각 진단용으로 반환한다. 멤버 배열은 host가 별도로 검증한다. | [L17](../../src/ListingEditorCriteria.cs#L17) |
+| <a id="symbol-src-listingeditorcriteria-cs-21-586bc62640"></a><code>ListingEditorCriteria.Matches</code><br><code>bool Matches(RefreshTarget target, string actualCriteria, int draftGroups, int draftMainSlots, out int[] acceptedPaddingIndices, out int[] acceptedOccupiedIndices)</code> | 메서드 | 정확히 같은 조건은 통과한다. 차이가 있으면 검증된 그룹 형태와 모든 비역할 필드를 확인하고, 친선의 여섯 padding 기본값 또는 동일 CID 참가자의 입장 직업 한 bit 축소만 허용한다. 승인한 padding/점유 물리 인덱스를 각각 진단용으로 반환한다. 멤버 배열은 host가 별도로 검증한다. | [L21](../../src/ListingEditorCriteria.cs#L21) |
+| <a id="symbol-src-listingeditorcriteria-cs-50-7c29b1befb"></a><code>ListingEditorCriteria.TryReadFlags</code><br><code>bool TryReadFlags(string criteria, int count, out ulong[] flags)</code> | 메서드 | criteria의 마지막 hex 필드를 정해진 슬롯 수의 little-endian ulong 배열로 엄격히 복원한다. | [L50](../../src/ListingEditorCriteria.cs#L50) |
 
 <a id="file-src-listingidentity-cs"></a>
 ## src/ListingIdentity.cs
@@ -252,6 +265,21 @@ ClassJob row ID와 모집 비트 위치의 명시적 대응, 사용자 지정 �
 | 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
 |---|---|---|---|
 | <a id="symbol-src-listingrolecomparison-cs-9-f857e109dc"></a><code>ListingRoleComparison.Describe</code><br><code>string Describe(RefreshTarget target, string draftCriteria, int draftGroups, int draftMainSlots, int requestedPosition)</code> | 메서드 | 원본/수정창 슬롯 플래그, 요청한 표시/물리 위치, 그룹·멤버, xor 및 추가/제거 직업 ID를 기록한다. 친선 padding 여부도 함께 분류한다. | [L9](../../src/ListingRoleComparison.cs#L9) |
+
+<a id="file-src-listingrolenormalization-cs"></a>
+## src/ListingRoleNormalization.cs
+
+[소스 파일](../../src/ListingRoleNormalization.cs) · 명명된 항목/진입점 3개
+
+모집글에 등록된 참가자의 입장 직업으로 허용 mask가 좁아지는 게임 자동 변경만 판별한다. 현재 파티 직업은 읽지 않으며 원본 슬롯/아이콘 데이터를 덮어쓰지 않는다.
+
+직접 관련 테스트: [ListingRoleNormalizationTests.cs](tests.md#file-tests-listingrolenormalizationtests-cs).
+
+| 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
+|---|---|---|---|
+| <a id="symbol-src-listingrolenormalization-cs-7-fae3e0d0e9"></a><code>ListingRoleNormalization.IsOccupied</code><br><code>bool IsOccupied(ListingSlots slots, int nativeIndex, ulong before, ulong after)</code> | 메서드 | 해당 물리 자리에 CID와 등록 JobId가 있고 원본 raw mask가 slot과 일치하는지 확인한다. 완전한 런타임 직업 표에서 입장 직업의 bit를 찾아 원래 허용됐고 결과가 그 한 bit인 경우만 인정한다. | [L7](../../src/ListingRoleNormalization.cs#L7) |
+| <a id="symbol-src-listingrolenormalization-cs-16-d5d13955b9"></a><code>ListingRoleNormalization.SameCriteria</code><br><code>bool SameCriteria(RefreshTarget before, RefreshTarget after)</code> | 메서드 | 동일 문자열은 기존과 같이 통과한다. 차이가 있으면 슬롯 형태·CID·등록 직업·점유 상태를 SameSlots로 검사하고 비역할8필드를 정확히 비교한 뒤 점유 자리의 한 방향 축소만 허용한다. 양쪽 Criteria와 Slots의 변경 mask가 일치해야 한다. | [L16](../../src/ListingRoleNormalization.cs#L16) |
+| <a id="symbol-src-listingrolenormalization-cs-30-b4a2a82fe9"></a><code>ListingRoleNormalization.TryReadPair</code><br><code>bool TryReadPair(string before, string after, int count, out ulong[] expected, out ulong[] actual)</code> | 메서드 | 9필드 조건 문자열 두 개의 비역할8필드를 비교하고 동일 물리 길이의 little-endian 역할 배열을 해석한다. 잘못된 길이/hex는 거부한다. | [L30](../../src/ListingRoleNormalization.cs#L30) |
 
 <a id="file-src-listingslotroute-cs"></a>
 ## src/ListingSlotRoute.cs
@@ -352,7 +380,7 @@ AFK가 켜진 동안만 현재 전체 파티 CID를 읽는다. 기존 PartyReade
 <a id="file-src-partywindow-cs"></a>
 ## src/PartyWindow.cs
 
-[소스 파일](../../src/PartyWindow.cs) · 명명된 항목/진입점 29개
+[소스 파일](../../src/PartyWindow.cs) · 명명된 항목/진입점 30개
 
 인게임 ImGui 화면. 현재 파티/모집글/외부 연결/수정 초안/대기 변경/진단을 표시하고 Plugin에 의도만 전달한다.
 
@@ -363,30 +391,31 @@ AFK가 켜진 동안만 현재 전체 파티 CID를 읽는다. 기존 PartyReade
 | <a id="symbol-src-partywindow-cs-57-7c8ea2c278"></a><code>PartyWindow.DrawAfk</code><br><code>void DrawAfk()</code> | 메서드 | AFK 토글과 감시 상태, 별도의 주기 조회 켜기/1~55분 및 실패 재시도 켜기/1~3600초를 그린다. 네 옵션은 저장하고 AFK 자체는 세션에서 직접 켠다. | [L57](../../src/PartyWindow.cs#L57) |
 | <a id="symbol-src-partywindow-cs-90-e644261552"></a><code>PartyWindow.DrawBrowser</code><br><code>void DrawBrowser()</code> | 메서드 | 같은 PC 웹 연결의 켜기/끄기, 주소·인증 링크와 복사 UI를 표시한다. | [L90](../../src/PartyWindow.cs#L90) |
 | <a id="symbol-src-partywindow-cs-105-1b1767a90a"></a><code>PartyWindow.DrawRelay</code><br><code>void DrawRelay()</code> | 메서드 | 중계 서버 주소·연결 키·외부 링크와 연결 상태를 표시하고 relay 시작/종료를 요청한다. | [L105](../../src/PartyWindow.cs#L105) |
-| <a id="symbol-src-partywindow-cs-138-46fd41bc2c"></a><code>PartyWindow.DrawDiscord</code><br><code>void DrawDiscord()</code> | 메서드 | 토큰 저장/연결 UI, 초대 링크와 이모지·모집 완료 알림·채팅 전달 상태를 표시한다. 실제 연결/설정은 Plugin에 위임한다. | [L138](../../src/PartyWindow.cs#L138) |
-| <a id="symbol-src-partywindow-cs-164-f655e5e477"></a><code>PartyWindow.DrawCurrentParty</code><br><code>void DrawCurrentParty()</code> | 메서드 | PartySnapshot의 현재 멤버·직업·월드·stale 상태를 표시한다. 모집 등록 직업 화면과 별개다. | [L164](../../src/PartyWindow.cs#L164) |
-| <a id="symbol-src-partywindow-cs-195-d18d0cd90a"></a><code>PartyWindow.DrawListing</code><br><code>void DrawListing()</code> | 메서드 | 상세 모집의 소유자·임무·시간·조건·소개말·등록 자리를 표시하고 개별 편집 진입 UI를 연결한다. | [L195](../../src/PartyWindow.cs#L195) |
-| <a id="symbol-src-partywindow-cs-274-63dfcc1a3a"></a><code>PartyWindow.DrawDescription</code><br><code>void DrawDescription(ListingSnapshot listing)</code> | 메서드 | 조회된 소개말의 표시값과 편집 진입 버튼을 그린다. | [L274](../../src/PartyWindow.cs#L274) |
-| <a id="symbol-src-partywindow-cs-296-15830234d7"></a><code>PartyWindow.DrawDescriptionEditor</code><br><code>void DrawDescriptionEditor()</code> | 메서드 | 소개말 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyDescriptionDraft에 대기 변경을 전달한다. | [L296](../../src/PartyWindow.cs#L296) |
-| <a id="symbol-src-partywindow-cs-337-035106eb22"></a><code>PartyWindow.DrawListingSlots</code><br><code>void DrawListingSlots(ListingSnapshot listing)</code> | 메서드 | 등록된 자리만 순회하고 인원수·그룹/멤버 위치·미등록 매핑 진단을 표시한다. | [L337](../../src/PartyWindow.cs#L337) |
-| <a id="symbol-src-partywindow-cs-380-abdf3884c0"></a><code>PartyWindow.DrawObjective</code><br><code>void DrawObjective(ListingSnapshot listing)</code> | 메서드 | 조회된 모집 목적의 표시값과 편집 진입 버튼을 그린다. | [L380](../../src/PartyWindow.cs#L380) |
-| <a id="symbol-src-partywindow-cs-392-b1a029a119"></a><code>PartyWindow.DrawBeginner</code><br><code>void DrawBeginner(ListingSnapshot listing)</code> | 메서드 | 조회된 초행 및 초보자 환영의 표시값과 편집 진입 버튼을 그린다. | [L392](../../src/PartyWindow.cs#L392) |
-| <a id="symbol-src-partywindow-cs-404-3c1e35d503"></a><code>PartyWindow.DrawBeginnerEditor</code><br><code>void DrawBeginnerEditor()</code> | 메서드 | 초행 및 초보자 환영 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyBeginnerDraft에 대기 변경을 전달한다. | [L404](../../src/PartyWindow.cs#L404) |
-| <a id="symbol-src-partywindow-cs-437-f0285d537d"></a><code>PartyWindow.DrawUniqueJobs</code><br><code>void DrawUniqueJobs(ListingSnapshot listing)</code> | 메서드 | 조회된 잡 중복 없음의 표시값과 편집 진입 버튼을 그린다. | [L437](../../src/PartyWindow.cs#L437) |
-| <a id="symbol-src-partywindow-cs-449-fc816565a1"></a><code>PartyWindow.DrawUniqueJobsEditor</code><br><code>void DrawUniqueJobsEditor()</code> | 메서드 | 잡 중복 없음 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyUniqueJobsDraft에 대기 변경을 전달한다. | [L449](../../src/PartyWindow.cs#L449) |
-| <a id="symbol-src-partywindow-cs-482-66c08863cb"></a><code>PartyWindow.DrawPrivate</code><br><code>void DrawPrivate(ListingSnapshot listing)</code> | 메서드 | 조회된 비공개/PIN의 표시값과 편집 진입 버튼을 그린다. | [L482](../../src/PartyWindow.cs#L482) |
-| <a id="symbol-src-partywindow-cs-495-0aa157f861"></a><code>PartyWindow.DrawPrivateEditor</code><br><code>void DrawPrivateEditor()</code> | 메서드 | 비공개/PIN 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyPrivateDraft에 대기 변경을 전달한다. | [L495](../../src/PartyWindow.cs#L495) |
-| <a id="symbol-src-partywindow-cs-539-23916129d9"></a><code>PartyWindow.DrawCompletion</code><br><code>void DrawCompletion(ListingSnapshot listing)</code> | 메서드 | 조회된 완료조건의 표시값과 편집 진입 버튼을 그린다. | [L539](../../src/PartyWindow.cs#L539) |
-| <a id="symbol-src-partywindow-cs-552-9c7c898710"></a><code>PartyWindow.DrawCompletionEditor</code><br><code>void DrawCompletionEditor()</code> | 메서드 | 완료조건 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyCompletionDraft에 대기 변경을 전달한다. | [L552](../../src/PartyWindow.cs#L552) |
-| <a id="symbol-src-partywindow-cs-599-1e3f88d486"></a><code>PartyWindow.DrawItemLevel</code><br><code>void DrawItemLevel(ListingSnapshot listing)</code> | 메서드 | 조회된 평균 아이템 레벨의 표시값과 편집 진입 버튼을 그린다. | [L599](../../src/PartyWindow.cs#L599) |
-| <a id="symbol-src-partywindow-cs-612-6d52e7a1d0"></a><code>PartyWindow.DrawItemLevelEditor</code><br><code>void DrawItemLevelEditor()</code> | 메서드 | 평균 아이템 레벨 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyItemLevelDraft에 대기 변경을 전달한다. | [L612](../../src/PartyWindow.cs#L612) |
-| <a id="symbol-src-partywindow-cs-654-5d0baa3dae"></a><code>PartyWindow.DrawRule</code><br><code>void DrawRule(ListingSnapshot listing, ListingRuleKind kind)</code> | 메서드 | 조회된 임무 찾기/전리품 규칙의 표시값과 편집 진입 버튼을 그린다. | [L654](../../src/PartyWindow.cs#L654) |
-| <a id="symbol-src-partywindow-cs-668-a32d97e2eb"></a><code>PartyWindow.DrawRuleEditor</code><br><code>void DrawRuleEditor()</code> | 메서드 | 임무 찾기/전리품 규칙 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyRuleDraft에 대기 변경을 전달한다. | [L668](../../src/PartyWindow.cs#L668) |
-| <a id="symbol-src-partywindow-cs-712-ca928c41e9"></a><code>PartyWindow.DrawObjectiveTrace</code><br><code>void DrawObjectiveTrace()</code> | 메서드 | 수동 이벤트 기록의 시작/종료 및 진단 복사 UI를 그린다. | [L712](../../src/PartyWindow.cs#L712) |
-| <a id="symbol-src-partywindow-cs-731-e44bd35096"></a><code>PartyWindow.DrawObjectiveEditor</code><br><code>void DrawObjectiveEditor()</code> | 메서드 | 모집 목적 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyObjectiveDraft에 대기 변경을 전달한다. | [L731](../../src/PartyWindow.cs#L731) |
-| <a id="symbol-src-partywindow-cs-773-179c28b5f8"></a><code>PartyWindow.DrawListingSlotJob</code><br><code>void DrawListingSlotJob(ListingSlot slot, ListingSnapshot listing)</code> | 메서드 | 입장 직업/직업 제한 라벨과 마우스오버 허용 직업 목록을 표시한다. | [L773](../../src/PartyWindow.cs#L773) |
-| <a id="symbol-src-partywindow-cs-811-f93c0719ac"></a><code>PartyWindow.DrawJobEditor</code><br><code>void DrawJobEditor()</code> | 메서드 | 직업 초안 선택 UI와 적용 가능 여부를 표시하고 대기 변경으로 추가한다. | [L811](../../src/PartyWindow.cs#L811) |
-| <a id="symbol-src-partywindow-cs-860-b925dcde3a"></a><code>PartyWindow.Cell</code><br><code>void Cell(string text)</code> | 메서드 | 표 셀을 이동하고 지정 문자열을 출력하는 공통 그리기 helper다. | [L860](../../src/PartyWindow.cs#L860) |
+| <a id="symbol-src-partywindow-cs-138-46fd41bc2c"></a><code>PartyWindow.DrawDiscord</code><br><code>void DrawDiscord()</code> | 메서드 | 토큰 연결/저장, 초대 링크, 알림·채팅 상태와 종류별 인게임 수신/멘션 토글을 표시한다. | [L138](../../src/PartyWindow.cs#L138) |
+| <a id="symbol-src-partywindow-cs-165-c13f4a285a"></a><code>PartyWindow.DrawDiscordChatControls</code><br><code>void DrawDiscordChatControls()</code> | 메서드 | 파티·귓속말·연합파티의 수신과 everyone 체크박스 및 저장 채널 ID를 표로 표시한다. 미설정/준비 중/저장 중에는 조작을 막고 Plugin에 nullable 변경만 넘긴다. | [L165](../../src/PartyWindow.cs#L165) |
+| <a id="symbol-src-partywindow-cs-198-6368b44ce0"></a><code>PartyWindow.DrawCurrentParty</code><br><code>void DrawCurrentParty()</code> | 메서드 | PartySnapshot의 현재 멤버·직업·월드·stale 상태를 표시한다. 모집 등록 직업 화면과 별개다. | [L198](../../src/PartyWindow.cs#L198) |
+| <a id="symbol-src-partywindow-cs-229-77838e3b6e"></a><code>PartyWindow.DrawListing</code><br><code>void DrawListing()</code> | 메서드 | 상세 모집의 소유자·임무·시간·조건·소개말·등록 자리를 표시하고 개별 편집 진입 UI를 연결한다. | [L229](../../src/PartyWindow.cs#L229) |
+| <a id="symbol-src-partywindow-cs-308-704feb7302"></a><code>PartyWindow.DrawDescription</code><br><code>void DrawDescription(ListingSnapshot listing)</code> | 메서드 | 조회된 소개말의 표시값과 편집 진입 버튼을 그린다. | [L308](../../src/PartyWindow.cs#L308) |
+| <a id="symbol-src-partywindow-cs-330-993720a1a9"></a><code>PartyWindow.DrawDescriptionEditor</code><br><code>void DrawDescriptionEditor()</code> | 메서드 | 소개말 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyDescriptionDraft에 대기 변경을 전달한다. | [L330](../../src/PartyWindow.cs#L330) |
+| <a id="symbol-src-partywindow-cs-371-fc5856560b"></a><code>PartyWindow.DrawListingSlots</code><br><code>void DrawListingSlots(ListingSnapshot listing)</code> | 메서드 | 등록된 자리만 순회하고 인원수·그룹/멤버 위치·미등록 매핑 진단을 표시한다. | [L371](../../src/PartyWindow.cs#L371) |
+| <a id="symbol-src-partywindow-cs-414-28f36311d7"></a><code>PartyWindow.DrawObjective</code><br><code>void DrawObjective(ListingSnapshot listing)</code> | 메서드 | 조회된 모집 목적의 표시값과 편집 진입 버튼을 그린다. | [L414](../../src/PartyWindow.cs#L414) |
+| <a id="symbol-src-partywindow-cs-426-7be75c9781"></a><code>PartyWindow.DrawBeginner</code><br><code>void DrawBeginner(ListingSnapshot listing)</code> | 메서드 | 조회된 초행 및 초보자 환영의 표시값과 편집 진입 버튼을 그린다. | [L426](../../src/PartyWindow.cs#L426) |
+| <a id="symbol-src-partywindow-cs-438-7e14b94d40"></a><code>PartyWindow.DrawBeginnerEditor</code><br><code>void DrawBeginnerEditor()</code> | 메서드 | 초행 및 초보자 환영 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyBeginnerDraft에 대기 변경을 전달한다. | [L438](../../src/PartyWindow.cs#L438) |
+| <a id="symbol-src-partywindow-cs-471-1af290eccc"></a><code>PartyWindow.DrawUniqueJobs</code><br><code>void DrawUniqueJobs(ListingSnapshot listing)</code> | 메서드 | 조회된 잡 중복 없음의 표시값과 편집 진입 버튼을 그린다. | [L471](../../src/PartyWindow.cs#L471) |
+| <a id="symbol-src-partywindow-cs-483-5fd23fd2ab"></a><code>PartyWindow.DrawUniqueJobsEditor</code><br><code>void DrawUniqueJobsEditor()</code> | 메서드 | 잡 중복 없음 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyUniqueJobsDraft에 대기 변경을 전달한다. | [L483](../../src/PartyWindow.cs#L483) |
+| <a id="symbol-src-partywindow-cs-516-61dd9f327a"></a><code>PartyWindow.DrawPrivate</code><br><code>void DrawPrivate(ListingSnapshot listing)</code> | 메서드 | 조회된 비공개/PIN의 표시값과 편집 진입 버튼을 그린다. | [L516](../../src/PartyWindow.cs#L516) |
+| <a id="symbol-src-partywindow-cs-529-6dadd9dbb7"></a><code>PartyWindow.DrawPrivateEditor</code><br><code>void DrawPrivateEditor()</code> | 메서드 | 비공개/PIN 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyPrivateDraft에 대기 변경을 전달한다. | [L529](../../src/PartyWindow.cs#L529) |
+| <a id="symbol-src-partywindow-cs-573-bea6714df8"></a><code>PartyWindow.DrawCompletion</code><br><code>void DrawCompletion(ListingSnapshot listing)</code> | 메서드 | 조회된 완료조건의 표시값과 편집 진입 버튼을 그린다. | [L573](../../src/PartyWindow.cs#L573) |
+| <a id="symbol-src-partywindow-cs-586-ef3dbb4ca0"></a><code>PartyWindow.DrawCompletionEditor</code><br><code>void DrawCompletionEditor()</code> | 메서드 | 완료조건 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyCompletionDraft에 대기 변경을 전달한다. | [L586](../../src/PartyWindow.cs#L586) |
+| <a id="symbol-src-partywindow-cs-633-09bf840088"></a><code>PartyWindow.DrawItemLevel</code><br><code>void DrawItemLevel(ListingSnapshot listing)</code> | 메서드 | 조회된 평균 아이템 레벨의 표시값과 편집 진입 버튼을 그린다. | [L633](../../src/PartyWindow.cs#L633) |
+| <a id="symbol-src-partywindow-cs-646-2feea28f27"></a><code>PartyWindow.DrawItemLevelEditor</code><br><code>void DrawItemLevelEditor()</code> | 메서드 | 평균 아이템 레벨 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyItemLevelDraft에 대기 변경을 전달한다. | [L646](../../src/PartyWindow.cs#L646) |
+| <a id="symbol-src-partywindow-cs-688-371a6fc97b"></a><code>PartyWindow.DrawRule</code><br><code>void DrawRule(ListingSnapshot listing, ListingRuleKind kind)</code> | 메서드 | 조회된 임무 찾기/전리품 규칙의 표시값과 편집 진입 버튼을 그린다. | [L688](../../src/PartyWindow.cs#L688) |
+| <a id="symbol-src-partywindow-cs-702-0fa9022d3c"></a><code>PartyWindow.DrawRuleEditor</code><br><code>void DrawRuleEditor()</code> | 메서드 | 임무 찾기/전리품 규칙 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyRuleDraft에 대기 변경을 전달한다. | [L702](../../src/PartyWindow.cs#L702) |
+| <a id="symbol-src-partywindow-cs-746-53bd726546"></a><code>PartyWindow.DrawObjectiveTrace</code><br><code>void DrawObjectiveTrace()</code> | 메서드 | 수동 이벤트 기록의 시작/종료 및 진단 복사 UI를 그린다. | [L746](../../src/PartyWindow.cs#L746) |
+| <a id="symbol-src-partywindow-cs-765-482a67413f"></a><code>PartyWindow.DrawObjectiveEditor</code><br><code>void DrawObjectiveEditor()</code> | 메서드 | 모집 목적 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyObjectiveDraft에 대기 변경을 전달한다. | [L765](../../src/PartyWindow.cs#L765) |
+| <a id="symbol-src-partywindow-cs-807-6dec9a4a85"></a><code>PartyWindow.DrawListingSlotJob</code><br><code>void DrawListingSlotJob(ListingSlot slot, ListingSnapshot listing)</code> | 메서드 | 입장 직업/직업 제한 라벨과 마우스오버 허용 직업 목록을 표시한다. | [L807](../../src/PartyWindow.cs#L807) |
+| <a id="symbol-src-partywindow-cs-845-a4d8b2e397"></a><code>PartyWindow.DrawJobEditor</code><br><code>void DrawJobEditor()</code> | 메서드 | 직업 초안 선택 UI와 적용 가능 여부를 표시하고 대기 변경으로 추가한다. | [L845](../../src/PartyWindow.cs#L845) |
+| <a id="symbol-src-partywindow-cs-894-5318d67c8b"></a><code>PartyWindow.Cell</code><br><code>void Cell(string text)</code> | 메서드 | 표 셀을 이동하고 지정 문자열을 출력하는 공통 그리기 helper다. | [L894](../../src/PartyWindow.cs#L894) |
 
 <a id="file-src-plugin-afk-cs"></a>
 ## src/Plugin.Afk.cs
@@ -400,38 +429,42 @@ AFK가 켜진 동안만 현재 전체 파티 CID를 읽는다. 기존 PartyReade
 | <a id="symbol-src-plugin-afk-cs-10-905d17be5b"></a><code>Plugin.AfkOptions</code><br><code>AfkSettings AfkOptions</code> | 계산 속성 | 저장 설정을 최초1회 읽어 monitor의 현재 정책을 반환한다. | [L10](../../src/Plugin.Afk.cs#L10) |
 | <a id="symbol-src-plugin-afk-cs-11-9998af65e4"></a><code>Plugin.AfkEnabled</code><br><code>bool AfkEnabled</code> | 계산 속성 | 현재 실행의 AFK 활성 여부를 반환한다. 게임 자체의 자리비움 상태와 별개의 PVKR 토글이다. 계산식: <code>afk.Enabled</code>. | [L11](../../src/Plugin.Afk.cs#L11) |
 | <a id="symbol-src-plugin-afk-cs-12-edb3c0617b"></a><code>Plugin.AfkStatus</code><br><code>string AfkStatus</code> | 계산 속성 | 자동 조회의 감시/대기/실패/재시도 상태를 인게임 UI에 제공한다. 계산식: <code>afk.Status</code>. | [L12](../../src/Plugin.Afk.cs#L12) |
-| <a id="symbol-src-plugin-afk-cs-14-5dd17e23b1"></a><code>Plugin.SetAfkEnabled</code><br><code>void SetAfkEnabled(bool enabled)</code> | 메서드 | AFK 상태 기계를 켜거나 끄고 채팅 수신 상태를 즉시 반영한 뒤 읽기를 예약한다. | [L14](../../src/Plugin.Afk.cs#L14) |
-| <a id="symbol-src-plugin-afk-cs-24-85b265f815"></a><code>Plugin.LoadAfkSettings</code><br><code>void LoadAfkSettings()</code> | 메서드 | RelayConfiguration의 AFK 정책을 로드한다. 실패 시 기본값과 읽기 오류를 표시하며 AFK 자체를 자동 활성화하지 않는다. | [L24](../../src/Plugin.Afk.cs#L24) |
-| <a id="symbol-src-plugin-afk-cs-35-e3d580edb8"></a><code>Plugin.SaveAfkSettings</code><br><code>void SaveAfkSettings(AfkSettings settings)</code> | 메서드 | 같은 설정 객체의 연결 정보를 보존하면서 AFK 정책을 저장하고 성공한 정책만 monitor에 반영한다. 실패 문구를 인게임 UI에 남긴다. | [L35](../../src/Plugin.Afk.cs#L35) |
-| <a id="symbol-src-plugin-afk-cs-47-1db9cf6e4d"></a><code>Plugin.AfkHost</code><br><code>AfkHost(Plugin plugin)</code> | 주 생성자/모델 | Plugin의 Reader·Listing·조회 guard를 IAfkListingHost 계약으로 연결하는 게임 스레드 어댑터다. | [L47](../../src/Plugin.Afk.cs#L47) |
-| <a id="symbol-src-plugin-afk-cs-49-1a26d28f2f"></a><code>Plugin.AfkHost.LoggedIn</code><br><code>bool LoggedIn</code> | 계산 속성 | 실제 ClientState 로그인 상태를 반환한다. PlayerState가 잠시 준비되지 않은 상태와 구분한다. 계산식: <code>ClientState.IsLoggedIn</code>. | [L49](../../src/Plugin.Afk.cs#L49) |
-| <a id="symbol-src-plugin-afk-cs-50-ae28b8ba29"></a><code>Plugin.AfkHost.SelfId</code><br><code>ulong SelfId</code> | 계산 속성 | 로그인 및 PlayerState 준비 시 현재 CID, 그 외0을 반환한다. 계산식: <code>LoggedIn &amp;&amp; PlayerState.IsLoaded ? PlayerState.ContentId : 0</code>. | [L50](../../src/Plugin.Afk.cs#L50) |
-| <a id="symbol-src-plugin-afk-cs-51-0d2994167a"></a><code>Plugin.AfkHost.TryReadRoster</code><br><code>bool TryReadRoster(out PartyRoster? roster)</code> | 메서드 | AFK 전용 전체 파티 CID reader를 호출한다. | [L51](../../src/Plugin.Afk.cs#L51) |
-| <a id="symbol-src-plugin-afk-cs-52-2f6c8f430f"></a><code>Plugin.AfkHost.QueryBlockReason</code><br><code>string? QueryBlockReason(bool ownQueryInProgress)</code> | 메서드 | 기존 GetQueryUnavailableReason에 적용 대기 변경 및 갱신 cooldown을 더해 자동 조회를 미룬다. | [L52](../../src/Plugin.Afk.cs#L52) |
-| <a id="symbol-src-plugin-afk-cs-55-9a0a10926a"></a><code>Plugin.AfkHost.QueryBusy</code><br><code>bool QueryBusy</code> | 계산 속성 | ListingReader의 대기/진행 여부를 반환한다. 계산식: <code>plugin.listingReader.Busy</code>. | [L55](../../src/Plugin.Afk.cs#L55) |
-| <a id="symbol-src-plugin-afk-cs-56-a1a03f4733"></a><code>Plugin.AfkHost.QuerySucceeded</code><br><code>bool QuerySucceeded</code> | 계산 속성 | ListingReader가 새로운 상세 응답을 관측했는지 반환한다. 이것만으로 소유권/명단이 확인된 것은 아니다. 계산식: <code>plugin.listingReader.LastOwnRequestSucceeded</code>. | [L56](../../src/Plugin.Afk.cs#L56) |
-| <a id="symbol-src-plugin-afk-cs-57-2b3914ad0a"></a><code>Plugin.AfkHost.RequestRevision</code><br><code>long RequestRevision</code> | 계산 속성 | 현재 조회 요청 serial을 제공해 AFK/수동/외부 작업의 취소 소유권을 분리한다. 계산식: <code>plugin.listingReader.RequestRevision</code>. | [L57](../../src/Plugin.Afk.cs#L57) |
-| <a id="symbol-src-plugin-afk-cs-58-b258b5915d"></a><code>Plugin.AfkHost.DetailRevision</code><br><code>long DetailRevision</code> | 계산 속성 | 상세창 갱신 revision을 제공해 이전 결과 재사용을 거부한다. 계산식: <code>plugin.listingReader.DetailRevision</code>. | [L58](../../src/Plugin.Afk.cs#L58) |
-| <a id="symbol-src-plugin-afk-cs-59-49387be856"></a><code>Plugin.AfkHost.RegisteredCapacity</code><br><code>int RegisteredCapacity</code> | 계산 속성 | 현재 모집 상세의 CountsAgree와 MappingValid가 모두 참일 때 실제 등록 정원만 반환한다. 미등록과 친선 padding은 제외된다. 계산식: <code>plugin.Listing.Slots is { CountsAgree: true, MappingValid: true } slots             ? slots.TotalSlots : 0</code>. | [L59](../../src/Plugin.Afk.cs#L59) |
-| <a id="symbol-src-plugin-afk-cs-61-f8a99e0feb"></a><code>Plugin.AfkHost.OwnListingMatches</code><br><code>bool OwnListingMatches(PartyRoster roster)</code> | 메서드 | 현재 Live/Self·Viewer CID·슬롯 인원 일치와 모든 참가 CID의 완전성을 검사하고 정렬한 명단을 비교한다. 등록 직업을 현재 직업으로 덮어쓰지 않는다. | [L61](../../src/Plugin.Afk.cs#L61) |
-| <a id="symbol-src-plugin-afk-cs-68-6a9279f18c"></a><code>Plugin.AfkHost.RequestQuery</code><br><code>bool RequestQuery(out string error)</code> | 메서드 | Plugin.TryQueryOwnListing 공통 예약 경로를 사용한다. 수정창 열기나 갱신 제출은 하지 않는다. | [L68](../../src/Plugin.Afk.cs#L68) |
-| <a id="symbol-src-plugin-afk-cs-69-b134950752"></a><code>Plugin.AfkHost.CancelQuery</code><br><code>void CancelQuery(long revision)</code> | 메서드 | busy이며 현재 reader request revision이 인자와 같을 때만 FailRequest로 취소한다. | [L69](../../src/Plugin.Afk.cs#L69) |
+| <a id="symbol-src-plugin-afk-cs-14-5dd17e23b1"></a><code>Plugin.SetAfkEnabled</code><br><code>void SetAfkEnabled(bool enabled)</code> | 메서드 | AFK 상태 기계를 켜거나 끄고 읽기를 예약한다. 채팅 전달의 수신/멘션 상태를 변경하지 않는다. | [L14](../../src/Plugin.Afk.cs#L14) |
+| <a id="symbol-src-plugin-afk-cs-23-6d5cad3321"></a><code>Plugin.LoadAfkSettings</code><br><code>void LoadAfkSettings()</code> | 메서드 | RelayConfiguration의 AFK 정책을 로드한다. 실패 시 기본값과 읽기 오류를 표시하며 AFK 자체를 자동 활성화하지 않는다. | [L23](../../src/Plugin.Afk.cs#L23) |
+| <a id="symbol-src-plugin-afk-cs-34-b677e02741"></a><code>Plugin.SaveAfkSettings</code><br><code>void SaveAfkSettings(AfkSettings settings)</code> | 메서드 | 같은 설정 객체의 연결 정보를 보존하면서 AFK 정책을 저장하고 성공한 정책만 monitor에 반영한다. 실패 문구를 인게임 UI에 남긴다. | [L34](../../src/Plugin.Afk.cs#L34) |
+| <a id="symbol-src-plugin-afk-cs-46-c211e5c79d"></a><code>Plugin.AfkHost</code><br><code>AfkHost(Plugin plugin)</code> | 주 생성자/모델 | Plugin의 Reader·Listing·조회 guard를 IAfkListingHost 계약으로 연결하는 게임 스레드 어댑터다. | [L46](../../src/Plugin.Afk.cs#L46) |
+| <a id="symbol-src-plugin-afk-cs-48-051eabae8a"></a><code>Plugin.AfkHost.LoggedIn</code><br><code>bool LoggedIn</code> | 계산 속성 | 실제 ClientState 로그인 상태를 반환한다. PlayerState가 잠시 준비되지 않은 상태와 구분한다. 계산식: <code>ClientState.IsLoggedIn</code>. | [L48](../../src/Plugin.Afk.cs#L48) |
+| <a id="symbol-src-plugin-afk-cs-49-c775572a43"></a><code>Plugin.AfkHost.SelfId</code><br><code>ulong SelfId</code> | 계산 속성 | 로그인 및 PlayerState 준비 시 현재 CID, 그 외0을 반환한다. 계산식: <code>LoggedIn &amp;&amp; PlayerState.IsLoaded ? PlayerState.ContentId : 0</code>. | [L49](../../src/Plugin.Afk.cs#L49) |
+| <a id="symbol-src-plugin-afk-cs-50-f9070bb079"></a><code>Plugin.AfkHost.TryReadRoster</code><br><code>bool TryReadRoster(out PartyRoster? roster)</code> | 메서드 | AFK 전용 전체 파티 CID reader를 호출한다. | [L50](../../src/Plugin.Afk.cs#L50) |
+| <a id="symbol-src-plugin-afk-cs-51-583c6c6119"></a><code>Plugin.AfkHost.QueryBlockReason</code><br><code>string? QueryBlockReason(bool ownQueryInProgress)</code> | 메서드 | 기존 GetQueryUnavailableReason에 적용 대기 변경 및 갱신 cooldown을 더해 자동 조회를 미룬다. | [L51](../../src/Plugin.Afk.cs#L51) |
+| <a id="symbol-src-plugin-afk-cs-54-66388644a8"></a><code>Plugin.AfkHost.QueryBusy</code><br><code>bool QueryBusy</code> | 계산 속성 | ListingReader의 대기/진행 여부를 반환한다. 계산식: <code>plugin.listingReader.Busy</code>. | [L54](../../src/Plugin.Afk.cs#L54) |
+| <a id="symbol-src-plugin-afk-cs-55-4c56896548"></a><code>Plugin.AfkHost.QuerySucceeded</code><br><code>bool QuerySucceeded</code> | 계산 속성 | ListingReader가 새로운 상세 응답을 관측했는지 반환한다. 이것만으로 소유권/명단이 확인된 것은 아니다. 계산식: <code>plugin.listingReader.LastOwnRequestSucceeded</code>. | [L55](../../src/Plugin.Afk.cs#L55) |
+| <a id="symbol-src-plugin-afk-cs-56-0e6a07b0e6"></a><code>Plugin.AfkHost.RequestRevision</code><br><code>long RequestRevision</code> | 계산 속성 | 현재 조회 요청 serial을 제공해 AFK/수동/외부 작업의 취소 소유권을 분리한다. 계산식: <code>plugin.listingReader.RequestRevision</code>. | [L56](../../src/Plugin.Afk.cs#L56) |
+| <a id="symbol-src-plugin-afk-cs-57-094b473b79"></a><code>Plugin.AfkHost.DetailRevision</code><br><code>long DetailRevision</code> | 계산 속성 | 상세창 갱신 revision을 제공해 이전 결과 재사용을 거부한다. 계산식: <code>plugin.listingReader.DetailRevision</code>. | [L57](../../src/Plugin.Afk.cs#L57) |
+| <a id="symbol-src-plugin-afk-cs-58-652e6b3c27"></a><code>Plugin.AfkHost.RegisteredCapacity</code><br><code>int RegisteredCapacity</code> | 계산 속성 | 현재 모집 상세의 CountsAgree와 MappingValid가 모두 참일 때 실제 등록 정원만 반환한다. 미등록과 친선 padding은 제외된다. 계산식: <code>plugin.Listing.Slots is { CountsAgree: true, MappingValid: true } slots             ? slots.TotalSlots : 0</code>. | [L58](../../src/Plugin.Afk.cs#L58) |
+| <a id="symbol-src-plugin-afk-cs-60-7861de5af6"></a><code>Plugin.AfkHost.OwnListingMatches</code><br><code>bool OwnListingMatches(PartyRoster roster)</code> | 메서드 | 현재 Live/Self·Viewer CID·슬롯 인원 일치와 모든 참가 CID의 완전성을 검사하고 정렬한 명단을 비교한다. 등록 직업을 현재 직업으로 덮어쓰지 않는다. | [L60](../../src/Plugin.Afk.cs#L60) |
+| <a id="symbol-src-plugin-afk-cs-67-7d3aa6281c"></a><code>Plugin.AfkHost.RequestQuery</code><br><code>bool RequestQuery(out string error)</code> | 메서드 | Plugin.TryQueryOwnListing 공통 예약 경로를 사용한다. 수정창 열기나 갱신 제출은 하지 않는다. | [L67](../../src/Plugin.Afk.cs#L67) |
+| <a id="symbol-src-plugin-afk-cs-68-3e95bb4d40"></a><code>Plugin.AfkHost.CancelQuery</code><br><code>void CancelQuery(long revision)</code> | 메서드 | busy이며 현재 reader request revision이 인자와 같을 때만 FailRequest로 취소한다. | [L68](../../src/Plugin.Afk.cs#L68) |
 
 <a id="file-src-plugin-chat-cs"></a>
 ## src/Plugin.Chat.cs
 
-[소스 파일](../../src/Plugin.Chat.cs) · 명명된 항목/진입점 6개
+[소스 파일](../../src/Plugin.Chat.cs) · 명명된 항목/진입점 10개
 
-게임 공개 채팅과 Discord 관리형 전달 큐를 연결한다. AFK·로그인·캐릭터 경계를 확인하고 설정 저장은 Framework 스레드에서 수행한다.
+공개 채팅 이벤트와 Discord 큐를 로그인/CID 기반으로 연결한다. 인게임의 종류별 수신/멘션 토글과 홈 서버 보완을 제공하며 AFK 상태에 의존하지 않는다.
 
 | 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
 |---|---|---|---|
-| <a id="symbol-src-plugin-chat-cs-10-01d7e79c17"></a><code>Plugin.DiscordChatStatus</code><br><code>string DiscordChatStatus</code> | 계산 속성 | 연결 controller의 전송 통계와 채팅 이벤트 구독/수신 오류를 인게임 UI에 표시한다. 계산식: <code>(discordClient?.ChatStatus ?? "") +         (chatCaptureError.Length == 0 ? "" : "\n" + chatCaptureError)</code>. | [L10](../../src/Plugin.Chat.cs#L10) |
-| <a id="symbol-src-plugin-chat-cs-13-6cb0c74d33"></a><code>Plugin.UpdateDiscordChat</code><br><code>void UpdateDiscordChat()</code> | 메서드 | AFK 활성·로그인·현재 캐릭터 ID 일치를 controller에 전달한다. PlayerState가 일시적으로 unloaded인 동안 AFK가 기억한 본인 ID를 사용한다. | [L13](../../src/Plugin.Chat.cs#L13) |
-| <a id="symbol-src-plugin-chat-cs-16-595071619a"></a><code>Plugin.InitializeChatCapture</code><br><code>void InitializeChatCapture()</code> | 메서드 | 주입받은 IChatGui 공개 이벤트에 어댑터를 연결하고 RuntimeRows.World를 이름 해석기로 사용한다. 구독 실패는 다른 플러그인 기능을 종료하지 않고 상태에 표시한다. | [L16](../../src/Plugin.Chat.cs#L16) |
-| <a id="symbol-src-plugin-chat-cs-24-a8f564d86c"></a><code>Plugin.WantsCapturedChat</code><br><code>bool WantsCapturedChat(GameChatKind kind)</code> | 메서드 | 종료 상태를 확인하고 최신 AFK/캐릭터 상태를 반영한 뒤 해당 채팅 종류의 설정 유무를 검사한다. | [L24](../../src/Plugin.Chat.cs#L24) |
-| <a id="symbol-src-plugin-chat-cs-29-4ed61919f4"></a><code>Plugin.ReceiveCapturedChat</code><br><code>void ReceiveCapturedChat(GameChatMessage message)</code> | 메서드 | 관리형 복사 메시지와 감시 중인 본인 ID만 현재 Discord 큐로 전달한다. 이 callback은 네트워크 요청을 하지 않는다. | [L29](../../src/Plugin.Chat.cs#L29) |
-| <a id="symbol-src-plugin-chat-cs-31-c2c06420c8"></a><code>Plugin.SaveDiscordChatSettings</code><br><code>Task SaveDiscordChatSettings(DiscordChatSettings settings, CancellationToken cancellation)</code> | 메서드 | Framework에서 취소/종료를 재검사하고 최신 RelayConfiguration의 DiscordChat만 복사해 저장한다. 기존 토큰·알림 목적지·AFK 설정은 보존한다. | [L31](../../src/Plugin.Chat.cs#L31) |
+| <a id="symbol-src-plugin-chat-cs-13-b4581ffe15"></a><code>Plugin.DiscordChatStatus</code><br><code>string DiscordChatStatus</code> | 계산 속성 | 전송 통계·공개 채팅 읽기 오류·인게임 설정 저장 결과를 표시한다. 계산식: <code>(discordClient?.ChatStatus ?? "") +         (chatCaptureError.Length == 0 ? "" : "\n" + chatCaptureError) +         (chatSettingStatus.Length == 0 ? "" : "\n" + chatSettingStatus)</code>. | [L13](../../src/Plugin.Chat.cs#L13) |
+| <a id="symbol-src-plugin-chat-cs-16-90ea493b1d"></a><code>Plugin.CanConfigureDiscordChat</code><br><code>bool CanConfigureDiscordChat</code> | 계산 속성 | 이전 인게임 저장이 끝났고 연결 준비 중이 아닌 경우에만 토글 조작을 허용한다. 계산식: <code>chatSettingTask?.IsCompleted != false &amp;&amp;         (discordClient == null &#124;&#124; !discordClient.Running &#124;&#124; discordClient.ChatEditable)</code>. | [L16](../../src/Plugin.Chat.cs#L16) |
+| <a id="symbol-src-plugin-chat-cs-18-320e5c1ef3"></a><code>Plugin.DiscordChatSettings</code><br><code>DiscordChatSettings DiscordChatSettings</code> | 계산 속성 | 실행 중인 controller의 현재 설정 snapshot 또는 저장한 앱에 해당하는 정리된 설정을 UI로 제공한다. | [L18](../../src/Plugin.Chat.cs#L18) |
+| <a id="symbol-src-plugin-chat-cs-27-a7ae955c80"></a><code>Plugin.UpdateDiscordChat</code><br><code>void UpdateDiscordChat()</code> | 메서드 | 로그인/PlayerState에서 AFK와 독립적인 GameChatSession을 갱신한다. 홈 서버는 RuntimeRows로 읽고 캐릭터 CID만 Discord controller에 전달한다. | [L27](../../src/Plugin.Chat.cs#L27) |
+| <a id="symbol-src-plugin-chat-cs-40-592e801b65"></a><code>Plugin.InitializeChatCapture</code><br><code>void InitializeChatCapture()</code> | 메서드 | 주입받은 IChatGui 공개 이벤트에 어댑터를 연결하고 RuntimeRows.World를 이름 해석기로 사용한다. 구독 실패는 다른 플러그인 기능을 종료하지 않고 상태에 표시한다. | [L40](../../src/Plugin.Chat.cs#L40) |
+| <a id="symbol-src-plugin-chat-cs-49-c662c0b3d1"></a><code>Plugin.WantsCapturedChat</code><br><code>bool WantsCapturedChat(GameChatKind kind)</code> | 메서드 | 종료 상태를 확인하고 최신 로그인/CID를 반영한 뒤 해당 종류의 수신 Enabled 경로가 있는지 검사한다. | [L49](../../src/Plugin.Chat.cs#L49) |
+| <a id="symbol-src-plugin-chat-cs-54-fd783cb1b0"></a><code>Plugin.ReceiveCapturedChat</code><br><code>void ReceiveCapturedChat(GameChatMessage message)</code> | 메서드 | 복사한 메시지와 채팅 세션 CID만 현재 큐에 전달한다. 게임 callback은 네트워크 요청을 하지 않는다. | [L54](../../src/Plugin.Chat.cs#L54) |
+| <a id="symbol-src-plugin-chat-cs-56-670bd94210"></a><code>Plugin.SetDiscordChat</code><br><code>void SetDiscordChat(GameChatKind kind, bool? enabled = null, bool? mention = null)</code> | 메서드 | 중복 조작/종료를 막고 nullable 수신·멘션 변경을 비동기로 시작한다. UI/game thread를 저장 완료까지 막지 않는다. | [L56](../../src/Plugin.Chat.cs#L56) |
+| <a id="symbol-src-plugin-chat-cs-62-0a04cb0295"></a><code>Plugin.ChangeDiscordChat</code><br><code>Task ChangeDiscordChat(GameChatKind kind, bool? enabled, bool? mention)</code> | 메서드 | 실행 중에는 controller의 직렬화된 최신 설정 변경을 기다린다. 연결이 꺼져 있으면 기존 앱/채널을 유지한 채 설정만 저장한다. 채널이 미설정이면 명령 설정을 안내하고 오류는 타입만 표시한다. | [L62](../../src/Plugin.Chat.cs#L62) |
+| <a id="symbol-src-plugin-chat-cs-85-38c150bb90"></a><code>Plugin.SaveDiscordChatSettings</code><br><code>Task SaveDiscordChatSettings(DiscordChatSettings settings, CancellationToken cancellation)</code> | 메서드 | Framework에서 취소/종료를 재검사하고 최신 RelayConfiguration의 DiscordChat만 복사해 저장한다. 기존 토큰·알림 목적지·AFK 설정은 보존한다. | [L85](../../src/Plugin.Chat.cs#L85) |
 
 <a id="file-src-runtimerows-cs"></a>
 ## src/RuntimeRows.cs

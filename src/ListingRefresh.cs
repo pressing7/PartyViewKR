@@ -570,7 +570,8 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
 internal static class RefreshEvidence
 {
     internal static bool SameRecruitment(RefreshTarget a, RefreshTarget b) =>
-        a.SelfId == b.SelfId && a.DutyId == b.DutyId && a.TotalSlots == b.TotalSlots && a.Criteria == b.Criteria && a.ExtraCriteria == b.ExtraCriteria &&
+        a.SelfId == b.SelfId && a.DutyId == b.DutyId && a.TotalSlots == b.TotalSlots &&
+        ListingRoleNormalization.SameCriteria(a, b) && a.ExtraCriteria == b.ExtraCriteria &&
         ListingIdentity.SameText(a.Description, b.Description);
 
     internal static RecruitmentEditorMode ClassifyEditorAction(string text) =>

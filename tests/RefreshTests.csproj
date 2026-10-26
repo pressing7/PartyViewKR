@@ -13,6 +13,7 @@
     <Compile Include="../src/ListingDiscordSession.Notifications.cs" Link="ListingDiscordSession.Notifications.cs" />
     <Compile Include="../src/DiscordChatSettings.cs" Link="DiscordChatSettings.cs" />
     <Compile Include="../src/GameChatCapture.cs" Link="GameChatCapture.cs" />
+    <Compile Include="../src/GameChatSession.cs" Link="GameChatSession.cs" />
     <Compile Include="../src/DiscordChatFormatting.cs" Link="DiscordChatFormatting.cs" />
     <Compile Include="../src/ListingDiscordChat.cs" Link="ListingDiscordChat.cs" />
     <Compile Include="../src/ListingDiscordClient.Chat.cs" Link="ListingDiscordClient.Chat.cs" />
@@ -64,6 +65,7 @@
     <Compile Include="../src/ListingSlotRoute.cs" Link="ListingSlotRoute.cs" />
     <Compile Include="../src/ListingRoleComparison.cs" Link="ListingRoleComparison.cs" />
     <Compile Include="../src/ListingEditorCriteria.cs" Link="ListingEditorCriteria.cs" />
+    <Compile Include="../src/ListingRoleNormalization.cs" Link="ListingRoleNormalization.cs" />
     <Compile Include="../src/ListingChange.cs" Link="ListingChange.cs" />
     <Compile Include="../src/ListingBatchRefresh.cs" Link="ListingBatchRefresh.cs" />
     <Compile Include="../src/ListingBatchSnapshot.cs" Link="ListingBatchSnapshot.cs" />

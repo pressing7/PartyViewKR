@@ -59,8 +59,8 @@ internal sealed record ListingJobEdit(RefreshTarget Original, int Position, ulon
             Position > before.TotalSlots || Position > after.TotalSlots) return false;
         var raw = after.Slots.Slots[Position - 1].SlotFlags;
         if (!MatchesSelectedFlags(raw)) return false;
-        // Only the selected slot can normalize. Every other slot, member, job
-        // and recruitment setting must still match the bound original snapshot.
+        // The edited empty slot and already occupied entry-job slots can normalize.
+        // Other empty slots, member identities and conditions must still match.
         var expected = Expected(before, raw);
         return RefreshEvidence.SameRecruitment(expected, after) && SameSlots(expected.Slots, after.Slots);
     }
@@ -72,5 +72,6 @@ internal sealed record ListingJobEdit(RefreshTarget Original, int Position, ulon
         a.Slots.Zip(b.Slots).All(pair => pair.First.Position == pair.Second.Position &&
             pair.First.NativeIndex == pair.Second.NativeIndex &&
             pair.First.MemberContentId == pair.Second.MemberContentId && pair.First.JobId == pair.Second.JobId &&
-            pair.First.SlotFlags == pair.Second.SlotFlags);
+            (pair.First.SlotFlags == pair.Second.SlotFlags ||
+             ListingRoleNormalization.IsOccupied(a, pair.First.NativeIndex, pair.First.SlotFlags, pair.Second.SlotFlags)));
 }

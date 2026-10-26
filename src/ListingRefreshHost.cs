@@ -241,8 +241,9 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
         editorRoleDiagnostic = ListingRoleComparison.Describe(target, draftCriteria,
             draft.NumberOfGroups, draft.NumberOfSlotsInMainParty, plugin.Refresh.JobEdit?.Position ?? 0);
         var criteriaAgree = ListingEditorCriteria.Matches(target, draftCriteria,
-            draft.NumberOfGroups, draft.NumberOfSlotsInMainParty, out var acceptedPadding);
-        editorRoleDiagnostic += $"\neditorRoleCriteriaMatch={criteriaAgree}; editorRolePaddingAcceptedIndices={string.Join(",", acceptedPadding)}";
+            draft.NumberOfGroups, draft.NumberOfSlotsInMainParty, out var acceptedPadding, out var acceptedOccupied);
+        editorRoleDiagnostic += $"\neditorRoleCriteriaMatch={criteriaAgree}; editorRolePaddingAcceptedIndices={string.Join(",", acceptedPadding)}; " +
+            $"editorRoleOccupiedAcceptedIndices={string.Join(",", acceptedOccupied)}";
         if (!storedCommentAgrees || !criteriaAgree)
         {
             check = $"stored_criteria_mismatch; draftCommentAgrees={storedCommentAgrees}; " +
