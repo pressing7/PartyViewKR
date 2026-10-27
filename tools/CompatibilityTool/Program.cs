@@ -18,6 +18,10 @@ if (args[0].StartsWith("capture", StringComparison.Ordinal))
     const string gui = "FFXIVClientStructs.FFXIV.Component.GUI.";
     const string ui = "FFXIVClientStructs.FFXIV.Client.UI.";
     var types = new Dictionary<string, string[]> {
+        [ui + "UIModule"] = ["Instance", "ProcessChatBoxEntry", "GetAcquaintanceModule"],
+        [ui + "Misc.AcquaintanceModule"] = ["Instance", "GetTellHistory"],
+        [ui + "Misc.AcquaintanceModule+Acquaintance"] = [],
+        ["FFXIVClientStructs.FFXIV.Client.System.String.AllowedEntities"] = [],
         [ui + "Info.InfoProxyCrossRealm"] = ["Instance", "get_CrossRealmGroups"],
         [ui + "Info.CrossRealmGroup"] = ["get_GroupMembers"],
         [ui + "Info.CrossRealmMember"] = ["get_Name"],
@@ -58,7 +62,7 @@ if (args[0].StartsWith("capture", StringComparison.Ordinal))
         [gui + "AtkUnitBase+Delegates+FireCallback"] = ["Invoke"],
         [gui + "AtkEventManager"] = [], [gui + "AtkEventState"] = [],
         [gui + "AtkEventType"] = [], [gui + "NodeType"] = [],
-        ["FFXIVClientStructs.FFXIV.Client.System.String.Utf8String"] = []
+        ["FFXIVClientStructs.FFXIV.Client.System.String.Utf8String"] = ["FromString", "SanitizeString", "ToString", "Dtor"]
     };
     if (args[0] == "capture-runtime") types = new() { ["InteropGenerator.Runtime.CStringPointer"] = [] };
     var contract = NativeContract.Read(args[1], types, 15);

@@ -15,7 +15,7 @@ internal interface IDiscordResponse
 // failures, repeated events and shutdown can be tested without a real token.
 internal sealed partial class ListingDiscordSession(ListingWebBridge bridge, ulong appId, ulong ownerId,
     CancellationToken cancellation, Func<long>? clock = null, ListingDiscordIcons? iconCatalog = null,
-    ListingDiscordNotifications? notifications = null, ListingDiscordChat? chat = null)
+    ListingDiscordNotifications? notifications = null, ListingDiscordChat? chat = null, GameChatSendBridge? chatSending = null)
 {
     private readonly ListingDiscordPanel panel = new(bridge, appId, ownerId, iconCatalog, () => notifications?.Status ?? "");
     private readonly HashSet<ulong> seen = [];
@@ -31,6 +31,8 @@ internal sealed partial class ListingDiscordSession(ListingWebBridge bridge, ulo
             await SafeScreen(response, Message("이 개인 봇은 봇 소유자만 사용할 수 있습니다.")); return;
         }
         if (input.Command == "pvkr-chat") { await ConfigureChat(input, response); return; }
+        if (input.Command == "pvkr-send" || input.Command.Length == 0 && input.CustomId.StartsWith(ChatSendPrefix, StringComparison.Ordinal))
+        { await SendChat(input, response); return; }
         // Recovery must remain usable even while another interaction is polling
         // the game or waiting for a failed Discord response.
         if (input.Command.Length == 0 && input.CustomId.StartsWith(ListingDiscordPanel.ClosePrefix, StringComparison.Ordinal))

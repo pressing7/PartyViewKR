@@ -113,6 +113,7 @@
 | [src/DiscordIcons/war.png](../../src/DiscordIcons/war.png) | embedded 슬롯 이미지 `war`의 빈자리/일반 변형. 실제 이모지 이름/ID 재사용은 [EmojiAssets](discord.md#file-src-listingdiscordemojiassets-cs)가 담당한다. |
 | [src/DiscordIcons/whm.png](../../src/DiscordIcons/whm.png) | embedded 슬롯 이미지 `whm`의 빈자리/일반 변형. 실제 이모지 이름/ID 재사용은 [EmojiAssets](discord.md#file-src-listingdiscordemojiassets-cs)가 담당한다. |
 | [src/GameChatCapture.cs](../../src/GameChatCapture.cs) | 런타임 IChatGui의 공개 ChatMessage 이벤트를 읽는 어댑터. 한섭/공개판의 legacy5인자와 현재 message1인자 delegate를 모두 지원하며 새 native ABI 계약을 추가하지 않는다. [함수 목록](core.md#file-src-gamechatcapture-cs) |
+| [src/GameChatSending.cs](../../src/GameChatSending.cs) | Discord→게임 전송의 순수 모델·입력 검증·단일 대기열. Framework만 native host를 호출하고 답장은 작성 시 상대를 고정한다. [함수 목록](discord.md#file-src-gamechatsending-cs) |
 | [src/GameChatSession.cs](../../src/GameChatSession.cs) | AFK와 별개로 채팅 수신 캐릭터와 홈 서버 이름을 보관한다. 게임 스레드에서만 갱신하며 지역 이동의 일시적인 PlayerState 공백을 보존한다. [함수 목록](core.md#file-src-gamechatsession-cs) |
 | [src/ListingBatchEditHost.cs](../../src/ListingBatchEditHost.cs) | 배치 항목 사이의 실제 draft 읽기, 자식 창 정리, 소개말 부분 반영 복구 및 최종 1회 제출을 담당한다. [함수 목록](refresh.md#file-src-listingbatchedithost-cs) |
 | [src/ListingBatchRefresh.cs](../../src/ListingBatchRefresh.cs) | 여러 편집을 한 수정창에 순서대로 적용하고 가능한 항목만 1회 제출한다. 항목 실패와 전체 제출 확신을 별도로 보관한다. [함수 목록](refresh.md#file-src-listingbatchrefresh-cs) |
@@ -129,6 +130,7 @@
 | [src/ListingDescriptionRecovery.cs](../../src/ListingDescriptionRecovery.cs) | 배치 소개말 실패 후 화면 입력과 실제 저장 comment를 맞추는 순수 상태 기계. 이미 보낸 변경 callback/제출을 재시도하지 않는다. [함수 목록](edits.md#file-src-listingdescriptionrecovery-cs) |
 | [src/ListingDiscordChat.cs](../../src/ListingDiscordChat.cs) | 종류별 저장 경로·수신/멘션 선택과 단일 전송 큐를 소유한다. 인게임/슬래시 명령 변경을 같은 semaphore로 직렬화하며, 설정 변경은 과거 채팅을 새 목적지로 보내지 않는다. [함수 목록](discord.md#file-src-listingdiscordchat-cs) |
 | [src/ListingDiscordClient.Chat.cs](../../src/ListingDiscordClient.Chat.cs) | Discord.Net slash 등록/엄격한 입력 파싱과 채팅 서버 채널 전송 어댑터. 기존 pvkr 카드 경로와 독립적으로 pvkr-chat 명령을 등록한다. [함수 목록](discord.md#file-src-listingdiscordclient-chat-cs) |
+| [src/ListingDiscordClient.ChatSend.cs](../../src/ListingDiscordClient.ChatSend.cs) | pvkr-send 슬래시 명령의 등록 정의와 허용된4종 하위 명령 해석. [함수 목록](discord.md#file-src-listingdiscordclient-chatsend-cs) |
 | [src/ListingDiscordClient.Notifications.cs](../../src/ListingDiscordClient.Notifications.cs) | 모집 완료 알림의 Discord.Net 전송 어댑터. 서버 텍스트 채널·bot 권한을 검사하고 everyone만 허용한 새 메시지를 보내며 서버 mention 응답을 확인한다. [함수 목록](discord.md#file-src-listingdiscordclient-notifications-cs) |
 | [src/ListingDiscordClient.cs](../../src/ListingDiscordClient.cs) | Discord.Net Gateway/REST 연결과 application owner 검증, /pvkr 등록, 이모지 동기화 및 SDK interaction 어댑터. 네트워크 작업은 게임 메모리를 직접 읽지 않는다. [함수 목록](discord.md#file-src-listingdiscordclient-cs) |
 | [src/ListingDiscordEmojiAssets.cs](../../src/ListingDiscordEmojiAssets.cs) | embedded PNG 80개의 asset key·읽기 쉬운 이름·legacy 이름 매핑 및 application emoji 동기화. 서버에 수동 업로드할 필요가 없다. [함수 목록](discord.md#file-src-listingdiscordemojiassets-cs) |
@@ -139,6 +141,7 @@
 | [src/ListingDiscordPanel.Results.cs](../../src/ListingDiscordPanel.Results.cs) | 긴 최근 작업 결과를 생략하지 않고 독립된 읽기 전용 페이지 카드로 표시한다. [함수 목록](discord.md#file-src-listingdiscordpanel-results-cs) |
 | [src/ListingDiscordPanel.cs](../../src/ListingDiscordPanel.cs) | SDK와 게임 메모리에서 분리된 카드/session 상태 모델. Overview·Editor·Details·Results에 nonce와 원본 revision을 묶어 오래된 버튼/폼을 거부한다. [함수 목록](discord.md#file-src-listingdiscordpanel-cs) |
 | [src/ListingDiscordSession.Chat.cs](../../src/ListingDiscordSession.Chat.cs) | 기존 owner/app 인증 뒤 실행되는 채팅 설정 interaction. 게임 조회/수정/카드 상태를 바꾸지 않고 설정 명령 결과만 본인에게 응답한다. [함수 목록](discord.md#file-src-listingdiscordsession-chat-cs) |
+| [src/ListingDiscordSession.ChatSend.cs](../../src/ListingDiscordSession.ChatSend.cs) | 소유자 인증을 통과한 채팅 입력창과 제출 처리. PF 편집과 별도 직렬화하며 ACK 전에는 전송을 예약하지 않는다. [함수 목록](discord.md#file-src-listingdiscordsession-chatsend-cs) |
 | [src/ListingDiscordSession.Notifications.cs](../../src/ListingDiscordSession.Notifications.cs) | 알림 채널 선택 interaction. Process의 owner/app 인증 뒤 session/중복/ACK를 확인하며 서버·채널 ID는 SDK가 읽은 현재 interaction에서만 가져온다. [함수 목록](discord.md#file-src-listingdiscordsession-notifications-cs) |
 | [src/ListingDiscordSession.Recovery.cs](../../src/ListingDiscordSession.Recovery.cs) | 일반 interaction의 handling 잠금과 별도로 닫기 interaction을 처리한다. 개인 봇 owner/app 인증은 Process에서 먼저 수행하고 session·ACK를 추가 검증한다. [함수 목록](discord.md#file-src-listingdiscordsession-recovery-cs) |
 | [src/ListingDiscordSession.cs](../../src/ListingDiscordSession.cs) | 한 사용자 interaction의 인증·ACK·게임 요청·결과 폴링을 직렬화한다. ACK 실패 뒤 게임 작업을 실행하지 않는 것이 핵심이다. [함수 목록](discord.md#file-src-listingdiscordsession-cs) |
@@ -184,11 +187,12 @@
 | [src/PartyReader.cs](../../src/PartyReader.cs) | 현재 파티의 관찰용 스냅샷. 일반 파티 목록, 서버 초월의 로컬 그룹, 본인 정보 순으로 읽는다. 모집 등록 직업/빈자리 규칙의 기준으로 사용하면 안 된다. [함수 목록](core.md#file-src-partyreader-cs) |
 | [src/PartyRoster.cs](../../src/PartyRoster.cs) | AFK 비교 전용 불변 CID 명단. 직업·이름·레벨·정렬 순서·그룹 내 위치는 비교에 넣지 않는다. [함수 목록](core.md#file-src-partyroster-cs) |
 | [src/PartyRosterReader.cs](../../src/PartyRosterReader.cs) | AFK가 켜진 동안만 현재 전체 파티 CID를 읽는다. 기존 PartyReader의 실시간 직업 표시와 별개이며 서버 초월은 최대6개 그룹 전체를 순회한다. [함수 목록](core.md#file-src-partyrosterreader-cs) |
-| [src/PartyViewKR.csproj](../../src/PartyViewKR.csproj) | net10.0-windows/x64/unsafe, 버전0.3.53/0.3.53.0, Discord.Net3.20.2·DPAPI 의존성 및 Web/PNG/contracts embedded resource, native references 지정. |
-| [src/PartyViewKR.json](../../src/PartyViewKR.json) | 현재 플러그인 manifest/API15/AssemblyVersion0.3.53.0. package 검증의 기준이며 csproj와 반드시 맞아야 한다. |
+| [src/PartyViewKR.csproj](../../src/PartyViewKR.csproj) | net10.0-windows/x64/unsafe, 버전0.3.54/0.3.54.0, Discord.Net3.20.2·DPAPI 의존성 및 Web/PNG/contracts embedded resource, native references 지정. |
+| [src/PartyViewKR.json](../../src/PartyViewKR.json) | 현재 플러그인 manifest/API15/AssemblyVersion0.3.54.0. package 검증의 기준이며 csproj와 반드시 맞아야 한다. |
 | [src/PartyWindow.cs](../../src/PartyWindow.cs) | 인게임 ImGui 화면. 현재 파티/모집글/외부 연결/수정 초안/대기 변경/진단을 표시하고 Plugin에 의도만 전달한다. [함수 목록](core.md#file-src-partywindow-cs) |
 | [src/Plugin.Afk.cs](../../src/Plugin.Afk.cs) | 인게임 AFK 토글과 순수 monitor를 실제 Reader/기존 조회 guard에 연결한다. 별도의 지역 이동 상태 기계나 자동 갱신/알림 전송 경로를 만들지 않는다. [함수 목록](core.md#file-src-plugin-afk-cs) |
 | [src/Plugin.Chat.cs](../../src/Plugin.Chat.cs) | 공개 채팅 이벤트와 Discord 큐를 로그인/CID 기반으로 연결한다. 인게임의 종류별 수신/멘션 토글과 홈 서버 보완을 제공하며 AFK 상태에 의존하지 않는다. [함수 목록](core.md#file-src-plugin-chat-cs) |
+| [src/Plugin.ChatSend.cs](../../src/Plugin.ChatSend.cs) | 게임 전송 native 경계. 호환/접속/지역 이동과 실제 최근 귓속말 이력을 검사하고 UIModule 채팅 입력을 호출한다. [함수 목록](core.md#file-src-plugin-chatsend-cs) |
 | [src/Plugin.Discord.cs](../../src/Plugin.Discord.cs) | 사용자 설정과 Discord client 수명 연결. 재시작 복원은 한 번, 명시 끄기는 자동 연결도 끄며 Dispose는 저장 토큰을 지우지 않는다. [함수 목록](discord.md#file-src-plugin-discord-cs) |
 | [src/Plugin.Recovery.cs](../../src/Plugin.Recovery.cs) | 디스코드 닫기 queue를 실제 게임 창에 연결한다. 반복 중단/제출 기능이 아니라 사용자가 명시적으로 요청한 모집 수정창 닫기만 수행한다. [함수 목록](refresh.md#file-src-plugin-recovery-cs) |
 | [src/Plugin.Relay.cs](../../src/Plugin.Relay.cs) | PVKR 설정/UI와 중계 client 생성·종료를 연결한다. 서버 주소만 영구 저장하고 연결 키는 런타임에 사용한다. [함수 목록](web-relay.md#file-src-plugin-relay-cs) |
@@ -209,6 +213,7 @@
 | [tests/DalamudConfigurationStub.cs](../../tests/DalamudConfigurationStub.cs) | 테스트 전용 IPluginConfiguration 최소 interface stub. RelayConfiguration을 실제 Dalamud DLL 없이 빌드하도록 Version 속성 계약만 제공한다. 실행 함수는 없다. |
 | [tests/DiscordSettingsTests.cs](../../tests/DiscordSettingsTests.cs) | 저장 토큰 암복호화 어댑터, 재시작 설정 복원, 기억 해제와 오류 시 설정 보존를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-discordsettingstests-cs) |
 | [tests/GameChatCaptureTests.cs](../../tests/GameChatCaptureTests.cs) | Dalamud 공개 채팅 이벤트의 두 delegate 형태·읽기 전용 수신·필터·서버 추출를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-gamechatcapturetests-cs) |
+| [tests/GameChatSendingTests.cs](../../tests/GameChatSendingTests.cs) | 전송 채널·UTF8·대상 고정·세대/취소·ACK·재실행 방지를 fake host로 검사한다. [함수 목록](tests.md#file-tests-gamechatsendingtests-cs) |
 | [tests/ListingBatchTests.cs](../../tests/ListingBatchTests.cs) | 다중 변경 순차 실행, unavailable 건너뛰기, 누적 draft, 1회 제출·원본/멤버 보존를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingbatchtests-cs) |
 | [tests/ListingBeginnerEditTests.cs](../../tests/ListingBeginnerEditTests.cs) | 초보자 환영 typed edit·checkbox UI·단일 갱신 결과 검증를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingbeginneredittests-cs) |
 | [tests/ListingCompletionEditTests.cs](../../tests/ListingCompletionEditTests.cs) | 완료조건 1/2/4 mapping, 체크/목록 선택과 disabled/지연·실패 처리를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingcompletionedittests-cs) |
@@ -216,6 +221,7 @@
 | [tests/ListingDescriptionRecoveryTests.cs](../../tests/ListingDescriptionRecoveryTests.cs) | 소개말 화면만 부분 반영된 실패의 복구와 다른 배치 항목 진행를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingdescriptionrecoverytests-cs) |
 | [tests/ListingDiscordCardTests.cs](../../tests/ListingDiscordCardTests.cs) | 조회/수정/직업 상세/결과 카드를 독립 화면으로 유지하는 routing를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingdiscordcardtests-cs) |
 | [tests/ListingDiscordChatSdkTests.cs](../../tests/ListingDiscordChatSdkTests.cs) | 실제 SDK 채팅 slash 등록/파싱·일반 임베드 POST·색상/멘션 직렬화를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingdiscordchatsdktests-cs) |
+| [tests/ListingDiscordChatSendSdkTests.cs](../../tests/ListingDiscordChatSendSdkTests.cs) | 실제 Discord.Net의4종 슬래시→Label/TextInput 모달→제출→ephemeral ACK→Framework 전송 경로를 fake Gateway/REST로 검증한다. [함수 목록](tests.md#file-tests-listingdiscordchatsendsdktests-cs) |
 | [tests/ListingDiscordChatTests.cs](../../tests/ListingDiscordChatTests.cs) | 로그인 기반 상시 채팅·종류별 수신/멘션 토글·동시 설정 저장·권한·취소·무손실 전송를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingdiscordchattests-cs) |
 | [tests/ListingDiscordConnectionTests.cs](../../tests/ListingDiscordConnectionTests.cs) | 실제 Discord.Net SDK의 fake Gateway/REST 연결 및 비동기 종료/ACK 처리를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingdiscordconnectiontests-cs) |
 | [tests/ListingDiscordEmojiTests.cs](../../tests/ListingDiscordEmojiTests.cs) | 80개 asset·이름·재사용/legacy rename/upload·slot 제한 및 join 이미지 선택를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingdiscordemojitests-cs) |

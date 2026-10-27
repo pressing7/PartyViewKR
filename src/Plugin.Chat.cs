@@ -41,7 +41,10 @@ public sealed partial class Plugin
     {
         try {
             chatCapture = new(ChatGui, typeof(IChatGui), WantsCapturedChat, ReceiveCapturedChat, chatRows.World,
-                error => chatCaptureError = error.Length == 0 ? "" : "게임 채팅을 읽지 못했습니다. · " + error,
+                error => {
+                    chatCaptureError = error.Length == 0 ? "" : "게임 채팅을 읽지 못했습니다. · " + error;
+                    if (error.Length != 0) discordClient?.ChatSending.InvalidateReply();
+                },
                 () => chatSession.HomeWorld);
         }
         catch (Exception e) { chatCaptureError = "게임 채팅 수신을 시작하지 못했습니다. · " + e.GetType().Name; }
@@ -49,9 +52,13 @@ public sealed partial class Plugin
     private bool WantsCapturedChat(GameChatKind kind)
     {
         if (disposed) return false;
-        UpdateDiscordChat(); return discordClient?.WantsChat(kind) == true;
+        UpdateDiscordChat(); return discordClient?.WantsChat(kind) == true || kind == GameChatKind.Tell && discordClient?.Connected == true;
     }
-    private void ReceiveCapturedChat(GameChatMessage message) => discordClient?.ReceiveChat(chatSession.SelfId, message);
+    private void ReceiveCapturedChat(GameChatMessage message)
+    {
+        discordClient?.ChatSending.ObserveTell(chatSession.SelfId, message);
+        discordClient?.ReceiveChat(chatSession.SelfId, message);
+    }
 
     internal void SetDiscordChat(GameChatKind kind, bool? enabled = null, bool? mention = null, bool? sound = null)
     {

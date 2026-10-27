@@ -59,7 +59,7 @@ internal sealed partial class ListingDiscordClient : IDisposable
                 saveNotificationTarget ?? ((_, _) => Task.FromException(new InvalidOperationException("Notification settings unavailable"))), stop.Token);
             chat = new(application.Id, new ChatTransport(this), chatSettings,
                 saveChatSettings ?? ((_, _) => Task.FromException(new InvalidOperationException("Chat settings unavailable"))), stop.Token);
-            session = new(Bridge, application.Id, application.Owner.Id, stop.Token, iconCatalog: icons, notifications: notifications, chat: chat);
+            session = new(Bridge, application.Id, application.Owner.Id, stop.Token, iconCatalog: icons, notifications: notifications, chat: chat, chatSending: ChatSending);
             // View channel + send messages + embed links + mention everyone. Existing installs
             // may grant these only in the explicitly selected notification channel.
             inviteUrl = $"https://discord.com/oauth2/authorize?client_id={application.Id}&scope=bot%20applications.commands&permissions=150528";
@@ -79,6 +79,8 @@ internal sealed partial class ListingDiscordClient : IDisposable
                 .WithContextTypes(InteractionContextType.Guild, InteractionContextType.BotDm).Build(), Options());
             stage = "/pvkr-chat 명령어 등록";
             await ((IDiscordClient)socket.Rest).CreateGlobalApplicationCommand(ChatCommand(), Options());
+            stage = "/pvkr-send 명령어 등록";
+            await ((IDiscordClient)socket.Rest).CreateGlobalApplicationCommand(SendChatCommand(), Options());
             stop.Token.ThrowIfCancellationRequested();
             Volatile.Write(ref ready, 1);
             status = ConnectedStatus;
@@ -94,7 +96,7 @@ internal sealed partial class ListingDiscordClient : IDisposable
         catch (Exception e) { status = "디스코드 연결을 시작하지 못했습니다. " + FailureDetails(stage, e); }
         finally {
             token = ""; Volatile.Write(ref ready, 0); Volatile.Write(ref running, 0);
-            notifications?.Dispose(); chat?.Dispose(); Bridge.Stop(); stop.Cancel(); session?.ClearIfIdle();
+            notifications?.Dispose(); chat?.Dispose(); ChatSending.Stop(); Bridge.Stop(); stop.Cancel(); session?.ClearIfIdle();
             if (chat != null) await chat.Completion;
             try { await socket.StopAsync(); } catch (Exception) { }
             try { await socket.LogoutAsync(); } catch (Exception) { }
@@ -180,6 +182,8 @@ internal sealed partial class ListingDiscordClient : IDisposable
                 new(command.Id, command.ApplicationId, command.User.Id, command.Data.Name, "", [], []),
             SocketSlashCommand command when command.Data.Name == "pvkr-chat" =>
                 new DiscordInput(command.Id, command.ApplicationId, command.User.Id, command.Data.Name, "", [], []) { ChatCommand = ReadChatCommand(command) },
+            SocketSlashCommand command when command.Data.Name == "pvkr-send" =>
+                new DiscordInput(command.Id, command.ApplicationId, command.User.Id, command.Data.Name, "", [], []) { SendKind = ReadSendChatCommand(command) },
             SocketMessageComponent component when component.Data.CustomId.StartsWith("pvkr:", StringComparison.Ordinal) =>
                 // Buttons omit values; Discord.Net exposes null, unlike select menus.
                 new(component.Id, component.ApplicationId, component.User.Id, "", component.Data.CustomId, component.Data.Values?.ToArray() ?? [], []),
@@ -220,7 +224,7 @@ internal sealed partial class ListingDiscordClient : IDisposable
     public void Dispose()
     {
         if (Interlocked.Exchange(ref disposed, 1) != 0) return;
-        notifications?.Dispose(); chat?.Dispose(); Bridge.Stop(); stop.Cancel(); session?.ClearIfIdle();
+        notifications?.Dispose(); chat?.Dispose(); ChatSending.Stop(); Bridge.Stop(); stop.Cancel(); session?.ClearIfIdle();
         // Network teardown is async; do not stall Dalamud's framework thread.
         _ = lifetime.ContinueWith(_ => stop.Dispose(), TaskScheduler.Default);
     }
@@ -230,7 +234,7 @@ internal sealed partial class ListingDiscordClient : IDisposable
             CancelToken = cancellation, Timeout = ack ? 2000 : 10000,
             RetryMode = ack ? RetryMode.AlwaysFail : RetryMode.RetryRatelimit
         };
-        public Task Defer() => interaction.DeferAsync(ephemeral: interaction is SocketSlashCommand, options: Options(true));
+        public Task Defer() => interaction.DeferAsync(ephemeral: interaction is SocketSlashCommand or SocketModal { Message: null }, options: Options(true));
         public Task Modal(Modal modal) => interaction.RespondWithModalAsync(modal, Options(true));
         public async Task Screen(DiscordScreen screen, bool replace, bool deferred)
         {

@@ -405,6 +405,7 @@ public sealed partial class Plugin : IDalamudPlugin
         UpdateDiscordChat();
         ObjectiveTrace.Update();
         var now = Environment.TickCount64;
+        UpdateChatSending(now);
         if (!readRequested && now - lastRead < 500) return;
         var readParty = readRequested || window.IsOpen;
         readRequested = false;

@@ -4,14 +4,14 @@
 
 ## 기준과 범위
 
-- 정리일: 2026-10-28. 플러그인 `0.3.53.0`, Dalamud API `15`.
-- 소스 기준: `0.3.53.0`. 기반 main [`b1ec51fdd867c2a80f214c95df20a9f80ad722ae`](https://github.com/pressing7/PartyViewKR/commit/b1ec51fdd867c2a80f214c95df20a9f80ad722ae) 이후 발신자 번호 제거·효과음 멘션·단일 직업 공석 제외 완료 알림을 포함한다.
-- 문서 자체와 신규 채팅/역할 검증 파일을 포함한 추적 파일 260개 전체를 [파일 지도](code-map/files.md)에 분류했다. 소스 위치는 이 버전의 행 번호다.
-- C# Roslyn 구문 분석, JavaScript Acorn 구문 분석, Python AST로 **1,453개 명명된 항목/진입점**을 대조했다: C# 1,331, JS 91, Python 31. 메서드뿐 아니라 생성자·로컬 함수·계산 속성·인터페이스 선언을 포함한 숫자다.
+- 정리일: 2026-10-27(UTC). 플러그인 `0.3.54.0`, Dalamud API `15`.
+- 소스 기준: `0.3.54.0`. 기반 main [`374b48f6795dd6851529f5c55adf092ff07450c0`](https://github.com/pressing7/PartyViewKR/commit/374b48f6795dd6851529f5c55adf092ff07450c0) 이후 Discord→게임 채팅 전송과 답장 대상 검사를 포함한다.
+- 문서 자체와 신규 채팅 전송 파일을 포함한 추적 파일 266개 전체를 [파일 지도](code-map/files.md)에 분류했다. 소스 위치는 이 버전의 행 번호다.
+- C# Roslyn 구문 분석, JavaScript Acorn 구문 분석, Python AST로 **1,492개 명명된 항목/진입점**을 대조했다: C# 1,370, JS 91, Python 31. 메서드뿐 아니라 생성자·로컬 함수·계산 속성·인터페이스 선언을 포함한 숫자다.
 - 자동 생성 record 메서드와 단순 auto-property accessor는 별도 함수로 세지 않는다. 이름 없는 LINQ/콜백은 소유 함수에서 설명하고, 중요한 DOM handler와 테스트 시나리오는 따로 연결했다.
-- 현재 C# 등록 테스트는 496개, Node 등록 테스트는 15개, Python `test_*` 메서드는 12개다. 등록 범위와 실행 결과를 구분하며 이번 채팅 변경의 검증 환경은 아래에 기록한다.
+- 현재 C# 테스트 등록문은 508개이며 반복 시나리오를 포함한 실행은 516건이다. Node 등록 테스트는 15개, Python `test_*` 메서드는 12개다. 등록 범위와 실행 결과를 구분하며 이번 채팅 변경의 검증 환경은 아래에 기록한다.
 
-현재 구현은 **기존 본인 모집글의 조회·수정·수동 갱신 및 AFK 명단 감시에 따른 자동 조회**다. AFK 모집 완료 everyone 알림과 파티·받은 귓속말·연합파티 채팅 전달을 제공한다. 새 모집 시작과 콘텐츠/파티 유형 변경은 아직 구현하지 않았다. 루트의 `PartyViewKR.dll/json/deps.json`은 이전 수동 배포본이다. 빌드 기준은 `src/PartyViewKR.csproj`와 `src/PartyViewKR.json`, 설치 대상은 Releases ZIP이다.
+현재 구현은 **기존 본인 모집글의 조회·수정·수동 갱신 및 AFK 명단 감시에 따른 자동 조회**다. AFK 모집 완료 everyone 알림과 파티·받은 귓속말·연합파티 채팅 전달, Discord에서 파티·연합파티·명시 귓속말·최근 상대 답장 전송을 제공한다. 새 모집 시작과 콘텐츠/파티 유형 변경은 아직 구현하지 않았다. 루트의 `PartyViewKR.dll/json/deps.json`은 이전 수동 배포본이다. 빌드 기준은 `src/PartyViewKR.csproj`와 `src/PartyViewKR.json`, 설치 대상은 Releases ZIP이다.
 
 ## 함수별 문서
 
@@ -275,3 +275,19 @@ AFK의 `IAfkListingHost`에는 수정/제출 계약이 없다. 모집 완료 알
 - Discord 알림은 같은 선택 채널과 everyone 권한을 사용하고 `excludesSingleJob`에 따라 문구를 나눈다. revision/조건/캐릭터 변경 전송 취소와 불확실 POST 비재시도는 유지한다.
 
 관리형496개와 Python 배포12개가 통과했고 기존 참조 DLL을 이용한 전체 소스 컴파일은 경고0/오류0이었다. 공개 이벤트의 이름 정리·효과음 보완, 실제 Discord.Net의 조건별 allowed_mentions/긴 메시지 한 번 멘션/슬래시 저장, 일반·미등록 연합·친선의 부분 완료와 잘못된 선입장·stale 응답·직업 표 누락·지역 이동·재알림을 검증했다. 인게임 채팅과 실제 Android 알림은 별도 확인 대상이다. Actions 빌드·배포는 실행하지 않는다.
+
+## Discord에서 게임 채팅 전송 (0.3.54)
+
+`ListingDiscordClient.SendChatCommand`는 `/pvkr-send`의 파티·연합파티·귓속말·답장 하위 명령을 등록한다. `ListingDiscordSession.Process`의 owner/app 검사 뒤 전송 전용 경로로 들어간다. `SendChat`는 본문을 슬래시 인수로 받지 않고 모바일에서도 사용할 Label+짧은 TextInput 모달을 연다. 귓속말은 `이름@서버`, 답장은 현재 수신 상대를 표시한다. 조회·편집 상태와 별도 lock/handling을 사용하므로 모집글이 없어도 전송할 수 있다.
+
+입력창은 최대16개·15분이며 본인 CID·연결 세대·답장 상대에 묶인다. 제출 nonce는 한 번만 소비한다. 필드 집합/형식을 확인하고 Discord ACK가 성공한 다음 `GameChatSendBridge.Queue`에 넣는다. 원본 메시지가 없는 채팅 모달도 ephemeral ACK를 사용한다. 입력 본문은 설정/로그 파일에 남기지 않으며 반환 메시지도 본문을 재출력하지 않는다.
+
+`GameChatSendText.TryBuild`가 채널을 `/p`, `/a`, `/tell 이름@서버`, `/r`로 고정한다. 줄바꿈/제어문자·잘못된 Unicode·대상 주입을 거부하고 명령과 상대를 포함한 UTF-8 500바이트를 확인한다. `GameChatSendBridge`는 최대1건·실행 간격1초·대기5초로 제한하며 Framework 상태가5초 이상 stale이면 받지 않는다. `Plugin.OnUpdate`가 조회500ms 제한 전에 매 tick `UpdateChatSending`을 실행한다. native 호출 전에 대기 항목을 소비하므로 오류/Discord 응답 실패로 같은 전송을 자동 반복하지 않는다.
+
+답장 대상은 `GameChatCapture`가 받은 귓속말13을 읽어 갱신한다. 보낸 귓속말12와 직업/파티 상태는 대상에 영향을 주지 않는다. 수신 전달을 꺼도 봇 연결 중 받은 귓속말은 대상 확인에 사용한다. 캡처 오류는 기존 대상을 무효화한다. 작성/대기 도중 다른 상대가 오거나 본인/접속 세대가 바뀌면 중단한다. `ChatSendHost.ReplyMatches`는 native `AcquaintanceModule.GetTellHistory(0)`의 이름·홈 서버·유효 CID를 다시 검사한다. native 이력과 어긋나면 `/tell` 등 다른 방식으로 재시도하지 않는다.
+
+`Plugin.ChatSend`는 native ABI, 로그인/로드, 지역 이동을 검사하고 `Utf8String.FromString`으로 생성한 입력에 게임 sanitize를 적용한다. 결과가 원문과 다르면 전송하지 않는다. `UIModule.ProcessChatBoxEntry`를 한 번 호출한 뒤 문자열을 해제한다. 결과의 `Requested=true`는 서버 성공 확인이 아닌 게임 입력 전달이다. 이 경로에서는 게임 오류/서버 수신 확인을 수집하지 않는다.
+
+영문·일문 공식 자료와 해외 구현의 비교 및 링크는 [디스코드 안내](discord.md#타-서버-귓속말과-답장)에 있다. `/r`의 마지막 수신자 답장과 `Alt+R`의 임시 답장 모드는 동일한 내부 경로로 확인되지 않았다. 특히 모집 문의로 온 비친구 타 서버 상대의 답장은 한섭 인게임 검증이 필요하다. ChatTwo의 TellReason/CID 네트워크 함수나 XIVInstantMessenger의 미문서화 이력 오프셋은 복사하지 않았다.
+
+native 계약은 `UIModule`, `AcquaintanceModule/Acquaintance`, `AllowedEntities`, 사용한 Utf8String 메서드를 추가해1,237항목이다. 기존1,088항목의 값은 전부 보존하고149항목을 추가했으며 고정 참조 DLL과 비교한다. 관리형516건에서 채널/한글 바이트·대상 변경/로그아웃·대기 만료/취소·중복/실패 ACK·실제 SDK4종 모달/ephemeral ACK/1회 전송을 검사했다. 전체 소스 컴파일, Python 배포 테스트와 ABI 결과는 실제 한섭 송수신·Android 조작·정식 Windows 패키지 빌드를 대신하지 않는다. Actions는 사용자가 실행한다.

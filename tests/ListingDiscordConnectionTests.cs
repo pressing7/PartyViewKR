@@ -28,10 +28,10 @@ static partial class ListingDiscordConnectionTests
             transport.Ready().GetAwaiter().GetResult();
             Wait(() => client.Connected || !client.Running);
             check(client.Connected, client.Status);
-            check(transport.Commands.SequenceEqual(["applications/500/commands", "applications/500/commands"]), "missing or incorrect application ID");
+            check(transport.Commands.Count == 3 && transport.Commands.All(c => c == "applications/500/commands"), "missing or incorrect application ID");
             check(client.Status.StartsWith("연결됨") && client.InviteUrl.Contains("client_id=500"), "connected status missing");
             transport.Ready().GetAwaiter().GetResult();
-            check(transport.Commands.Count == 2, "repeated READY registered the commands again");
+            check(transport.Commands.Count == 3, "repeated READY registered the commands again");
             client.Dispose(); client.Completion.WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
         });
         test("discord cancellation before READY never registers commands", () => {
@@ -145,6 +145,7 @@ static partial class ListingDiscordConnectionTests
         RunInteractions(test, check);
         RunNotificationSdk(test, check);
         RunChatSdk(test, check);
+        RunChatSendSdk(test, check);
     }
 
     private sealed partial class OfflineTransport : IRestClient, IWebSocketClient

@@ -14,6 +14,9 @@
     <Compile Include="../src/DiscordChatSettings.cs" Link="DiscordChatSettings.cs" />
     <Compile Include="../src/GameChatCapture.cs" Link="GameChatCapture.cs" />
     <Compile Include="../src/GameChatSession.cs" Link="GameChatSession.cs" />
+    <Compile Include="../src/GameChatSending.cs" Link="GameChatSending.cs" />
+    <Compile Include="../src/ListingDiscordClient.ChatSend.cs" Link="ListingDiscordClient.ChatSend.cs" />
+    <Compile Include="../src/ListingDiscordSession.ChatSend.cs" Link="ListingDiscordSession.ChatSend.cs" />
     <Compile Include="../src/DiscordChatFormatting.cs" Link="DiscordChatFormatting.cs" />
     <Compile Include="../src/ListingDiscordChat.cs" Link="ListingDiscordChat.cs" />
     <Compile Include="../src/ListingDiscordClient.Chat.cs" Link="ListingDiscordClient.Chat.cs" />

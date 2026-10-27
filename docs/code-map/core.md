@@ -4,7 +4,7 @@
 
 게임 상태 읽기는 `Plugin.OnUpdate`에서 한다. `PartySnapshot`은 현재 파티, `ListingSnapshot`/`RefreshTarget`은 모집글이다. 직업 수정과 표시의 기준은 후자다.
 
-기준: 0.3.53.0 소스. 기반 main `b1ec51fdd867c2a80f214c95df20a9f80ad722ae` 이후 발신자 번호 제거·효과음 멘션·단일 직업 공석 제외 완료 알림을 포함한다. 2026-10-28 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
+기준: 0.3.54.0 소스. 기반 main `374b48f6795dd6851529f5c55adf092ff07450c0` 이후 Discord→게임 채팅 전송과 답장 대상 검사를 포함한다. 2026-10-27(UTC) 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
 
 표에는 직접 선언한 메서드·생성자·로컬 함수·계산 속성·인터페이스 메서드를 각각 포함한다. 자동 생성 record 메서드/단순 auto-property accessor는 제외한다. 이름 없는 LINQ/타이머/콜백은 이를 소유한 함수 설명에 포함하며, 중요한 DOM 이벤트 handler와 명명된 테스트 시나리오는 별도로 표시한다.
 
@@ -31,6 +31,7 @@
 - [src/PartyWindow.cs](#file-src-partywindow-cs)
 - [src/Plugin.Afk.cs](#file-src-plugin-afk-cs)
 - [src/Plugin.Chat.cs](#file-src-plugin-chat-cs)
+- [src/Plugin.ChatSend.cs](#file-src-plugin-chatsend-cs)
 - [src/RuntimeRows.cs](#file-src-runtimerows-cs)
 
 <a id="file-src-plugin-cs"></a>
@@ -94,8 +95,8 @@ Dalamud 진입점. 서비스 주입, UI·명령·Addon 수명 이벤트 등록, 
 | <a id="symbol-src-plugin-cs-351-45dc738a65"></a><code>Plugin.PrepareCompletionDraft</code><br><code>void PrepareCompletionDraft()</code> | 메서드 | 완료조건 편집 예약을 소비하고 현재 Self 모집/차단 사유/지원 여부를 검사한다. 같은 필드의 대기 변경이 있으면 초안에 복원한다. | [L351](../../src/Plugin.cs#L351) |
 | <a id="symbol-src-plugin-cs-367-004af35645"></a><code>Plugin.PrepareItemLevelDraft</code><br><code>void PrepareItemLevelDraft()</code> | 메서드 | 평균 아이템 레벨 편집 예약을 소비하고 현재 Self 모집/차단 사유/지원 여부를 검사한다. 같은 필드의 대기 변경이 있으면 초안에 복원한다. | [L367](../../src/Plugin.cs#L367) |
 | <a id="symbol-src-plugin-cs-384-15b79325cf"></a><code>Plugin.PrepareRuleDraft</code><br><code>void PrepareRuleDraft()</code> | 메서드 | 임무 찾기/전리품 규칙 편집 예약을 소비하고 현재 Self 모집/차단 사유/지원 여부를 검사한다. 같은 필드의 대기 변경이 있으면 초안에 복원한다. | [L384](../../src/Plugin.cs#L384) |
-| <a id="symbol-src-plugin-cs-401-f2a2c4a75e"></a><code>Plugin.OnUpdate</code><br><code>void OnUpdate(IFramework framework)</code> | 메서드 | 저장 Discord 연결과 매 frame 채팅 로그인/CID를 갱신한다.500ms 또는 명시 요청마다 복구→파티/모집 읽기→초안·갱신→외부 snapshot→AFK 감시 순서로 진행한다. 채팅은 AFK와 독립적이다. | [L401](../../src/Plugin.cs#L401) |
-| <a id="symbol-src-plugin-cs-463-9e83c079fe"></a><code>Plugin.Dispose</code><br><code>void Dispose()</code> | 메서드 | 채팅 이벤트를 해제하고 AFK·외부 연결·trace·갱신 및 모든 Addon/Framework/UI 이벤트·명령·창을 정리한다. 저장 토큰 삭제와는 별개다. | [L463](../../src/Plugin.cs#L463) |
+| <a id="symbol-src-plugin-cs-401-f2a2c4a75e"></a><code>Plugin.OnUpdate</code><br><code>void OnUpdate(IFramework framework)</code> | 메서드 | 저장된 Discord 연결과 채팅 수신 상태를 갱신하고 매 tick 전송 bridge를 처리한다. 이어 trace·AFK 명단 감시와 기존500ms 조회·초안·갱신·외부 snapshot 흐름을 진행한다. | [L401](../../src/Plugin.cs#L401) |
+| <a id="symbol-src-plugin-cs-464-856d4d176a"></a><code>Plugin.Dispose</code><br><code>void Dispose()</code> | 메서드 | 채팅 이벤트를 해제하고 AFK·외부 연결·trace·갱신 및 모든 Addon/Framework/UI 이벤트·명령·창을 정리한다. 저장 토큰 삭제와는 별개다. | [L464](../../src/Plugin.cs#L464) |
 
 <a id="file-src-afklistingmonitor-cs"></a>
 ## src/AfkListingMonitor.cs
@@ -463,12 +464,28 @@ AFK가 켜진 동안만 현재 전체 파티 CID를 읽는다. 기존 PartyReade
 | <a id="symbol-src-plugin-chat-cs-16-90ea493b1d"></a><code>Plugin.CanConfigureDiscordChat</code><br><code>bool CanConfigureDiscordChat</code> | 계산 속성 | 이전 인게임 저장이 끝났고 연결 준비 중이 아닌 경우에만 토글 조작을 허용한다. 계산식: <code>chatSettingTask?.IsCompleted != false &amp;&amp;         (discordClient == null &#124;&#124; !discordClient.Running &#124;&#124; discordClient.ChatEditable)</code>. | [L16](../../src/Plugin.Chat.cs#L16) |
 | <a id="symbol-src-plugin-chat-cs-18-320e5c1ef3"></a><code>Plugin.DiscordChatSettings</code><br><code>DiscordChatSettings DiscordChatSettings</code> | 계산 속성 | 실행 중인 controller의 현재 설정 snapshot 또는 저장한 앱에 해당하는 정리된 설정을 UI로 제공한다. | [L18](../../src/Plugin.Chat.cs#L18) |
 | <a id="symbol-src-plugin-chat-cs-27-a7ae955c80"></a><code>Plugin.UpdateDiscordChat</code><br><code>void UpdateDiscordChat()</code> | 메서드 | 로그인/PlayerState에서 AFK와 독립적인 GameChatSession을 갱신한다. 홈 서버는 RuntimeRows로 읽고 캐릭터 CID만 Discord controller에 전달한다. | [L27](../../src/Plugin.Chat.cs#L27) |
-| <a id="symbol-src-plugin-chat-cs-40-592e801b65"></a><code>Plugin.InitializeChatCapture</code><br><code>void InitializeChatCapture()</code> | 메서드 | 주입받은 IChatGui 공개 이벤트에 어댑터를 연결하고 RuntimeRows.World를 이름 해석기로 사용한다. 구독 실패는 다른 플러그인 기능을 종료하지 않고 상태에 표시한다. | [L40](../../src/Plugin.Chat.cs#L40) |
-| <a id="symbol-src-plugin-chat-cs-49-c662c0b3d1"></a><code>Plugin.WantsCapturedChat</code><br><code>bool WantsCapturedChat(GameChatKind kind)</code> | 메서드 | 종료 상태를 확인하고 최신 로그인/CID를 반영한 뒤 해당 종류의 수신 Enabled 경로가 있는지 검사한다. | [L49](../../src/Plugin.Chat.cs#L49) |
-| <a id="symbol-src-plugin-chat-cs-54-fd783cb1b0"></a><code>Plugin.ReceiveCapturedChat</code><br><code>void ReceiveCapturedChat(GameChatMessage message)</code> | 메서드 | 복사한 메시지와 채팅 세션 CID만 현재 큐에 전달한다. 게임 callback은 네트워크 요청을 하지 않는다. | [L54](../../src/Plugin.Chat.cs#L54) |
-| <a id="symbol-src-plugin-chat-cs-56-4582be3457"></a><code>Plugin.SetDiscordChat</code><br><code>void SetDiscordChat(GameChatKind kind, bool? enabled = null, bool? mention = null, bool? sound = null)</code> | 메서드 | 중복 조작/종료를 막고 nullable 수신·멘션 변경을 비동기로 시작한다. UI/game thread를 저장 완료까지 막지 않는다. | [L56](../../src/Plugin.Chat.cs#L56) |
-| <a id="symbol-src-plugin-chat-cs-62-2862ef993d"></a><code>Plugin.ChangeDiscordChat</code><br><code>Task ChangeDiscordChat(GameChatKind kind, bool? enabled, bool? mention, bool? sound)</code> | 메서드 | 실행 중에는 controller의 직렬화된 최신 설정 변경을 기다린다. 연결이 꺼져 있으면 기존 앱/채널을 유지한 채 설정만 저장한다. 채널이 미설정이면 명령 설정을 안내하고 오류는 타입만 표시한다. | [L62](../../src/Plugin.Chat.cs#L62) |
-| <a id="symbol-src-plugin-chat-cs-85-38c150bb90"></a><code>Plugin.SaveDiscordChatSettings</code><br><code>Task SaveDiscordChatSettings(DiscordChatSettings settings, CancellationToken cancellation)</code> | 메서드 | Framework에서 취소/종료를 재검사하고 최신 RelayConfiguration의 DiscordChat만 복사해 저장한다. 기존 토큰·알림 목적지·AFK 설정은 보존한다. | [L85](../../src/Plugin.Chat.cs#L85) |
+| <a id="symbol-src-plugin-chat-cs-40-592e801b65"></a><code>Plugin.InitializeChatCapture</code><br><code>void InitializeChatCapture()</code> | 메서드 | 런타임 공개 ChatMessage 이벤트를 연결한다. 읽기 오류는 진단과 함께 답장 대상을 무효화한다. | [L40](../../src/Plugin.Chat.cs#L40) |
+| <a id="symbol-src-plugin-chat-cs-52-42d1abd77a"></a><code>Plugin.WantsCapturedChat</code><br><code>bool WantsCapturedChat(GameChatKind kind)</code> | 메서드 | 로그인/홈 서버 상태를 갱신하고 활성 전달 경로 또는 연결 중 봇의 받은 귓속말인지 검사한다. AFK 조건은 없다. | [L52](../../src/Plugin.Chat.cs#L52) |
+| <a id="symbol-src-plugin-chat-cs-57-56fff53a3d"></a><code>Plugin.ReceiveCapturedChat</code><br><code>void ReceiveCapturedChat(GameChatMessage message)</code> | 메서드 | 수신 귓속말이면 답장 상대를 갱신한 뒤 기존 채널 전달 큐로 넘긴다. 네트워크 작업은 하지 않는다. | [L57](../../src/Plugin.Chat.cs#L57) |
+| <a id="symbol-src-plugin-chat-cs-63-c1157a3522"></a><code>Plugin.SetDiscordChat</code><br><code>void SetDiscordChat(GameChatKind kind, bool? enabled = null, bool? mention = null, bool? sound = null)</code> | 메서드 | 중복 조작/종료를 막고 nullable 수신·멘션 변경을 비동기로 시작한다. UI/game thread를 저장 완료까지 막지 않는다. | [L63](../../src/Plugin.Chat.cs#L63) |
+| <a id="symbol-src-plugin-chat-cs-69-3a5d55bf0e"></a><code>Plugin.ChangeDiscordChat</code><br><code>Task ChangeDiscordChat(GameChatKind kind, bool? enabled, bool? mention, bool? sound)</code> | 메서드 | 실행 중에는 controller의 직렬화된 최신 설정 변경을 기다린다. 연결이 꺼져 있으면 기존 앱/채널을 유지한 채 설정만 저장한다. 채널이 미설정이면 명령 설정을 안내하고 오류는 타입만 표시한다. | [L69](../../src/Plugin.Chat.cs#L69) |
+| <a id="symbol-src-plugin-chat-cs-92-f63c882018"></a><code>Plugin.SaveDiscordChatSettings</code><br><code>Task SaveDiscordChatSettings(DiscordChatSettings settings, CancellationToken cancellation)</code> | 메서드 | Framework에서 취소/종료를 재검사하고 최신 RelayConfiguration의 DiscordChat만 복사해 저장한다. 기존 토큰·알림 목적지·AFK 설정은 보존한다. | [L92](../../src/Plugin.Chat.cs#L92) |
+
+<a id="file-src-plugin-chatsend-cs"></a>
+## src/Plugin.ChatSend.cs
+
+[소스 파일](../../src/Plugin.ChatSend.cs) · 명명된 항목/진입점 6개
+
+게임 전송 native 경계. 호환/접속/지역 이동과 실제 최근 귓속말 이력을 검사하고 UIModule 채팅 입력을 호출한다.
+
+| 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
+|---|---|---|---|
+| <a id="symbol-src-plugin-chatsend-cs-10-2ddf93c9da"></a><code>Plugin.UpdateChatSending</code><br><code>void UpdateChatSending(long now)</code> | 메서드 | 봇이 실행 중이면 매 Framework tick에 전송 bridge를 진행한다. 모집조회500ms 간격과 분리한다. | [L10](../../src/Plugin.ChatSend.cs#L10) |
+| <a id="symbol-src-plugin-chatsend-cs-15-9f4bcd9299"></a><code>Plugin.ChatSendHost</code><br><code>ChatSendHost(Plugin plugin)</code> | 주 생성자/모델 | Plugin의 현재 서비스와 서버 이름 resolver를 전송 host에 연결한다. | [L15](../../src/Plugin.ChatSend.cs#L15) |
+| <a id="symbol-src-plugin-chatsend-cs-17-c107148cc3"></a><code>Plugin.ChatSendHost.SelfId</code><br><code>ulong SelfId</code> | 계산 속성 | ClientState 로그인과 PlayerState 로드가 모두 확인될 때 본인 CID를 반환한다. 계산식: <code>ClientState.IsLoggedIn &amp;&amp; PlayerState.IsLoaded ? PlayerState.ContentId : 0</code>. | [L17](../../src/Plugin.ChatSend.cs#L17) |
+| <a id="symbol-src-plugin-chatsend-cs-18-eca8832503"></a><code>Plugin.ChatSendHost.BlockReason</code><br><code>string? BlockReason</code> | 계산 속성 | 종료·native ABI 불일치·지역 이동을 전송 차단 사유로 반환한다. | [L18](../../src/Plugin.ChatSend.cs#L18) |
+| <a id="symbol-src-plugin-chatsend-cs-22-f92a54d81b"></a><code>Plugin.ChatSendHost.TrySend</code><br><code>bool TrySend(string command, ChatReplyTarget? reply, out string error)</code> | 메서드 | 실행 직전 접속·UIModule·답장 이력을 다시 확인한다. Utf8String sanitize가 원문을 바꾸면 중단하고 ProcessChatBoxEntry로1회 넘긴 뒤 native 문자열을 해제한다. | [L22](../../src/Plugin.ChatSend.cs#L22) |
+| <a id="symbol-src-plugin-chatsend-cs-46-f8590e544f"></a><code>Plugin.ChatSendHost.ReplyMatches</code><br><code>bool ReplyMatches(ChatReplyTarget expected)</code> | 메서드 | AcquaintanceModule의 유효 개수와 GetTellHistory(0)를 읽어 CID·서버ID·이름·해석 서버가 고정한 상대와 맞는지 검사한다. 이 검사는 모집 문의의 서버 답장 권한을 보장하지 않는다. | [L46](../../src/Plugin.ChatSend.cs#L46) |
 
 <a id="file-src-runtimerows-cs"></a>
 ## src/RuntimeRows.cs

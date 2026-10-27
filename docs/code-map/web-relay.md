@@ -4,7 +4,7 @@
 
 네트워크 thread는 관리형 snapshot과 queue만 다룬다. query는 새 모집 조회 요청이고 GET state polling은 마지막 snapshot 읽기다. loopback/Cloudflare/Discord 모두 같은 editor/refresh 의미를 공유한다.
 
-기준: 0.3.53.0 소스. 기반 main `b1ec51fdd867c2a80f214c95df20a9f80ad722ae` 이후 발신자 번호 제거·효과음 멘션·단일 직업 공석 제외 완료 알림을 포함한다. 2026-10-28 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
+기준: 0.3.54.0 소스. 기반 main `374b48f6795dd6851529f5c55adf092ff07450c0` 이후 Discord→게임 채팅 전송과 답장 대상 검사를 포함한다. 2026-10-27(UTC) 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
 
 표에는 직접 선언한 메서드·생성자·로컬 함수·계산 속성·인터페이스 메서드를 각각 포함한다. 자동 생성 record 메서드/단순 auto-property accessor는 제외한다. 이름 없는 LINQ/타이머/콜백은 이를 소유한 함수 설명에 포함하며, 중요한 DOM 이벤트 handler와 명명된 테스트 시나리오는 별도로 표시한다.
 

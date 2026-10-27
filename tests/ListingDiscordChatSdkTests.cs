@@ -25,8 +25,8 @@ static partial class ListingDiscordConnectionTests
         var party = ListingDiscordChatTests.Party;
         test("Discord SDK registers pvkr chat separately with localized choices and text channel picker", () => {
             var t = new OfflineTransport(); using var client = ConnectedChat(t);
-            check(t.CommandBodies.Select(b => b.GetProperty("name").GetString()).SequenceEqual(["pvkr", "pvkr-chat"]), "pvkr command replaced");
-            var options = t.CommandBodies.Last().GetProperty("options").EnumerateArray().ToArray();
+            check(t.CommandBodies.Select(b => b.GetProperty("name").GetString()).SequenceEqual(["pvkr", "pvkr-chat", "pvkr-send"]), "pvkr command replaced");
+            var options = t.CommandBodies.Single(b => b.GetProperty("name").GetString() == "pvkr-chat").GetProperty("options").EnumerateArray().ToArray();
             check(options.Select(o => o.GetProperty("name").GetString()).SequenceEqual(["설정", "멘션", "해제", "상태"]), "missing chat commands");
             var channel = options[0].GetProperty("options").EnumerateArray().Single(o => o.GetProperty("name").GetString() == "채널");
             check(channel.GetProperty("type").GetInt32() == 7 && channel.GetProperty("channel_types")[0].GetInt32() == 0, "channel picker not restricted to text");
