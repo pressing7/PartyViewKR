@@ -4,12 +4,12 @@
 
 ## 기준과 범위
 
-- 정리일: 2026-10-27. 플러그인 `0.3.52.0`, Dalamud API `15`.
-- 소스 기준: `0.3.52.0`. 기반 main [`25591e676807a52801cba73278669983e7bb0e02`](https://github.com/pressing7/PartyViewKR/commit/25591e676807a52801cba73278669983e7bb0e02) 이후 Discord 모의 Message 응답 수정·전송 완료 검증 보강을 포함한다.
+- 정리일: 2026-10-28. 플러그인 `0.3.53.0`, Dalamud API `15`.
+- 소스 기준: `0.3.53.0`. 기반 main [`b1ec51fdd867c2a80f214c95df20a9f80ad722ae`](https://github.com/pressing7/PartyViewKR/commit/b1ec51fdd867c2a80f214c95df20a9f80ad722ae) 이후 발신자 번호 제거·효과음 멘션·단일 직업 공석 제외 완료 알림을 포함한다.
 - 문서 자체와 신규 채팅/역할 검증 파일을 포함한 추적 파일 260개 전체를 [파일 지도](code-map/files.md)에 분류했다. 소스 위치는 이 버전의 행 번호다.
-- C# Roslyn 구문 분석, JavaScript Acorn 구문 분석, Python AST로 **1,442개 명명된 항목/진입점**을 대조했다: C# 1,320, JS 91, Python 31. 메서드뿐 아니라 생성자·로컬 함수·계산 속성·인터페이스 선언을 포함한 숫자다.
+- C# Roslyn 구문 분석, JavaScript Acorn 구문 분석, Python AST로 **1,453개 명명된 항목/진입점**을 대조했다: C# 1,331, JS 91, Python 31. 메서드뿐 아니라 생성자·로컬 함수·계산 속성·인터페이스 선언을 포함한 숫자다.
 - 자동 생성 record 메서드와 단순 auto-property accessor는 별도 함수로 세지 않는다. 이름 없는 LINQ/콜백은 소유 함수에서 설명하고, 중요한 DOM handler와 테스트 시나리오는 따로 연결했다.
-- 현재 C# 등록 테스트는 483개, Node 등록 테스트는 15개, Python `test_*` 메서드는 12개다. 등록 범위와 실행 결과를 구분하며 이번 채팅 변경의 검증 환경은 아래에 기록한다.
+- 현재 C# 등록 테스트는 496개, Node 등록 테스트는 15개, Python `test_*` 메서드는 12개다. 등록 범위와 실행 결과를 구분하며 이번 채팅 변경의 검증 환경은 아래에 기록한다.
 
 현재 구현은 **기존 본인 모집글의 조회·수정·수동 갱신 및 AFK 명단 감시에 따른 자동 조회**다. AFK 모집 완료 everyone 알림과 파티·받은 귓속말·연합파티 채팅 전달을 제공한다. 새 모집 시작과 콘텐츠/파티 유형 변경은 아직 구현하지 않았다. 루트의 `PartyViewKR.dll/json/deps.json`은 이전 수동 배포본이다. 빌드 기준은 `src/PartyViewKR.csproj`와 `src/PartyViewKR.json`, 설치 대상은 Releases ZIP이다.
 
@@ -265,3 +265,13 @@ AFK의 `IAfkListingHost`에는 수정/제출 계약이 없다. 모집 완료 알
 `ChatTransport`는 서버 일반 텍스트 채널에서 ViewChannel/SendMessages/EmbedLinks와 선택적 MentionEveryone을 확인한다. 일반 bot POST의 embed는 파랑/분홍/주황 sidebar, `닉네임@서버 : 본문`, 수신 시각을 가진다. `DiscordChatFormatting.Render`는 Unicode scalar/escape token 단위로4000자 이하 description으로 나누어 내용 전체를 보낸다. 첫 part에만 선택적 @everyone content를 붙인다. **allowed_mentions는 꺼진 경우에도 명시적 빈 parse 배열**로 직렬화한다. SDK의 rate limit 재시도만 허용하고 네트워크 오류의 불확실한 POST는 반복하지 않는다. 이미 보낸 채팅은 자동 삭제하지 않으며 기존 Overview/Editor/Details/Results 카드의 수명은 바꾸지 않는다.
 
 함수 시작점은 [공개 이벤트](code-map/core.md#file-src-gamechatcapture-cs), [게임 연결](code-map/core.md#file-src-plugin-chat-cs), [설정/큐](code-map/discord.md#file-src-listingdiscordchat-cs), [SDK 명령/전송](code-map/discord.md#file-src-listingdiscordclient-chat-cs)이다. [수신 이벤트 회귀](code-map/tests.md#file-tests-gamechatcapturetests-cs), [controller 회귀](code-map/tests.md#file-tests-listingdiscordchattests-cs), [실제 SDK 직렬화 회귀](code-map/tests.md#file-tests-listingdiscordchatsdktests-cs)로 연결한다. 실제 한섭 이벤트/발신자 payload와 Android 표시·알림 수신은 인게임 검증이 필요하다.
+
+## 조건별 멘션과 단일 직업 공석 완료 (0.3.53)
+
+- `GameChatCapture.Emit`은 발신자 이름의 U+E0E0~E0E9 번호 glyph만 지운다. 본문은 그대로 유지하며 `IncludeSoundEffects`가 공개 payload의 canonical fixed(200,5,n)를 `<se.n+1>`로 보완한다. [Dalamud SeString 명세](https://dalamud.dev/plugin-development/sestring/)와 공개 Payload API를 기준으로 읽으며 재생/수정하지 않는다.
+- `DiscordChatRoute.MentionOnSound`는 기존 `MentionEveryone`과 별도 저장한다. 기존 bool 설정은 그대로 호환한다. UI와 slash의 off/everyone/sound 선택은 두 bool을 함께 조정하고, 수신만 끄면 선호를 보존한다. `ShouldMention`은 Party/Alliance에만 exact1~16 태그를 허용한다. `Send`는 첫 분할 메시지에만 everyone을 붙이고 본문 멘션은 실행하지 않는다.
+- `AfkSingleJobCompletionEnabled`는 기본 false이며 AFK 조회 설정에 저장한다. `RememberSingleJobCompletion`은 새 성공한 자기 모집 조회와 현재 CID 명단 일치 후에만 등록 슬롯의 빈자리를 검사한다. 모든 빈자리의 알려진 허용 직업이 하나이고 미확인 bit가 없어야 한다. 미등록 자리는 제외하고 친선 관전은 포함한다. 단순 인원수에서 예외 자리 수를 빼면 그 자리에 먼저 들어온 참가자로 오탐할 수 있으므로 사용하지 않는다.
+- 부분 완료 latch와 `singleJobConfirmedGeneration`을 분리한다. 명단 변화/일시 읽기 실패 시 오래된 부분 완료를 외부로 전달하지 않으면서, 같은 상태의 재조회나 지역 이동이 새 알림을 만들지 않게 한다. 새 조회에서 일반 공석을 확인한 뒤 다시 만족하면 CompletionRevision을 올린다. 부분 완료 후에도 명단 변화·선택 주기 조회를 계속한다. 전체 정원 완료는 기존 CID 인원 비교로 별도 알리고 모집 자동 종료 후 조회를 기다리지 않는다.
+- Discord 알림은 같은 선택 채널과 everyone 권한을 사용하고 `excludesSingleJob`에 따라 문구를 나눈다. revision/조건/캐릭터 변경 전송 취소와 불확실 POST 비재시도는 유지한다.
+
+관리형496개와 Python 배포12개가 통과했고 기존 참조 DLL을 이용한 전체 소스 컴파일은 경고0/오류0이었다. 공개 이벤트의 이름 정리·효과음 보완, 실제 Discord.Net의 조건별 allowed_mentions/긴 메시지 한 번 멘션/슬래시 저장, 일반·미등록 연합·친선의 부분 완료와 잘못된 선입장·stale 응답·직업 표 누락·지역 이동·재알림을 검증했다. 인게임 채팅과 실제 Android 알림은 별도 확인 대상이다. Actions 빌드·배포는 실행하지 않는다.

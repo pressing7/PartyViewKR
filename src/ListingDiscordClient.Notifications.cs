@@ -7,8 +7,8 @@ internal sealed partial class ListingDiscordClient
 {
     private ListingDiscordNotifications? notifications;
     internal string NotificationStatus => notifications?.Status ?? "디스코드 알림 연결 준비 중입니다.";
-    internal void ObserveCompletion(bool enabled, ulong self, long revision, bool complete) =>
-        notifications?.Observe(enabled && Connected, self, revision, complete);
+    internal void ObserveCompletion(bool enabled, ulong self, long revision, bool complete, bool excludesSingleJob = false) =>
+        notifications?.Observe(enabled && Connected, self, revision, complete, excludesSingleJob);
 
     internal static AllowedMentions CompletionMentions() => new(AllowedMentionTypes.Everyone);
     private sealed class NotificationTransport(ListingDiscordClient client) : IDiscordNotificationTransport
@@ -29,12 +29,12 @@ internal sealed partial class ListingDiscordClient
                 : !permissions.MentionEveryone ? "봇에 이 채널의 ‘@everyone, @here 및 모든 역할 멘션’ 권한이 필요합니다." : null);
         }
 
-        public async Task SendCompletion(DiscordNotificationTarget target, CancellationToken cancellation)
+        public async Task SendCompletion(DiscordNotificationTarget target, CancellationToken cancellation, bool excludesSingleJob = false)
         {
             var error = await CheckChannel(target, cancellation);
             if (error != null) throw new InvalidOperationException("Notification channel unavailable");
             cancellation.ThrowIfCancellationRequested();
-            var sent = await Channel(target)!.SendMessageAsync(ListingDiscordNotifications.CompletionText,
+            var sent = await Channel(target)!.SendMessageAsync(excludesSingleJob ? ListingDiscordNotifications.SingleJobCompletionText : ListingDiscordNotifications.CompletionText,
                 allowedMentions: CompletionMentions(), options: new RequestOptions {
                     CancelToken = cancellation, Timeout = 10000, RetryMode = RetryMode.AlwaysFail
                 });

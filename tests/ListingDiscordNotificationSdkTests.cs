@@ -35,6 +35,20 @@ static partial class ListingDiscordConnectionTests
             check(transport.NotificationMessages.IsEmpty && client.NotificationStatus.Contains("권한"), "silently posted without mention permission");
             client.Dispose(); client.Completion.WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
         });
+        test("Discord SDK reserved-seat completion uses its own text and deduplicates everyone", () => {
+            var t = new OfflineTransport();
+            using var client = new ListingDiscordClient(new("test"), FakeToken, t.Config(), new(500, 700, 800));
+            Wait(() => t.Identified.Task.IsCompleted || !client.Running);
+            t.Ready(true).GetAwaiter().GetResult(); t.NotificationGuild().GetAwaiter().GetResult();
+            Wait(() => client.Connected || !client.Running);
+            client.ObserveCompletion(true, 10, 1, true, true);
+            Wait(() => client.NotificationStatus.Contains("전송 완료") || client.NotificationStatus.Contains("실패"));
+            check(client.NotificationStatus.Contains("전송 완료") && t.NotificationMessages.Single().GetProperty("content").GetString() ==
+                "@everyone 단일 직업 빈자리를 제외한 파티모집완료", "wrong partial-completion alert");
+            for (var i = 0; i < 10; i++) client.ObserveCompletion(true, 10, 1, true, true);
+            check(t.NotificationMessages.Count == 1, "duplicate reserved-seat notification");
+            client.Dispose(); client.Completion.GetAwaiter().GetResult();
+        });
         test("Discord SDK does not report success or repeat POST if the server did not confirm everyone", () => {
             var transport = new OfflineTransport { DropEveryoneMention = true };
             using var client = new ListingDiscordClient(new("test"), FakeToken, transport.Config(), new(500, 700, 800));

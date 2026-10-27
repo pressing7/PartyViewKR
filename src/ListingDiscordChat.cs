@@ -79,6 +79,8 @@ internal sealed class ListingDiscordChat : IDisposable
         if (guildId == 0) return "채팅 수신 설정은 디스코드 서버에서 실행해 주세요.";
         if (!GameChat.TryKind(command.Kind, out var kind) || command.Action is not ("설정" or "멘션" or "해제"))
             return "채팅 종류와 명령을 다시 선택해 주세요.";
+        if (command.MentionOnSound == true && kind == GameChatKind.Tell)
+            return "효과음 멘션은 파티·연합파티 채팅에서만 사용할 수 있습니다.";
         using var budget = CancellationTokenSource.CreateLinkedTokenSource(stop.Token, cancellation);
         budget.CancelAfter(TimeSpan.FromSeconds(15)); var ct = budget.Token;
         var acquired = false;
@@ -95,7 +97,8 @@ internal sealed class ListingDiscordChat : IDisposable
                 route = new() { Kind = command.Kind, GuildId = guildId,
                     ChannelId = command.Action == "설정" ? command.ChannelId : existing!.ChannelId,
                     Enabled = command.Action == "설정" || existing!.Enabled,
-                    MentionEveryone = command.MentionEveryone ?? existing?.MentionEveryone ?? false };
+                    MentionEveryone = command.MentionEveryone ?? existing?.MentionEveryone ?? false,
+                    MentionOnSound = command.MentionOnSound ?? (command.MentionEveryone.HasValue ? false : existing?.MentionOnSound ?? false) };
                 var error = await transport.CheckChannel(route, ct);
                 if (error != null) return error;
             }
@@ -113,9 +116,10 @@ internal sealed class ListingDiscordChat : IDisposable
 
     // Share the same serialization and latest settings with slash commands.
     // Turning a category off does not depend on Discord channel permissions.
-    internal async Task<string> ConfigureLocal(GameChatKind kind, bool? enabled, bool? mention, CancellationToken cancellation)
+    internal async Task<string> ConfigureLocal(GameChatKind kind, bool? enabled, bool? mention, CancellationToken cancellation, bool? sound = null)
     {
         if (!Enum.IsDefined(kind)) return "채팅 종류를 확인해 주세요.";
+        if (sound == true && kind == GameChatKind.Tell) return "효과음 멘션은 파티·연합파티 채팅에서만 사용할 수 있습니다.";
         using var budget = CancellationTokenSource.CreateLinkedTokenSource(stop.Token, cancellation);
         budget.CancelAfter(TimeSpan.FromSeconds(15)); var ct = budget.Token;
         var acquired = false;
@@ -124,10 +128,10 @@ internal sealed class ListingDiscordChat : IDisposable
             DiscordChatSettings before; lock (gate) before = settings;
             var route = before.Routes.FirstOrDefault(r => r.Kind == GameChat.Key(kind));
             if (route == null) return "먼저 /pvkr-chat 설정으로 수신 채널을 지정해 주세요.";
-            var updated = before.WithOptions(kind, enabled, mention);
+            var updated = before.WithOptions(kind, enabled, mention, sound);
             var next = updated.Routes.Single(r => r.Kind == route.Kind);
             await Apply(updated, route.Kind, route != next, ct);
-            return $"{GameChat.Label(kind)} · 수신 {(next.Enabled ? "켜기" : "끄기")} · 멘션 {(next.MentionEveryone ? "@everyone" : "끄기")}";
+            return $"{GameChat.Label(kind)} · 수신 {(next.Enabled ? "켜기" : "끄기")} · 멘션 {next.MentionLabel}";
         }
         catch (OperationCanceledException) when (!stop.IsCancellationRequested && !cancellation.IsCancellationRequested)
         { return "채팅 설정 시간이 초과됐습니다. 다시 시도해 주세요."; }
@@ -148,7 +152,7 @@ internal sealed class ListingDiscordChat : IDisposable
     }
 
     private static string RouteSummary(GameChatKind kind, DiscordChatRoute route) =>
-        $"{GameChat.Label(kind)} → <#{route.ChannelId}> · 수신 {(route.Enabled ? "켜기" : "끄기")} · 멘션 {(route.MentionEveryone ? "@everyone" : "끄기")}";
+        $"{GameChat.Label(kind)} → <#{route.ChannelId}> · 수신 {(route.Enabled ? "켜기" : "끄기")} · 멘션 {route.MentionLabel}";
     private string StatusLocked() => $"채팅 전달 · {(watching ? "수신 대기" : "로그인 대기")} · 수신 켜짐 {settings.Routes.Count(r => r.Enabled)}/3 · " +
         $"전송 {sent} · 실패 {failed} · 제외 {dropped} · 대기 {queue.Count}" + (last.Length == 0 ? "" : "\n" + last);
     private string SummaryLocked() => string.Join("\n", Enum.GetValues<GameChatKind>().Select(kind => {

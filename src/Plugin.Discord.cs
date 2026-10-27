@@ -69,7 +69,8 @@ public sealed partial class Plugin
 
     private void UpdateDiscordCompletion() => discordClient?.ObserveCompletion(afk.Enabled,
         ClientState.IsLoggedIn && PlayerState.IsLoaded ? PlayerState.ContentId : 0,
-        afk.CompletionRevision, afk.RecruitmentComplete);
+        afk.CompletionRevision, afk.RecruitmentComplete || afk.SingleJobRecruitmentComplete,
+        !afk.RecruitmentComplete && afk.SingleJobRecruitmentComplete);
     private static string ProtectDiscordToken(string token)
     {
         var plain = Encoding.UTF8.GetBytes(token);

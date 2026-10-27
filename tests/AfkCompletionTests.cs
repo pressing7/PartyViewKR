@@ -76,5 +76,93 @@ static class AfkCompletionTests
                 check(n.RecruitmentCapacity == 0 && n.CompletionRevision == 0, "invalid capacity accepted");
             }
         });
+        (AfkListingMonitor m, AfkFakeHost h) SingleStart(ListingSlots slots, bool enabled = true)
+        {
+            var m = new AfkListingMonitor(); var h = new AfkFakeHost(); SetSlots(h, slots);
+            m.Configure(new(SingleJobCompletionEnabled: enabled), 0); m.SetEnabled(true, h, 0);
+            m.Update(h, 0); h.Complete(); m.Update(h, 500); return (m, h);
+        }
+        test("single-job completion waits for actual open seats instead of subtracting a reserved count", () => {
+            var (m, h) = SingleStart(Slots([4], [2, 3], [3]));
+            check(!m.SingleJobRecruitmentComplete && m.CompletionRevision == 0, "open ordinary seat ignored");
+            // Joining the single-job seat still leaves the ordinary seat empty.
+            SetSlots(h, Slots([4], [2], [])); m.Update(h, 3000);
+            check(!m.SingleJobRecruitmentComplete, "roster count alone triggered completion");
+            h.Complete(); m.Update(h, 3500);
+            check(!m.SingleJobRecruitmentComplete && m.CompletionRevision == 0, "reserved join falsely filled another seat");
+            // A later verified recruitment has only the single-job seat vacant.
+            SetSlots(h, Slots([4], [3], [3])); h.RequestQuery(out _); h.Complete(); m.Update(h, 4000);
+            check(m.SingleJobRecruitmentComplete && !m.RecruitmentComplete && m.CompletionRevision == 1, "single-job vacancy not recognized");
+        });
+        test("single-job completion supports sparse alliances and friendly spectators using registered slots", () => {
+            foreach (var groups in new[] { new[] { 4 }, [8], [7, 8, 8], [8, 8, 8, 8, 8, 7], [5, 5, 8] }) {
+                var last = (groups.Length - 1) * 8 + groups[^1] - 1;
+                var (m, _) = SingleStart(Slots(groups, [last], [last]));
+                check(m.SingleJobRecruitmentComplete && m.CompletionRevision == 1, "sparse or spectator seat lost");
+            }
+        });
+        test("single-job alerts keep querying and do not re-notify after repeated reads or zoning", () => {
+            var (m, h) = SingleStart(Slots([4], [3], [3]));
+            m.Configure(new(PeriodicEnabled: true, SingleJobCompletionEnabled: true), 1000);
+            h.Readable = false; m.Update(h, 1500); check(!m.SingleJobRecruitmentComplete, "stale completion exposed");
+            h.Readable = true; m.Update(h, 3000);
+            check(m.InFlight && !m.SingleJobRecruitmentComplete, "partial completion suppressed queries or used old detail");
+            h.Complete(); m.Update(h, 3500);
+            check(m.SingleJobRecruitmentComplete && m.CompletionRevision == 1, "zoning duplicated alert");
+            m.Update(h, 63500); check(m.InFlight && h.Queries == 3, "periodic queries stopped at partial completion");
+            h.Complete(); m.Update(h, 64000); check(m.CompletionRevision == 1, "same successful read rearmed notification");
+        });
+        test("single-job completion rearms after a verified ordinary vacancy and still allows full alerts", () => {
+            var (m, h) = SingleStart(Slots([4], [3], [3]));
+            SetSlots(h, Slots([4], [2, 3], [3])); m.Update(h, 3000); h.Complete(); m.Update(h, 3500);
+            check(!m.SingleJobRecruitmentComplete, "ordinary vacancy still complete");
+            SetSlots(h, Slots([4], [3], [3])); m.Update(h, 6000); h.Complete(); m.Update(h, 6500);
+            check(m.SingleJobRecruitmentComplete && m.CompletionRevision == 2, "new partial completion suppressed");
+            h.Roster = AfkFakeHost.RosterOf(10, 11, 12, 13); h.OwnReady = false; h.Reject = true; m.Update(h, 7000);
+            check(m.RecruitmentComplete && m.CompletionRevision == 3, "full completion waited for disappeared listing");
+        });
+        test("single-job completion requires opt-in and fresh matching readable job rules", () => {
+            var slots = Slots([4], [3], [3]);
+            var (m, h) = SingleStart(slots, false);
+            check(!m.SingleJobRecruitmentComplete && m.CompletionRevision == 0, "new condition silently enabled");
+            m.Configure(new(SingleJobCompletionEnabled: true), 1000); m.Update(h, 3000);
+            check(m.InFlight && !m.SingleJobRecruitmentComplete, "enabled option used stale detail");
+            h.Complete(); h.Listed = AfkFakeHost.RosterOf(10, 20); m.Update(h, 3500);
+            check(!m.SingleJobRecruitmentComplete, "other roster accepted");
+            h.Listed = h.Roster; h.RegisteredSlots = slots with { JobRules = ListingJobRules.Unavailable }; m.Update(h, 4000);
+            check(!m.SingleJobRecruitmentComplete && m.CompletionRevision == 0, "unknown jobs guessed single");
+            foreach (var bad in new[] { slots with { SlotsFilled = 1 }, slots with { Readable = false },
+                slots with { Slots = slots.Slots.Select(s => s.HasMember ? s : s with { SlotFlags = s.SlotFlags | (1UL << 60) }).ToArray() } }) {
+                var (other, _) = SingleStart(bad); check(!other.SingleJobRecruitmentComplete, "invalid or unknown slot flags accepted");
+            }
+        });
+        test("unreadable single-job masks hide completion without rearming a duplicate alert", () => {
+            var slots = Slots([4], [3], [3]); var (m, h) = SingleStart(slots);
+            h.RegisteredSlots = slots with { Slots = slots.Slots.Select(s => s.HasMember ? s : s with { SlotFlags = s.SlotFlags | (1UL << 60) }).ToArray() };
+            h.RequestQuery(out _); h.Complete(); m.Update(h, 1000);
+            check(!m.SingleJobRecruitmentComplete && m.CompletionRevision == 1, "unknown mask confirmed a new state");
+            h.RegisteredSlots = slots; h.RequestQuery(out _); h.Complete(); m.Update(h, 1500);
+            check(m.SingleJobRecruitmentComplete && m.CompletionRevision == 1, "unknown mask rearmed old completion");
+        });
+    }
+
+    private static ListingSlots Slots(int[] groups, int[] vacant, int[] single)
+    {
+        var nativeCount = groups.Length == 1 ? groups[0] : groups.Length * 8;
+        var jobs = new byte[nativeCount]; var cids = new ulong[nativeCount]; var flags = new ulong[nativeCount];
+        var rules = ListingJobRules.Read(new RecruitmentJob[] { new(19, "나이트"), new(24, "백마도사"), new(25, "흑마도사") });
+        var only = rules.Choices.Single(j => j.Id == 19).Flag;
+        for (var group = 0; group < groups.Length; group++) for (var member = 0; member < groups[group]; member++) {
+            var i = group * 8 + member;
+            flags[i] = single.Contains(i) ? only : rules.AllFlags;
+            if (!vacant.Contains(i)) { jobs[i] = 19; cids[i] = (ulong)(10 + i); }
+        }
+        return ListingSlots.Read(true, groups.Sum(), cids.Count(c => c != 0), groups.Length, groups.Length > 1,
+            jobs, cids, flags, _ => "나이트", rules, groups.SequenceEqual([5, 5, 8]) ? (byte)0x13 : (byte)0);
+    }
+    private static void SetSlots(AfkFakeHost host, ListingSlots slots)
+    {
+        host.RegisteredSlots = slots; host.RegisteredCapacity = slots.TotalSlots;
+        host.Roster = AfkFakeHost.RosterOf(slots.Slots.Where(s => s.HasMember).Select(s => s.MemberContentId).ToArray());
     }
 }

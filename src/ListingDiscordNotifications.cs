@@ -9,7 +9,7 @@ internal interface IDiscordNotificationTransport
 {
     bool Connected { get; }
     Task<string?> CheckChannel(DiscordNotificationTarget target, CancellationToken cancellation);
-    Task SendCompletion(DiscordNotificationTarget target, CancellationToken cancellation);
+    Task SendCompletion(DiscordNotificationTarget target, CancellationToken cancellation, bool excludesSingleJob = false);
 }
 
 // Receives only managed AFK observations. No game memory or interaction token
@@ -17,6 +17,7 @@ internal interface IDiscordNotificationTransport
 internal sealed class ListingDiscordNotifications : IDisposable
 {
     internal const string CompletionText = "@everyone 파티모집완료";
+    internal const string SingleJobCompletionText = "@everyone 단일 직업 빈자리를 제외한 파티모집완료";
     private readonly object gate = new();
     private readonly ulong applicationId;
     private readonly IDiscordNotificationTransport transport;
@@ -25,7 +26,7 @@ internal sealed class ListingDiscordNotifications : IDisposable
     private readonly SemaphoreSlim selecting = new(1);
     private DiscordNotificationTarget? target;
     private CancellationTokenSource? sending;
-    private bool watching, full, disposed;
+    private bool watching, ready, excludesSingleJob, disposed;
     private ulong self, attemptedSelf;
     private long revision, attemptedRevision = -1;
     private bool attemptedPost;
@@ -65,7 +66,7 @@ internal sealed class ListingDiscordNotifications : IDisposable
                 if (target != selected) sending?.Cancel();
                 if (!attemptedPost) attemptedRevision = -1;
                 target = selected;
-                status = $"알림 채널 <#{channelId}> · AFK에서 모집 인원이 모두 차면 everyone 알림을 보냅니다.";
+                status = $"알림 채널 <#{channelId}> · AFK 모집 완료 알림을 보냅니다. 단일 직업 빈자리 제외 조건은 인게임 AFK 설정에서 켤 수 있습니다.";
                 return status;
             }
         }
@@ -76,25 +77,25 @@ internal sealed class ListingDiscordNotifications : IDisposable
         finally { selecting.Release(); }
     }
 
-    internal void Observe(bool afkEnabled, ulong selfId, long completionRevision, bool isFull)
+    internal void Observe(bool afkEnabled, ulong selfId, long completionRevision, bool isReady, bool excludesSingleJob = false)
     {
         lock (gate)
         {
             if (disposed) return;
             var active = afkEnabled && selfId != 0;
-            if (!active || !isFull || self != selfId || revision != completionRevision) sending?.Cancel();
-            watching = active; self = selfId; revision = completionRevision; full = isFull;
-            if (!watching || !full || revision <= 0 || target == null || !transport.Connected || sending != null) return;
+            if (!active || !isReady || self != selfId || revision != completionRevision || this.excludesSingleJob != excludesSingleJob) sending?.Cancel();
+            watching = active; self = selfId; revision = completionRevision; ready = isReady; this.excludesSingleJob = excludesSingleJob;
+            if (!watching || !ready || revision <= 0 || target == null || !transport.Connected || sending != null) return;
             if (attemptedSelf == self && attemptedRevision == revision && attemptedTarget == target) return;
             var selected = target; var observedSelf = self; var observedRevision = revision;
             var budget = CancellationTokenSource.CreateLinkedTokenSource(stop.Token);
             budget.CancelAfter(TimeSpan.FromSeconds(15)); sending = budget;
             status = "파티 모집 완료 알림을 보내는 중입니다.";
-            Delivery = Task.Run(() => Deliver(selected, observedSelf, observedRevision, budget));
+            Delivery = Task.Run(() => Deliver(selected, observedSelf, observedRevision, excludesSingleJob, budget));
         }
     }
 
-    private async Task Deliver(DiscordNotificationTarget selected, ulong observedSelf, long observedRevision,
+    private async Task Deliver(DiscordNotificationTarget selected, ulong observedSelf, long observedRevision, bool excludingSingleJob,
         CancellationTokenSource budget)
     {
         try
@@ -103,7 +104,7 @@ internal sealed class ListingDiscordNotifications : IDisposable
             budget.Token.ThrowIfCancellationRequested();
             lock (gate)
             {
-                if (disposed || !watching || !full || self != observedSelf || revision != observedRevision || target != selected) return;
+                if (disposed || !watching || !ready || self != observedSelf || revision != observedRevision || target != selected || excludesSingleJob != excludingSingleJob) return;
                 // Consume immediately before dispatch (or a definite permission
                 // failure). Cancellation during preflight can safely retry after
                 // the roster becomes readable again; an uncertain POST cannot.
@@ -111,8 +112,8 @@ internal sealed class ListingDiscordNotifications : IDisposable
                 attemptedPost = error == null;
                 if (error != null) { status = "모집 완료 알림 실패 · " + error; return; }
             }
-            await transport.SendCompletion(selected, budget.Token);
-            SetResult("파티모집완료 · everyone 알림 전송 완료", selected, observedSelf, observedRevision);
+            await transport.SendCompletion(selected, budget.Token, excludingSingleJob);
+            SetResult((excludingSingleJob ? "단일 직업 빈자리 제외 모집완료" : "파티모집완료") + " · everyone 알림 전송 완료", selected, observedSelf, observedRevision);
         }
         catch (OperationCanceledException)
         {
@@ -132,7 +133,7 @@ internal sealed class ListingDiscordNotifications : IDisposable
     private void SetResult(string message, DiscordNotificationTarget selected, ulong observedSelf, long observedRevision)
     {
         lock (gate)
-            if (!disposed && watching && full && target == selected && self == observedSelf && revision == observedRevision) status = message;
+            if (!disposed && watching && ready && target == selected && self == observedSelf && revision == observedRevision) status = message;
     }
 
     public void Dispose()

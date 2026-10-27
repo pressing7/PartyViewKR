@@ -72,6 +72,33 @@ static partial class ListingDiscordConnectionTests
             check(text == "모험가@\u200b초코보 : " + message.Text, "split chat content lost");
             client.Dispose(); client.Completion.GetAwaiter().GetResult();
         });
+        test("Discord SDK sound-only mode sends all chat but mentions only party and alliance sounds once", () => {
+            var t = new OfflineTransport(); using var client = ConnectedChat(t, ListingDiscordChatTests.Settings(
+                party with { MentionOnSound = true }, party with { Kind = "alliance", ChannelId = 802, MentionOnSound = true },
+                party with { Kind = "tell", ChannelId = 801, MentionOnSound = true }));
+            client.ObserveChat(true, 10);
+            foreach (var message in new[] { ListingDiscordChatTests.Chat(text: "ordinary"),
+                ListingDiscordChatTests.Chat(text: "<se.1><se.16>" + new string('가', 8000)),
+                ListingDiscordChatTests.Chat(GameChatKind.Alliance, "<se.16>"),
+                ListingDiscordChatTests.Chat(GameChatKind.Tell, "<se.1>"), ListingDiscordChatTests.Chat(text: "<se.17>") })
+                client.ReceiveChat(10, message);
+            WaitForDelivery(client, 5);
+            var sent = t.ChatMessages.ToArray(); check(sent.Length == 7, "chat dropped or duplicated");
+            var pings = sent.Select((s, i) => (s, i)).Where(x => x.s.Body.TryGetProperty("content", out var c) && c.GetString() == "@everyone").ToArray();
+            check(pings.Select(p => p.i).SequenceEqual([1, 4]) && pings.All(p => p.s.Body.GetProperty("allowed_mentions").GetProperty("parse")[0].GetString() == "everyone"), "conditional mention leaked or repeated");
+            client.Dispose(); client.Completion.GetAwaiter().GetResult();
+        });
+        test("Discord SDK slash commands switch sound-only mode on and off without losing channel", () => {
+            var t = new OfflineTransport(); var saved = new ConcurrentQueue<DiscordChatSettings>();
+            using var client = ConnectedChat(t, ListingDiscordChatTests.Settings(party), (s, _) => { saved.Enqueue(s); return Task.CompletedTask; });
+            t.ChatInteraction("멘션", [new { name = "종류", type = 3, value = "party" }, new { name = "설정", type = 3, value = "sound" }]);
+            Wait(() => saved.Count == 1);
+            check(saved.Last().Routes.Single() is { MentionEveryone: false, MentionOnSound: true, ChannelId: 800 }, "sound choice not decoded");
+            t.ChatInteraction("멘션", [new { name = "종류", type = 3, value = "party" }, new { name = "설정", type = 3, value = "off" }]);
+            Wait(() => saved.Count == 2);
+            check(saved.Last().Routes.Single() is { MentionEveryone: false, MentionOnSound: false, ChannelId: 800 }, "off left conditional mention enabled");
+            client.Dispose(); client.Completion.GetAwaiter().GetResult();
+        });
         test("Discord SDK chat reports an unconfirmed everyone mention without retrying the message", () => {
             var t = new OfflineTransport { DropEveryoneMention = true };
             using var client = ConnectedChat(t, ListingDiscordChatTests.Settings(party with { MentionEveryone = true }));

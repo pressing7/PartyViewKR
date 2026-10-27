@@ -139,7 +139,7 @@ static class ListingDiscordNotificationTests
             if (BlockCheck != null) await BlockCheck.Task.WaitAsync(cancellation);
             cancellation.ThrowIfCancellationRequested(); return Error;
         }
-        public Task SendCompletion(DiscordNotificationTarget target, CancellationToken cancellation)
+        public Task SendCompletion(DiscordNotificationTarget target, CancellationToken cancellation, bool excludesSingleJob = false)
         {
             cancellation.ThrowIfCancellationRequested(); LastSent = target; Interlocked.Increment(ref Sends);
             return ThrowSend ? Task.FromException(new IOException("sensitive")) : Task.CompletedTask;

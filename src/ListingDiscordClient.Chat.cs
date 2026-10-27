@@ -9,8 +9,8 @@ internal sealed partial class ListingDiscordClient
     internal string ChatStatus => chat?.Status ?? "채팅 연결 준비 중입니다.";
     internal bool ChatEditable => chat?.Editable == true;
     internal DiscordChatSettings? ChatSettings => chat?.Settings;
-    internal Task<string> ConfigureChat(GameChatKind kind, bool? enabled, bool? mention) =>
-        chat?.ConfigureLocal(kind, enabled, mention, CancellationToken.None) ?? Task.FromResult("채팅 연결 준비 중입니다.");
+    internal Task<string> ConfigureChat(GameChatKind kind, bool? enabled, bool? mention, bool? sound = null) =>
+        chat?.ConfigureLocal(kind, enabled, mention, CancellationToken.None, sound) ?? Task.FromResult("채팅 연결 준비 중입니다.");
     internal void ObserveChat(bool enabled, ulong self) => chat?.Observe(enabled, self);
     internal bool WantsChat(GameChatKind kind) => chat?.Wants(kind) == true;
     internal bool ReceiveChat(ulong self, GameChatMessage message) => chat?.Receive(self, message) == true;
@@ -21,8 +21,8 @@ internal sealed partial class ListingDiscordClient
             .WithName("종류").WithDescription("전달할 게임 채팅 종류").WithType(ApplicationCommandOptionType.String).WithRequired(true)
             .AddChoice("파티", "party").AddChoice("귓속말", "tell").AddChoice("연합파티", "alliance");
         static SlashCommandOptionBuilder Mention(string name, bool required) => new SlashCommandOptionBuilder()
-            .WithName(name).WithDescription("everyone 멘션 사용 여부").WithType(ApplicationCommandOptionType.String).WithRequired(required)
-            .AddChoice("끄기", "off").AddChoice("everyone", "everyone");
+            .WithName(name).WithDescription("everyone 멘션 조건 (효과음은 파티·연합파티만)").WithType(ApplicationCommandOptionType.String).WithRequired(required)
+            .AddChoice("끄기", "off").AddChoice("항상 everyone", "everyone").AddChoice("효과음이 있을 때만", "sound");
         static SlashCommandOptionBuilder Action(string name, string description) => new SlashCommandOptionBuilder()
             .WithName(name).WithDescription(description).WithType(ApplicationCommandOptionType.SubCommand);
         return new SlashCommandBuilder().WithName("pvkr-chat").WithDescription("게임 채팅 수신 채널과 멘션 설정")
@@ -57,13 +57,13 @@ internal sealed partial class ListingDiscordClient
             channel = value.Id;
         }
         var mention = options.FirstOrDefault(o => o.Name == (action.Name == "멘션" ? "설정" : "멘션"));
-        bool? everyone = null;
+        bool? everyone = null, sound = null;
         if (mention != null) {
-            if (mention.Type != ApplicationCommandOptionType.String || mention.Value is not string flag || flag is not ("off" or "everyone")) return null;
-            everyone = flag == "everyone";
+            if (mention.Type != ApplicationCommandOptionType.String || mention.Value is not string flag || flag is not ("off" or "everyone" or "sound")) return null;
+            everyone = flag == "everyone"; sound = flag == "sound";
         }
         if (action.Name == "멘션" && everyone == null) return null;
-        return new(action.Name, key, channel, everyone);
+        return new(action.Name, key, channel, everyone, sound);
     }
 
     private sealed class ChatTransport(ListingDiscordClient client) : IDiscordChatTransport
@@ -79,7 +79,7 @@ internal sealed partial class ListingDiscordClient
             var permissions = channel.Guild.CurrentUser.GetPermissions(channel);
             return Task.FromResult<string?>(!permissions.ViewChannel || !permissions.SendMessages || !permissions.EmbedLinks
                 ? "봇에 채널 보기·메시지 보내기·링크 임베드 권한이 필요합니다."
-                : route.MentionEveryone && !permissions.MentionEveryone ? "봇에 everyone 멘션 권한이 필요합니다." : null);
+                : (route.MentionEveryone || route.MentionOnSound && route.Kind is "party" or "alliance") && !permissions.MentionEveryone ? "봇에 everyone 멘션 권한이 필요합니다." : null);
         }
         public async Task Send(DiscordChatRoute route, GameChatMessage message, CancellationToken cancellation)
         {
@@ -88,7 +88,7 @@ internal sealed partial class ListingDiscordClient
                 var error = await CheckChannel(route, cancellation);
                 if (error != null) throw new InvalidOperationException("Chat channel unavailable");
                 cancellation.ThrowIfCancellationRequested();
-                var mention = route.MentionEveryone && i == 0;
+                var mention = route.ShouldMention(message) && i == 0;
                 var sent = await Channel(route)!.SendMessageAsync(mention ? "@everyone" : null, embed: cards[i],
                     allowedMentions: new(mention ? AllowedMentionTypes.Everyone : AllowedMentionTypes.None),
                     options: new RequestOptions { CancelToken = cancellation, Timeout = 15000, RetryMode = RetryMode.RetryRatelimit });

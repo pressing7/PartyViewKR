@@ -73,6 +73,27 @@ static class GameChatCaptureTests
             source.Fire(new CurrentMessage { ThrowPayload = true });
             check(error.Length > 0 && !error.Contains("sensitive"), "raw message escaped diagnostics");
         });
+        test("sender party-number glyphs are removed without changing ordinary names or chat body", () => {
+            var source = new LegacySource(); var captured = new List<GameChatMessage>();
+            using var capture = new GameChatCapture(source, typeof(LegacySource), _ => true, captured.Add, _ => "펜리르", _ => { }, () => "펜리르");
+            source.Fire(14, payload: false, name: "\uE0E1압이", body: "\uE0E1내용 <se.1>");
+            source.Fire(15, customPayloads: [new PlayerPayload { PlayerName = "\uE0E8모험가" }]);
+            source.Fire(14, payload: false, name: "Player One 1");
+            check(captured.Select(c => c.Name).SequenceEqual(["압이", "모험가", "Player One 1"]) &&
+                captured[0].Text == "\uE0E1내용 <se.1>" && source.Unchanged, "name cleanup damaged message or regular digits");
+        });
+        test("sound macros omitted by TextValue survive capture without playing or duplicating them", () => {
+            var source = new LegacySource(); var captured = new List<GameChatMessage>();
+            using var capture = new GameChatCapture(source, typeof(LegacySource), _ => true, captured.Add, _ => "", _ => { });
+            for (byte id = 1; id <= 16; id++) {
+                source.Fire(14, body: "", messagePayloads: [new RawPayload { Data = [2, 0x2E, 4, 201, 6, id, 3] }]);
+                source.Fire(15, body: $"<se.{id}>", messagePayloads: [new AutoTranslatePayload([2, 0x2E, 4, 201, 6, id, 3])]);
+            }
+            check(captured.Count == 32 && captured.Select((c, i) => c.Text == $"<se.{i / 2 + 1}>").All(x => x) && source.Unchanged, "sound macro lost or doubled");
+            source.Fire(14, body: "ordinary", messagePayloads: [new RawPayload { Data = [2, 0x2E, 4, 201, 4, 1, 3] },
+                new RawPayload { Data = [2, 0x2E, 4, 201, 6, 17, 3] }, new RawPayload { Data = [2, 0x2E] }]);
+            check(captured[^1].Text == "ordinary", "unrelated or malformed payload became a sound");
+        });
     }
     public sealed class SeString
     {
@@ -81,21 +102,24 @@ static class GameChatCaptureTests
     }
     public sealed class PlayerPayload
     {
-        public string PlayerName => "모험가";
+        public string PlayerName { get; init; } = "모험가";
         public RowRef World { get; init; } = new();
     }
     public sealed class RowRef { public uint RowId { get; init; } = 71; }
     public sealed class IconPayload { public string Icon => "CrossWorld"; }
+    public sealed class RawPayload { public byte[] Data { get; init; } = []; }
+    public sealed class AutoTranslatePayload(byte[] bytes) { public byte[] Encode(bool force = false) => bytes.ToArray(); }
     public delegate void Legacy(ushort type, int timestamp, ref SeString sender, ref SeString message, ref bool handled);
     public sealed class LegacySource
     {
         public event Legacy? ChatMessage;
         internal int Subscribers => ChatMessage?.GetInvocationList().Length ?? 0;
         internal bool Unchanged;
-        internal void Fire(ushort type, bool handled = false, bool payload = true, object[]? customPayloads = null, string name = "보낸사람")
+        internal void Fire(ushort type, bool handled = false, bool payload = true, object[]? customPayloads = null, string name = "보낸사람",
+            string body = "안녕하세요.", object[]? messagePayloads = null)
         {
             var sender = new SeString { TextValue = name, Payloads = customPayloads ?? (payload ? [new PlayerPayload()] : []) };
-            var message = new SeString { TextValue = "안녕하세요." }; var s = sender; var m = message; var h = handled;
+            var message = new SeString { TextValue = body, Payloads = messagePayloads ?? [] }; var s = sender; var m = message; var h = handled;
             ChatMessage?.Invoke(type, 1792935309, ref s, ref m, ref h);
             Unchanged = ReferenceEquals(sender, s) && ReferenceEquals(message, m) && h == handled;
         }

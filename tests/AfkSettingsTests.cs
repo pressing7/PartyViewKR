@@ -73,9 +73,9 @@ static class AfkSettingsTests
         test("AFK settings persist without changing saved connection data or enabling AFK", () => {
             var c = JsonSerializer.Deserialize<RelayConfiguration>("{\"EncryptedDiscordToken\":\"ciphertext\",\"ServerUrl\":\"https://example.invalid\"}")!;
             check(c.ReadAfkSettings() == new AfkSettings(), "old configuration defaults");
-            c.WriteAfkSettings(new(true, 55, false, 17));
+            c.WriteAfkSettings(new(true, 55, false, 17, true));
             var json = JsonSerializer.Serialize(c); var restored = JsonSerializer.Deserialize<RelayConfiguration>(json)!;
-            check(restored.ReadAfkSettings() == new AfkSettings(true, 55, false, 17) && restored.EncryptedDiscordToken == "ciphertext" &&
+            check(restored.ReadAfkSettings() == new AfkSettings(true, 55, false, 17, true) && restored.EncryptedDiscordToken == "ciphertext" &&
                 restored.ServerUrl == c.ServerUrl && !json.Contains("AfkEnabled"), "settings persistence altered unrelated state");
         });
     }

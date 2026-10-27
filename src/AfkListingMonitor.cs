@@ -12,6 +12,7 @@ internal interface IAfkListingHost
     long DetailRevision { get; }
     bool OwnListingMatches(PartyRoster roster);
     int RegisteredCapacity { get; }
+    ListingSlots? RegisteredSlots { get; }
     bool RequestQuery(out string error);
     void CancelQuery(long revision);
 }
@@ -38,7 +39,11 @@ internal sealed class AfkListingMonitor
     internal int RecruitmentCapacity { get; private set; }
     internal long CompletionRevision { get; private set; }
     internal bool RecruitmentComplete => Enabled && readable && complete;
+    internal bool SingleJobRecruitmentComplete => Enabled && Settings.SingleJobCompletionEnabled && readable &&
+        singleJobComplete && singleJobConfirmedGeneration == generation;
     private bool complete;
+    private bool singleJobComplete;
+    private long singleJobConfirmedGeneration = -1;
     private long capacityRequestRevision, capacityDetailRevision;
     internal string Status { get; private set; } = "AFK 모드가 꺼져 있습니다.";
     internal string Diagnostic => $"afkEnabled={Enabled}; afkPending={Pending}; afkInFlight={InFlight}; " +
@@ -47,11 +52,16 @@ internal sealed class AfkListingMonitor
         $"afkGeneration={generation}; afkRequestedGeneration={requestedGeneration}; " +
         $"afkPeriodicEnabled={Settings.PeriodicEnabled}; afkPeriodMinutes={Settings.PeriodMinutes}; " +
         $"afkRetryEnabled={Settings.RetryEnabled}; afkRetrySeconds={Settings.RetrySeconds}; afkFailed={failed}; " +
-        $"afkRecruitmentCapacity={RecruitmentCapacity}; afkRecruitmentComplete={RecruitmentComplete}; afkCompletionRevision={CompletionRevision}";
+        $"afkRecruitmentCapacity={RecruitmentCapacity}; afkRecruitmentComplete={RecruitmentComplete}; afkCompletionRevision={CompletionRevision}; " +
+        $"afkSingleJobCompletionEnabled={Settings.SingleJobCompletionEnabled}; afkSingleJobComplete={SingleJobRecruitmentComplete}";
 
     internal void Configure(AfkSettings settings, long now)
     {
         settings = settings.Normalize();
+        if (settings.SingleJobCompletionEnabled != Settings.SingleJobCompletionEnabled) {
+            singleJobComplete = false; singleJobConfirmedGeneration = -1;
+            confirmedGeneration = -1; // Require a new own read when enabling the condition.
+        }
         if (settings.PeriodicEnabled != Settings.PeriodicEnabled || settings.PeriodMinutes != Settings.PeriodMinutes)
             nextSupplement = now + settings.PeriodMilliseconds;
         if (failed && (settings.RetryEnabled != Settings.RetryEnabled || settings.RetrySeconds != Settings.RetrySeconds))
@@ -74,7 +84,7 @@ internal sealed class AfkListingMonitor
         Enabled = enabled; Pending = enabled; self = enabled ? host.SelfId : 0;
         observed = null; readable = false; generation = requestedGeneration = 0;
         confirmedGeneration = failedGeneration = 0; failed = false;
-        RecruitmentCapacity = 0; complete = false;
+        RecruitmentCapacity = 0; complete = singleJobComplete = false; singleJobConfirmedGeneration = -1;
         capacityRequestRevision = host.RequestRevision; capacityDetailRevision = host.DetailRevision;
         failures = queries = successes = changes = 0;
         nextAttempt = now; nextSupplement = now + Settings.PeriodMilliseconds;
@@ -221,6 +231,28 @@ internal sealed class AfkListingMonitor
         var capacity = host.RegisteredCapacity;
         RecruitmentCapacity = capacity is >= 1 and <= 48 ? capacity : 0;
         capacityRequestRevision = host.RequestRevision; capacityDetailRevision = host.DetailRevision;
+        RememberSingleJobCompletion(host.RegisteredSlots);
+    }
+
+    private void RememberSingleJobCompletion(ListingSlots? slots)
+    {
+        if (!Settings.SingleJobCompletionEnabled) return;
+        singleJobConfirmedGeneration = -1;
+        if (slots is not { CountsAgree: true, MappingValid: true, JobRules.Complete: true } ||
+            slots.TotalSlots != RecruitmentCapacity || slots.ObservedMembers != observed?.Count) return;
+        // Only a fresh own listing whose CIDs match the current roster reaches
+        // here. A member can fill a reserved slot, so subtracting a cached number
+        // of reserved seats from capacity would falsely report completion.
+        var vacant = slots.Slots.Where(s => !s.HasMember).ToArray();
+        var rules = vacant.Select(s => slots.JobRules.Describe(s.SlotFlags)).ToArray();
+        // Unknown masks are inconclusive, not a confirmed vacancy that rearms
+        // a previously sent alert. The game's all-jobs sentinel is still valid.
+        for (var i = 0; i < vacant.Length; i++)
+            if (!rules[i].Complete || rules[i].Ids.Length == 0 ||
+                !rules[i].Anyone && (vacant[i].SlotFlags & ~slots.JobRules.AllFlags) != 0) return;
+        var ready = vacant.Length > 0 && rules.All(r => !r.Anyone && r.Ids.Length == 1);
+        if (ready && !singleJobComplete) CompletionRevision++;
+        singleJobComplete = ready; singleJobConfirmedGeneration = generation;
     }
 
     private bool CheckSession(IAfkListingHost host)

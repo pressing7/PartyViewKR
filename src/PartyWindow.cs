@@ -65,11 +65,12 @@ internal sealed class PartyWindow : Window
             ImGui.TextWrapped(plugin.AfkStatus);
             ImGui.TextDisabled("명단 변화 시 조회 · 직업 변경은 비교하지 않음");
         }
-        if (ImGui.TreeNode("AFK 조회 설정"))
+        if (ImGui.TreeNode("AFK 조회·알림 설정"))
         {
             var settings = plugin.AfkOptions;
             var periodic = settings.PeriodicEnabled; var minutes = settings.PeriodMinutes;
             var retry = settings.RetryEnabled; var seconds = settings.RetrySeconds;
+            var singleJobCompletion = settings.SingleJobCompletionEnabled;
             var changed = ImGui.Checkbox("주기적으로 추가 조회", ref periodic);
             ImGui.BeginDisabled(!periodic);
             ImGui.SetNextItemWidth(160);
@@ -80,7 +81,10 @@ internal sealed class PartyWindow : Window
             ImGui.SetNextItemWidth(160);
             changed |= ImGui.InputInt("재시도 대기 (1~3600초)", ref seconds);
             ImGui.EndDisabled();
-            if (changed) plugin.SaveAfkSettings(new(periodic, minutes, retry, seconds));
+            changed |= ImGui.Checkbox("단일 직업 빈자리 제외 모집 완료 알림", ref singleJobCompletion);
+            if (singleJobCompletion)
+                ImGui.TextWrapped("허용 직업이 정확히 하나인 빈자리만 남으면 알립니다. 디스코드 조회 카드에서 알림 채널을 지정하세요.");
+            if (changed) plugin.SaveAfkSettings(new(periodic, minutes, retry, seconds, singleJobCompletion));
             if (plugin.AfkSettingsError.Length > 0) ImGui.TextWrapped(plugin.AfkSettingsError);
             ImGui.TreePop();
         }
@@ -185,8 +189,11 @@ internal sealed class PartyWindow : Window
             ImGui.EndDisabled();
             ImGui.TableNextColumn();
             ImGui.BeginDisabled(route == null || !plugin.CanConfigureDiscordChat);
-            var mention = route?.MentionEveryone == true;
-            if (ImGui.Checkbox("##mention", ref mention)) plugin.SetDiscordChat(kind, mention: mention);
+            var mention = route?.MentionEveryone == true ? 1 : route?.MentionOnSound == true && kind != GameChatKind.Tell ? 2 : 0;
+            string[] choices = kind == GameChatKind.Tell ? ["끄기", "항상"] : ["끄기", "항상", "효과음만"];
+            ImGui.SetNextItemWidth(-1);
+            if (ImGui.Combo("##mention", ref mention, choices, choices.Length))
+                plugin.SetDiscordChat(kind, mention: mention == 1, sound: mention == 2);
             ImGui.EndDisabled();
             Cell(route == null ? "미설정" : route.ChannelId.ToString());
             ImGui.PopID();

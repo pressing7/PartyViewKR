@@ -31,6 +31,28 @@ static class ListingDiscordChatTests
             check(!n.Receive(20, Chat()) && !n.Receive(10, Chat(GameChatKind.Tell)), "unconfigured or wrong character forwarded");
             check(n.Receive(10, Chat()), "configured channel rejected"); Drain(n); check(t.Sent.Count == 1, "no delivery");
         });
+        test("sound-only mentions accept exactly se one through sixteen for party and alliance", () => {
+            var route = Party with { MentionOnSound = true };
+            foreach (var kind in new[] { GameChatKind.Party, GameChatKind.Alliance })
+                for (var id = 1; id <= 16; id++) check(route.ShouldMention(Chat(kind, $"준비 <se.{id}>")), "valid sound ignored");
+            foreach (var text in new[] { "준비", "<se.0>", "<se.17>", "<se.01>", "<se.1", "se.1>", "<se.1x>", "<se.-1>", "<se.１>", "@everyone" })
+                check(!route.ShouldMention(Chat(text: text)), "invalid sound triggered mention: " + text);
+            check(!route.ShouldMention(Chat(GameChatKind.Tell, "<se.1>")) && !Party.ShouldMention(Chat(text: "<se.1>")), "sound mention escaped opt-in category");
+            check((Party with { MentionEveryone = true }).ShouldMention(Chat()), "unconditional mention regressed");
+        });
+        test("sound mention preferences persist and local receive toggle preserves them while off clears them", () => {
+            var t = new Transport(); DiscordChatSettings? saved = null;
+            using var n = Service(t, Settings(Party), (s, _) => { saved = s; return Task.CompletedTask; });
+            Done(n.Configure(new("멘션", "party", MentionEveryone: false, MentionOnSound: true), 700, CancellationToken.None));
+            Done(n.ConfigureLocal(GameChatKind.Party, false, null, CancellationToken.None));
+            var loaded = Newtonsoft.Json.JsonConvert.DeserializeObject<DiscordChatSettings>(Newtonsoft.Json.JsonConvert.SerializeObject(saved))!;
+            check(loaded.Routes.Single() is { Enabled: false, MentionEveryone: false, MentionOnSound: true }, "sound preference lost");
+            n.Observe(true, 10); check(!n.Receive(10, Chat(text: "<se.1>")), "disabled receive emitted sound notification");
+            Done(n.ConfigureLocal(GameChatKind.Party, true, false, CancellationToken.None));
+            check(!n.Settings.Routes.Single().MentionOnSound && t.Sent.IsEmpty, "off did not disable conditional mentions");
+            Done(n.Configure(new("설정", "tell", 801, false, true), 700, CancellationToken.None));
+            check(n.Settings.Routes.All(r => r.Kind != "tell"), "tell accepted sound-only mode");
+        });
         test("chat independent category routes preserve receive order and duplicate text messages", () => {
             var t = new Transport(); using var n = Service(t, Settings(Party,
                 Party with { Kind = "tell", ChannelId = 801, MentionEveryone = true }, Party with { Kind = "alliance", ChannelId = 802 }));

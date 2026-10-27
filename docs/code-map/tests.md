@@ -2,9 +2,9 @@
 
 [전체 지도](../CODE_MAP.md) · [전체 파일 목록](files.md)
 
-이 문서는 테스트를 실행한 보고서가 아니라 현재 소스에 등록된 검증 범위의 지도다. 관리형 runner의 483개 등록 시나리오, Node 테스트와 Python 테스트를 source 위치에 연결한다. 실제 게임·Windows DPAPI·Discord live 검증은 fake 테스트와 별개다.
+이 문서는 테스트를 실행한 보고서가 아니라 현재 소스에 등록된 검증 범위의 지도다. 관리형 runner의 496개 등록 시나리오, Node 테스트와 Python 테스트를 source 위치에 연결한다. 실제 게임·Windows DPAPI·Discord live 검증은 fake 테스트와 별개다.
 
-기준: 0.3.52.0 소스. 기반 main `25591e676807a52801cba73278669983e7bb0e02` 이후 Discord 모의 Message 응답 수정·전송 완료 검증 보강을 포함한다. 2026-10-27 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
+기준: 0.3.53.0 소스. 기반 main `b1ec51fdd867c2a80f214c95df20a9f80ad722ae` 이후 발신자 번호 제거·효과음 멘션·단일 직업 공석 제외 완료 알림을 포함한다. 2026-10-28 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
 
 표에는 직접 선언한 메서드·생성자·로컬 함수·계산 속성·인터페이스 메서드를 각각 포함한다. 자동 생성 record 메서드/단순 auto-property accessor는 제외한다. 이름 없는 LINQ/타이머/콜백은 이를 소유한 함수 설명에 포함하며, 중요한 DOM 이벤트 handler와 명명된 테스트 시나리오는 별도로 표시한다.
 
@@ -92,7 +92,7 @@ Miniflare 로컬 Worker와 fake WebSocket 및 실제 .NET relay fixture로 인�
 <a id="file-tests-afkcompletiontests-cs"></a>
 ## tests/AfkCompletionTests.cs
 
-[소스 파일](../../tests/AfkCompletionTests.cs) · 명명된 항목/진입점 3개
+[소스 파일](../../tests/AfkCompletionTests.cs) · 명명된 항목/진입점 6개
 
 모집 자동 종료 뒤 현재 명단과 기억한 등록 정원으로 완료 감지·중복 억제를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다.
 
@@ -101,6 +101,9 @@ Miniflare 로컬 Worker와 fake WebSocket 및 실제 .NET relay fixture로 인�
 | <a id="symbol-tests-afkcompletiontests-cs-5-5478b5f0a3"></a><code>AfkCompletionTests.Run</code><br><code>void Run(Action&lt;string, Action&gt; test, Action&lt;bool, string&gt; check)</code> | 메서드 | 모집 자동 종료 뒤 현재 명단과 기억한 등록 정원으로 완료 감지·중복 억제 관련 시나리오를 실행한다. 개별 등록 조건은 아래 test 목록을 참조한다. | [L5](../../tests/AfkCompletionTests.cs#L5) |
 | <a id="symbol-tests-afkcompletiontests-cs-7-e0134d8c1c"></a><code>AfkCompletionTests.Run.Armed</code><br><code>(AfkListingMonitor Monitor, AfkFakeHost Host) Armed(int capacity = 8)</code> | 로컬 함수 | 아직 빈자리가 있는 본인 모집글의 성공 응답으로 정원을 기억한 monitor와 fake host를 준비한다. | [L7](../../tests/AfkCompletionTests.cs#L7) |
 | <a id="symbol-tests-afkcompletiontests-cs-14-97c81dadbc"></a><code>AfkCompletionTests.Run.Roster</code><br><code>PartyRoster Roster(int count)</code> | 로컬 함수 | 자기 CID를 포함하는 지정 인원수의 유효 명단을 만든다. 직업/이름은 포함하지 않는다. | [L14](../../tests/AfkCompletionTests.cs#L14) |
+| <a id="symbol-tests-afkcompletiontests-cs-79-01bfb17877"></a><code>AfkCompletionTests.Run.SingleStart</code><br><code>(AfkListingMonitor m, AfkFakeHost h) SingleStart(ListingSlots slots, bool enabled = true)</code> | 로컬 함수 | 지정 슬롯과 일치하는 CID 명단으로 AFK를 시작하고 새 본인 조회를 성공시켜 추가 완료 조건의 fixture를 만든다. | [L79](../../tests/AfkCompletionTests.cs#L79) |
+| <a id="symbol-tests-afkcompletiontests-cs-149-8277f5b09e"></a><code>AfkCompletionTests.Slots</code><br><code>ListingSlots Slots(int[] groups, int[] vacant, int[] single)</code> | 메서드 | 일반/미등록 연합/5·5·8 친선의 물리 배열에 지정 공석과 단일 직업 mask를 배치해 실제 ListingSlots.Read로 읽는다. | [L149](../../tests/AfkCompletionTests.cs#L149) |
+| <a id="symbol-tests-afkcompletiontests-cs-163-6db478c4a1"></a><code>AfkCompletionTests.SetSlots</code><br><code>void SetSlots(AfkFakeHost host, ListingSlots slots)</code> | 메서드 | fixture의 등록 슬롯·정원과 참가자 CID 명단을 함께 바꿔 점유 위치와 단순 인원수의 차이를 검증한다. | [L163](../../tests/AfkCompletionTests.cs#L163) |
 
 ### 등록된 회귀 시나리오
 
@@ -116,6 +119,12 @@ Miniflare 로컬 Worker와 fake WebSocket 및 실제 .NET relay fixture로 인�
 | <code>AFK newer manual own query can replace an ended recruitment capacity</code> | [L57](../../tests/AfkCompletionTests.cs#L57) |
 | <code>AFK unverified manual detail cannot replace remembered recruitment capacity</code> | [L65](../../tests/AfkCompletionTests.cs#L65) |
 | <code>AFK capacity is not inferred from oversized roster or invalid recruitment size</code> | [L70](../../tests/AfkCompletionTests.cs#L70) |
+| <code>single-job completion waits for actual open seats instead of subtracting a reserved count</code> | [L85](../../tests/AfkCompletionTests.cs#L85) |
+| <code>single-job completion supports sparse alliances and friendly spectators using registered slots</code> | [L97](../../tests/AfkCompletionTests.cs#L97) |
+| <code>single-job alerts keep querying and do not re-notify after repeated reads or zoning</code> | [L104](../../tests/AfkCompletionTests.cs#L104) |
+| <code>single-job completion rearms after a verified ordinary vacancy and still allows full alerts</code> | [L115](../../tests/AfkCompletionTests.cs#L115) |
+| <code>single-job completion requires opt-in and fresh matching readable job rules</code> | [L124](../../tests/AfkCompletionTests.cs#L124) |
+| <code>unreadable single-job masks hide completion without rearming a duplicate alert</code> | [L139](../../tests/AfkCompletionTests.cs#L139) |
 
 <a id="file-tests-afklistingmonitortests-cs"></a>
 ## tests/AfkListingMonitorTests.cs
@@ -128,13 +137,13 @@ AFK CID 명단 정규화, 가입/탈퇴 변경 보존,60초 보완 조회, 실�
 |---|---|---|---|
 | <a id="symbol-tests-afklistingmonitortests-cs-5-bb71cde680"></a><code>AfkListingMonitorTests.Run</code><br><code>void Run(Action&lt;string, Action&gt; test, Action&lt;bool, string&gt; check)</code> | 메서드 | 26개 AFK 회귀 시나리오를 등록해 정상/실패/재입장/명단 불확실성/소유권/수명 경계를 검사한다. native 읽기는 fake host로 대체한다. | [L5](../../tests/AfkListingMonitorTests.cs#L5) |
 | <a id="symbol-tests-afklistingmonitortests-cs-7-11e81c8b34"></a><code>AfkListingMonitorTests.Run.Start</code><br><code>(AfkListingMonitor m, AfkFakeHost h) Start(bool complete = false, AfkSettings? settings = null)</code> | 로컬 함수 | AFK를 켜고 첫 query가 진행 중이거나 성공한 상태의 monitor와 fake host를 만든다. | [L7](../../tests/AfkListingMonitorTests.cs#L7) |
-| <a id="symbol-tests-afklistingmonitortests-cs-179-790f994877"></a><code>AfkFakeHost.TryReadRoster</code><br><code>bool TryReadRoster(out PartyRoster? roster)</code> | 메서드 | 현재 fake 명단 또는 읽기 실패를 반환하고 호출 수를 세어 꺼진 상태의 무작업을 검증한다. | [L179](../../tests/AfkListingMonitorTests.cs#L179) |
-| <a id="symbol-tests-afklistingmonitortests-cs-180-a8e787b252"></a><code>AfkFakeHost.QueryBlockReason</code><br><code>string? QueryBlockReason(bool ownQueryInProgress)</code> | 메서드 | 수정창/접속 차단과 다른 query busy를 모사한다. | [L180](../../tests/AfkListingMonitorTests.cs#L180) |
-| <a id="symbol-tests-afklistingmonitortests-cs-181-0a0a717cb7"></a><code>AfkFakeHost.OwnListingMatches</code><br><code>bool OwnListingMatches(PartyRoster roster)</code> | 메서드 | fake 새 상세의 본인 검증 및 참가 CID 일치를 모사한다. | [L181](../../tests/AfkListingMonitorTests.cs#L181) |
-| <a id="symbol-tests-afklistingmonitortests-cs-182-5b7bfaf756"></a><code>AfkFakeHost.RequestQuery</code><br><code>bool RequestQuery(out string error)</code> | 메서드 | 시도 횟수·revision·busy를 갱신하고 거부 또는 접수 후 예외를 주입한다. | [L182](../../tests/AfkListingMonitorTests.cs#L182) |
-| <a id="symbol-tests-afklistingmonitortests-cs-190-172201edfe"></a><code>AfkFakeHost.CancelQuery</code><br><code>void CancelQuery(long revision)</code> | 메서드 | 같은 revision의 busy query만 취소하여 이후 사용자 요청이 살아남는지 검증한다. | [L190](../../tests/AfkListingMonitorTests.cs#L190) |
-| <a id="symbol-tests-afklistingmonitortests-cs-191-7acce34c5c"></a><code>AfkFakeHost.Complete</code><br><code>void Complete()</code> | 메서드 | fake 상세 응답의 revision을 증가시키고 현재 명단이 담긴 본인 결과를 제공한다. | [L191](../../tests/AfkListingMonitorTests.cs#L191) |
-| <a id="symbol-tests-afklistingmonitortests-cs-192-e581d4fc7d"></a><code>AfkFakeHost.RosterOf</code><br><code>PartyRoster RosterOf(params ulong[] ids)</code> | 메서드 | 자기 CID10이 포함된 유효한 순수 명단 fixture를 생성한다. | [L192](../../tests/AfkListingMonitorTests.cs#L192) |
+| <a id="symbol-tests-afklistingmonitortests-cs-180-8d7a8bfb44"></a><code>AfkFakeHost.TryReadRoster</code><br><code>bool TryReadRoster(out PartyRoster? roster)</code> | 메서드 | 현재 fake 명단 또는 읽기 실패를 반환하고 호출 수를 세어 꺼진 상태의 무작업을 검증한다. | [L180](../../tests/AfkListingMonitorTests.cs#L180) |
+| <a id="symbol-tests-afklistingmonitortests-cs-181-59d8df3253"></a><code>AfkFakeHost.QueryBlockReason</code><br><code>string? QueryBlockReason(bool ownQueryInProgress)</code> | 메서드 | 수정창/접속 차단과 다른 query busy를 모사한다. | [L181](../../tests/AfkListingMonitorTests.cs#L181) |
+| <a id="symbol-tests-afklistingmonitortests-cs-182-b69f096aff"></a><code>AfkFakeHost.OwnListingMatches</code><br><code>bool OwnListingMatches(PartyRoster roster)</code> | 메서드 | fake 새 상세의 본인 검증 및 참가 CID 일치를 모사한다. | [L182](../../tests/AfkListingMonitorTests.cs#L182) |
+| <a id="symbol-tests-afklistingmonitortests-cs-183-2d317e6b2e"></a><code>AfkFakeHost.RequestQuery</code><br><code>bool RequestQuery(out string error)</code> | 메서드 | 시도 횟수·revision·busy를 갱신하고 거부 또는 접수 후 예외를 주입한다. | [L183](../../tests/AfkListingMonitorTests.cs#L183) |
+| <a id="symbol-tests-afklistingmonitortests-cs-191-389a8747b1"></a><code>AfkFakeHost.CancelQuery</code><br><code>void CancelQuery(long revision)</code> | 메서드 | 같은 revision의 busy query만 취소하여 이후 사용자 요청이 살아남는지 검증한다. | [L191](../../tests/AfkListingMonitorTests.cs#L191) |
+| <a id="symbol-tests-afklistingmonitortests-cs-192-76c521ae44"></a><code>AfkFakeHost.Complete</code><br><code>void Complete()</code> | 메서드 | fake 상세 응답의 revision을 증가시키고 현재 명단이 담긴 본인 결과를 제공한다. | [L192](../../tests/AfkListingMonitorTests.cs#L192) |
+| <a id="symbol-tests-afklistingmonitortests-cs-193-a706ce156a"></a><code>AfkFakeHost.RosterOf</code><br><code>PartyRoster RosterOf(params ulong[] ids)</code> | 메서드 | 자기 CID10이 포함된 유효한 순수 명단 fixture를 생성한다. | [L193](../../tests/AfkListingMonitorTests.cs#L193) |
 
 ### 등록된 회귀 시나리오
 
@@ -252,7 +261,7 @@ AFK 주기·재시도 선택/경계·설정 저장를 검사한다. 아래 시�
 <a id="file-tests-gamechatcapturetests-cs"></a>
 ## tests/GameChatCaptureTests.cs
 
-[소스 파일](../../tests/GameChatCaptureTests.cs) · 명명된 항목/진입점 14개
+[소스 파일](../../tests/GameChatCaptureTests.cs) · 명명된 항목/진입점 15개
 
 Dalamud 공개 채팅 이벤트의 두 delegate 형태·읽기 전용 수신·필터·서버 추출를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다.
 
@@ -260,18 +269,19 @@ Dalamud 공개 채팅 이벤트의 두 delegate 형태·읽기 전용 수신·�
 |---|---|---|---|
 | <a id="symbol-tests-gamechatcapturetests-cs-5-3a53b7fa16"></a><code>GameChatCaptureTests.Run</code><br><code>void Run(Action&lt;string, Action&gt; test, Action&lt;bool, string&gt; check)</code> | 메서드 | Dalamud 공개 채팅 이벤트의 두 delegate 형태·읽기 전용 수신·필터·서버 추출 관련 시나리오를 실행한다. 개별 등록 조건은 아래 test 목록을 참조한다. | [L5](../../tests/GameChatCaptureTests.cs#L5) |
 | <a id="symbol-tests-gamechatcapturetests-cs-56-c64e46c497"></a><code>GameChatCaptureTests.Run.Home</code><br><code>string Home()</code> | 로컬 함수 | 홈 서버 조회 횟수를 기록하는 callback으로 지역 이동 중 유지와 반복 읽기 억제를 검증한다. | [L56](../../tests/GameChatCaptureTests.cs#L56) |
-| <a id="symbol-tests-gamechatcapturetests-cs-84-e550ddeea6"></a><code>GameChatCaptureTests.PlayerPayload.PlayerName</code><br><code>string PlayerName</code> | 계산 속성 | fake 발신자의 실제 이름을 반환한다. 계산식: <code>"모험가"</code>. | [L84](../../tests/GameChatCaptureTests.cs#L84) |
-| <a id="symbol-tests-gamechatcapturetests-cs-88-938191d4b6"></a><code>GameChatCaptureTests.IconPayload.Icon</code><br><code>string Icon</code> | 계산 속성 | 해석되지 않은 CrossWorld 표시를 가진 fake payload다. 원격 발신자를 자기 서버로 대체하지 않는지 확인한다. 계산식: <code>"CrossWorld"</code>. | [L88](../../tests/GameChatCaptureTests.cs#L88) |
-| <a id="symbol-tests-gamechatcapturetests-cs-93-bbe47dd8ba"></a><code>GameChatCaptureTests.LegacySource.Subscribers</code><br><code>int Subscribers</code> | 계산 속성 | 현재 공개 이벤트 구독 수를 반환해 종료 시 해제를 확인한다. 계산식: <code>ChatMessage?.GetInvocationList().Length ?? 0</code>. | [L93](../../tests/GameChatCaptureTests.cs#L93) |
-| <a id="symbol-tests-gamechatcapturetests-cs-95-a4c4358954"></a><code>GameChatCaptureTests.LegacySource.Fire</code><br><code>void Fire(ushort type, bool handled = false, bool payload = true, object[]? customPayloads = null, string name = "보낸사람")</code> | 메서드 | 실제 어댑터 delegate에 legacy 또는 현재 메시지 이벤트를 발생시킨다. 실제 Dalamud/게임은 사용하지 않는다. | [L95](../../tests/GameChatCaptureTests.cs#L95) |
-| <a id="symbol-tests-gamechatcapturetests-cs-110-270bb6faaa"></a><code>GameChatCaptureTests.IHandleable.PreventOriginal</code><br><code>void PreventOriginal()</code> | 인터페이스 계약 | 호출 여부를 기록한다. 수신 어댑터가 원본 게임 채팅을 숨기지 않는지 확인한다. | [L110](../../tests/GameChatCaptureTests.cs#L110) |
-| <a id="symbol-tests-gamechatcapturetests-cs-115-e678e56a53"></a><code>GameChatCaptureTests.CurrentMessage.LogKind</code><br><code>ushort LogKind</code> | 계산 속성 | explicit interface에 있는 fake 채팅 종류를 노출한다. 계산식: <code>14</code>. | [L115](../../tests/GameChatCaptureTests.cs#L115) |
-| <a id="symbol-tests-gamechatcapturetests-cs-116-22041fd491"></a><code>GameChatCaptureTests.CurrentMessage.Timestamp</code><br><code>int Timestamp</code> | 계산 속성 | fake 수신 시각을 반환한다. 계산식: <code>1792935309</code>. | [L116](../../tests/GameChatCaptureTests.cs#L116) |
-| <a id="symbol-tests-gamechatcapturetests-cs-117-5721d0b530"></a><code>GameChatCaptureTests.CurrentMessage.Sender</code><br><code>SeString Sender</code> | 계산 속성 | 읽기 횟수를 기록하고 fake 발신자 SeString을 반환한다. 관심 없는 종류를 미리 거르는지 확인한다. | [L117](../../tests/GameChatCaptureTests.cs#L117) |
-| <a id="symbol-tests-gamechatcapturetests-cs-118-4cac5622f6"></a><code>GameChatCaptureTests.CurrentMessage.Message</code><br><code>SeString Message</code> | 계산 속성 | fake 본문 SeString 또는 읽기 실패를 제공한다. 민감한 예외 내용이 상태에 노출되지 않는지 확인한다. 계산식: <code>new() { TextValue = "내용" }</code>. | [L118](../../tests/GameChatCaptureTests.cs#L118) |
-| <a id="symbol-tests-gamechatcapturetests-cs-119-153a018a9d"></a><code>GameChatCaptureTests.CurrentMessage.PreventOriginal</code><br><code>void PreventOriginal()</code> | 메서드 | 호출 여부를 기록한다. 수신 어댑터가 원본 게임 채팅을 숨기지 않는지 확인한다. | [L119](../../tests/GameChatCaptureTests.cs#L119) |
-| <a id="symbol-tests-gamechatcapturetests-cs-124-5c3e3831d3"></a><code>GameChatCaptureTests.CurrentSource.Subscribers</code><br><code>int Subscribers</code> | 계산 속성 | 현재 공개 이벤트 구독 수를 반환해 종료 시 해제를 확인한다. 계산식: <code>ChatMessage?.GetInvocationList().Length ?? 0</code>. | [L124](../../tests/GameChatCaptureTests.cs#L124) |
-| <a id="symbol-tests-gamechatcapturetests-cs-125-1f13c13ce1"></a><code>GameChatCaptureTests.CurrentSource.Fire</code><br><code>void Fire(IHandleable message)</code> | 메서드 | 실제 어댑터 delegate에 legacy 또는 현재 메시지 이벤트를 발생시킨다. 실제 Dalamud/게임은 사용하지 않는다. | [L125](../../tests/GameChatCaptureTests.cs#L125) |
+| <a id="symbol-tests-gamechatcapturetests-cs-109-2ec1339691"></a><code>GameChatCaptureTests.IconPayload.Icon</code><br><code>string Icon</code> | 계산 속성 | 해석되지 않은 CrossWorld 표시를 가진 fake payload다. 원격 발신자를 자기 서버로 대체하지 않는지 확인한다. 계산식: <code>"CrossWorld"</code>. | [L109](../../tests/GameChatCaptureTests.cs#L109) |
+| <a id="symbol-tests-gamechatcapturetests-cs-111-156e08b3a2"></a><code>GameChatCaptureTests.AutoTranslatePayload</code><br><code>AutoTranslatePayload(byte[] bytes)</code> | 주 생성자/모델 | 이 파일의 검증에 사용할 fake host/transport/interaction 데이터를 초기화한다. 실제 게임 메모리에는 접근하지 않는다. | [L111](../../tests/GameChatCaptureTests.cs#L111) |
+| <a id="symbol-tests-gamechatcapturetests-cs-111-30c75c4277"></a><code>GameChatCaptureTests.AutoTranslatePayload.Encode</code><br><code>byte[] Encode(bool force = false)</code> | 메서드 | 입력한 fixed macro bytes를 복사하는 공개 payload fake다. 효과음을 실행하지 않고 TextValue 누락을 보완하는지 검사한다. | [L111](../../tests/GameChatCaptureTests.cs#L111) |
+| <a id="symbol-tests-gamechatcapturetests-cs-116-7bcaa33382"></a><code>GameChatCaptureTests.LegacySource.Subscribers</code><br><code>int Subscribers</code> | 계산 속성 | 현재 공개 이벤트 구독 수를 반환해 종료 시 해제를 확인한다. 계산식: <code>ChatMessage?.GetInvocationList().Length ?? 0</code>. | [L116](../../tests/GameChatCaptureTests.cs#L116) |
+| <a id="symbol-tests-gamechatcapturetests-cs-118-9c93f846e9"></a><code>GameChatCaptureTests.LegacySource.Fire</code><br><code>void Fire(ushort type, bool handled = false, bool payload = true, object[]? customPayloads = null, string name = "보낸사람", string body = "안녕하세요.", object[]? messagePayloads = null)</code> | 메서드 | 실제 어댑터 delegate에 legacy 또는 현재 메시지 이벤트를 발생시킨다. 실제 Dalamud/게임은 사용하지 않는다. | [L118](../../tests/GameChatCaptureTests.cs#L118) |
+| <a id="symbol-tests-gamechatcapturetests-cs-134-07d6d58ec5"></a><code>GameChatCaptureTests.IHandleable.PreventOriginal</code><br><code>void PreventOriginal()</code> | 인터페이스 계약 | 호출 여부를 기록한다. 수신 어댑터가 원본 게임 채팅을 숨기지 않는지 확인한다. | [L134](../../tests/GameChatCaptureTests.cs#L134) |
+| <a id="symbol-tests-gamechatcapturetests-cs-139-8723b50dd1"></a><code>GameChatCaptureTests.CurrentMessage.LogKind</code><br><code>ushort LogKind</code> | 계산 속성 | explicit interface에 있는 fake 채팅 종류를 노출한다. 계산식: <code>14</code>. | [L139](../../tests/GameChatCaptureTests.cs#L139) |
+| <a id="symbol-tests-gamechatcapturetests-cs-140-7a579d4233"></a><code>GameChatCaptureTests.CurrentMessage.Timestamp</code><br><code>int Timestamp</code> | 계산 속성 | fake 수신 시각을 반환한다. 계산식: <code>1792935309</code>. | [L140](../../tests/GameChatCaptureTests.cs#L140) |
+| <a id="symbol-tests-gamechatcapturetests-cs-141-bbe0c849d9"></a><code>GameChatCaptureTests.CurrentMessage.Sender</code><br><code>SeString Sender</code> | 계산 속성 | 읽기 횟수를 기록하고 fake 발신자 SeString을 반환한다. 관심 없는 종류를 미리 거르는지 확인한다. | [L141](../../tests/GameChatCaptureTests.cs#L141) |
+| <a id="symbol-tests-gamechatcapturetests-cs-142-faf5ef6bca"></a><code>GameChatCaptureTests.CurrentMessage.Message</code><br><code>SeString Message</code> | 계산 속성 | fake 본문 SeString 또는 읽기 실패를 제공한다. 민감한 예외 내용이 상태에 노출되지 않는지 확인한다. 계산식: <code>new() { TextValue = "내용" }</code>. | [L142](../../tests/GameChatCaptureTests.cs#L142) |
+| <a id="symbol-tests-gamechatcapturetests-cs-143-3090160348"></a><code>GameChatCaptureTests.CurrentMessage.PreventOriginal</code><br><code>void PreventOriginal()</code> | 메서드 | 호출 여부를 기록한다. 수신 어댑터가 원본 게임 채팅을 숨기지 않는지 확인한다. | [L143](../../tests/GameChatCaptureTests.cs#L143) |
+| <a id="symbol-tests-gamechatcapturetests-cs-148-87ad10d4ce"></a><code>GameChatCaptureTests.CurrentSource.Subscribers</code><br><code>int Subscribers</code> | 계산 속성 | 현재 공개 이벤트 구독 수를 반환해 종료 시 해제를 확인한다. 계산식: <code>ChatMessage?.GetInvocationList().Length ?? 0</code>. | [L148](../../tests/GameChatCaptureTests.cs#L148) |
+| <a id="symbol-tests-gamechatcapturetests-cs-149-ed93a3d3bf"></a><code>GameChatCaptureTests.CurrentSource.Fire</code><br><code>void Fire(IHandleable message)</code> | 메서드 | 실제 어댑터 delegate에 legacy 또는 현재 메시지 이벤트를 발생시킨다. 실제 Dalamud/게임은 사용하지 않는다. | [L149](../../tests/GameChatCaptureTests.cs#L149) |
 
 ### 등록된 회귀 시나리오
 
@@ -286,6 +296,8 @@ Dalamud 공개 채팅 이벤트의 두 delegate 형태·읽기 전용 수신·�
 | <code>unresolved cross-world sender markers never fall back to home world</code> | [L47](../../tests/GameChatCaptureTests.cs#L47) |
 | <code>chat identity survives zoning without AFK and clears across logout and character changes</code> | [L54](../../tests/GameChatCaptureTests.cs#L54) |
 | <code>chat capture failures expose no chat text and do not escape the event callback</code> | [L70](../../tests/GameChatCaptureTests.cs#L70) |
+| <code>sender party-number glyphs are removed without changing ordinary names or chat body</code> | [L76](../../tests/GameChatCaptureTests.cs#L76) |
+| <code>sound macros omitted by TextValue survive capture without playing or duplicating them</code> | [L85](../../tests/GameChatCaptureTests.cs#L85) |
 
 <a id="file-tests-listingbatchtests-cs"></a>
 ## tests/ListingBatchTests.cs
@@ -487,7 +499,7 @@ Dalamud 공개 채팅 이벤트의 두 delegate 형태·읽기 전용 수신·�
 | <a id="symbol-tests-listingdiscordchatsdktests-cs-7-4a762ae416"></a><code>ListingDiscordConnectionTests.RunChatSdk</code><br><code>void RunChatSdk(Action&lt;string, Action&gt; test, Action&lt;bool, string&gt; check)</code> | 메서드 | 실제 SDK 채팅 slash 등록/파싱·일반 임베드 POST·색상/멘션 직렬화 관련 시나리오를 실행한다. 개별 등록 조건은 아래 test 목록을 참조한다. | [L7](../../tests/ListingDiscordChatSdkTests.cs#L7) |
 | <a id="symbol-tests-listingdiscordchatsdktests-cs-9-6428b4da1e"></a><code>ListingDiscordConnectionTests.RunChatSdk.ConnectedChat</code><br><code>ListingDiscordClient ConnectedChat(OfflineTransport transport, DiscordChatSettings? settings = null, Func&lt;DiscordChatSettings, CancellationToken, Task&gt;? save = null, ulong permissions = 150528)</code> | 로컬 함수 | 실제 Discord.Net을 fake REST/Gateway에 연결하고3개 서버 텍스트 채널과 설정 저장 callback을 준비한다. | [L9](../../tests/ListingDiscordChatSdkTests.cs#L9) |
 | <a id="symbol-tests-listingdiscordchatsdktests-cs-17-ae380bfc80"></a><code>ListingDiscordConnectionTests.RunChatSdk.WaitForDelivery</code><br><code>void WaitForDelivery(ListingDiscordClient client, int count)</code> | 로컬 함수 | 가짜 REST의 POST 접수 수만 보고 통과시키지 않는다. 실제 SDK의 응답 역직렬화와 채팅 worker의 성공 계수까지 기다리고 실패/제외/미처리 대기가 없는지 검증한다. | [L17](../../tests/ListingDiscordChatSdkTests.cs#L17) |
-| <a id="symbol-tests-listingdiscordchatsdktests-cs-115-37e3604afe"></a><code>ListingDiscordConnectionTests.OfflineTransport.ChatInteraction</code><br><code>void ChatInteraction(string action, object[] options)</code> | 메서드 | 종류·resolved 텍스트 채널·멘션 옵션이 있는 실제 guild slash INTERACTION_CREATE JSON을 주입한다. | [L115](../../tests/ListingDiscordChatSdkTests.cs#L115) |
+| <a id="symbol-tests-listingdiscordchatsdktests-cs-142-51fbfea1e1"></a><code>ListingDiscordConnectionTests.OfflineTransport.ChatInteraction</code><br><code>void ChatInteraction(string action, object[] options)</code> | 메서드 | 종류·resolved 텍스트 채널·멘션 옵션이 있는 실제 guild slash INTERACTION_CREATE JSON을 주입한다. | [L142](../../tests/ListingDiscordChatSdkTests.cs#L142) |
 
 ### 등록된 회귀 시나리오
 
@@ -497,9 +509,11 @@ Dalamud 공개 채팅 이벤트의 두 delegate 형태·읽기 전용 수신·�
 | <code>Discord SDK posts persistent colored chat with exact sender and no mentions by default</code> | [L35](../../tests/ListingDiscordChatSdkTests.cs#L35) |
 | <code>Discord SDK delivers each chat category to its own channel and only configured everyone mentions</code> | [L48](../../tests/ListingDiscordChatSdkTests.cs#L48) |
 | <code>Discord SDK completes all split chat messages and mentions everyone only on the first</code> | [L61](../../tests/ListingDiscordChatSdkTests.cs#L61) |
-| <code>Discord SDK chat reports an unconfirmed everyone mention without retrying the message</code> | [L75](../../tests/ListingDiscordChatSdkTests.cs#L75) |
-| <code>Discord SDK chat permission checks require embeds and everyone only when selected</code> | [L84](../../tests/ListingDiscordChatSdkTests.cs#L84) |
-| <code>Discord SDK slash routing channel mention and removal work from guild interactions</code> | [L95](../../tests/ListingDiscordChatSdkTests.cs#L95) |
+| <code>Discord SDK sound-only mode sends all chat but mentions only party and alliance sounds once</code> | [L75](../../tests/ListingDiscordChatSdkTests.cs#L75) |
+| <code>Discord SDK slash commands switch sound-only mode on and off without losing channel</code> | [L91](../../tests/ListingDiscordChatSdkTests.cs#L91) |
+| <code>Discord SDK chat reports an unconfirmed everyone mention without retrying the message</code> | [L102](../../tests/ListingDiscordChatSdkTests.cs#L102) |
+| <code>Discord SDK chat permission checks require embeds and everyone only when selected</code> | [L111](../../tests/ListingDiscordChatSdkTests.cs#L111) |
+| <code>Discord SDK slash routing channel mention and removal work from guild interactions</code> | [L122](../../tests/ListingDiscordChatSdkTests.cs#L122) |
 
 <a id="file-tests-listingdiscordchattests-cs"></a>
 ## tests/ListingDiscordChatTests.cs
@@ -517,12 +531,12 @@ Dalamud 공개 채팅 이벤트의 두 delegate 형태·읽기 전용 수신·�
 | <a id="symbol-tests-listingdiscordchattests-cs-13-5e6966a48a"></a><code>ListingDiscordChatTests.Drain</code><br><code>void Drain(ListingDiscordChat chat)</code> | 메서드 | 진행 중 전송과 큐가 모두 비워질 때까지 기다린다. | [L13](../../tests/ListingDiscordChatTests.cs#L13) |
 | <a id="symbol-tests-listingdiscordchattests-cs-14-85f3eec95d"></a><code>ListingDiscordChatTests.Run</code><br><code>void Run(Action&lt;string, Action&gt; test, Action&lt;bool, string&gt; check)</code> | 메서드 | 로그인 기반 상시 채팅·종류별 수신/멘션 토글·동시 설정 저장·권한·취소·무손실 전송 관련 시나리오를 실행한다. 개별 등록 조건은 아래 test 목록을 참조한다. | [L14](../../tests/ListingDiscordChatTests.cs#L14) |
 | <a id="symbol-tests-listingdiscordchattests-cs-16-15a0aaf22f"></a><code>ListingDiscordChatTests.Run.Service</code><br><code>ListingDiscordChat Service(Transport t, DiscordChatSettings? settings = null, Func&lt;DiscordChatSettings, CancellationToken, Task&gt;? save = null)</code> | 로컬 함수 | fake transport와 저장 callback으로 채팅 controller를 만든다. | [L16](../../tests/ListingDiscordChatTests.cs#L16) |
-| <a id="symbol-tests-listingdiscordchattests-cs-179-b0c2b64c6b"></a><code>ListingDiscordChatTests.Run.Input</code><br><code>DiscordInput Input(ulong id)</code> | 로컬 함수 | owner/app/guild 및 명령이 담긴 DiscordInput fixture를 만든다. | [L179](../../tests/ListingDiscordChatTests.cs#L179) |
-| <a id="symbol-tests-listingdiscordchattests-cs-189-a21aff09c3"></a><code>ListingDiscordChatTests.Response.Defer</code><br><code>Task Defer()</code> | 메서드 | 정상 또는 실패 ACK를 모사해 ACK 전 설정 저장을 차단하는지 확인한다. | [L189](../../tests/ListingDiscordChatTests.cs#L189) |
-| <a id="symbol-tests-listingdiscordchattests-cs-190-43d32faf4d"></a><code>ListingDiscordChatTests.Response.Modal</code><br><code>Task Modal(Modal modal)</code> | 메서드 | 채팅 명령에서 모달이 열리면 실패시킨다. | [L190](../../tests/ListingDiscordChatTests.cs#L190) |
-| <a id="symbol-tests-listingdiscordchattests-cs-191-780426056d"></a><code>ListingDiscordChatTests.Response.Screen</code><br><code>Task Screen(DiscordScreen screen, bool replace, bool deferred)</code> | 메서드 | 채팅 설정/상태 응답을 기록한다. 실제 메시지를 보내지 않는다. | [L191](../../tests/ListingDiscordChatTests.cs#L191) |
-| <a id="symbol-tests-listingdiscordchattests-cs-201-6072839323"></a><code>ListingDiscordChatTests.Transport.CheckChannel</code><br><code>Task&lt;string?&gt; CheckChannel(DiscordChatRoute route, CancellationToken cancellation)</code> | 메서드 | 선택 경로의 권한 오류·연결/취소 가능한 지연을 주입한다. | [L201](../../tests/ListingDiscordChatTests.cs#L201) |
-| <a id="symbol-tests-listingdiscordchattests-cs-206-4d48149e5b"></a><code>ListingDiscordChatTests.Transport.Send</code><br><code>Task Send(DiscordChatRoute route, GameChatMessage message, CancellationToken cancellation)</code> | 메서드 | 경로/메시지/시도를 기록하고 지연·불확실한 POST 오류를 주입한다. 실제 네트워크는 사용하지 않는다. | [L206](../../tests/ListingDiscordChatTests.cs#L206) |
+| <a id="symbol-tests-listingdiscordchattests-cs-201-bc4c3c0098"></a><code>ListingDiscordChatTests.Run.Input</code><br><code>DiscordInput Input(ulong id)</code> | 로컬 함수 | owner/app/guild 및 명령이 담긴 DiscordInput fixture를 만든다. | [L201](../../tests/ListingDiscordChatTests.cs#L201) |
+| <a id="symbol-tests-listingdiscordchattests-cs-211-61614d144e"></a><code>ListingDiscordChatTests.Response.Defer</code><br><code>Task Defer()</code> | 메서드 | 정상 또는 실패 ACK를 모사해 ACK 전 설정 저장을 차단하는지 확인한다. | [L211](../../tests/ListingDiscordChatTests.cs#L211) |
+| <a id="symbol-tests-listingdiscordchattests-cs-212-3434db0b05"></a><code>ListingDiscordChatTests.Response.Modal</code><br><code>Task Modal(Modal modal)</code> | 메서드 | 채팅 명령에서 모달이 열리면 실패시킨다. | [L212](../../tests/ListingDiscordChatTests.cs#L212) |
+| <a id="symbol-tests-listingdiscordchattests-cs-213-bdfc3be21e"></a><code>ListingDiscordChatTests.Response.Screen</code><br><code>Task Screen(DiscordScreen screen, bool replace, bool deferred)</code> | 메서드 | 채팅 설정/상태 응답을 기록한다. 실제 메시지를 보내지 않는다. | [L213](../../tests/ListingDiscordChatTests.cs#L213) |
+| <a id="symbol-tests-listingdiscordchattests-cs-223-651fb924dd"></a><code>ListingDiscordChatTests.Transport.CheckChannel</code><br><code>Task&lt;string?&gt; CheckChannel(DiscordChatRoute route, CancellationToken cancellation)</code> | 메서드 | 선택 경로의 권한 오류·연결/취소 가능한 지연을 주입한다. | [L223](../../tests/ListingDiscordChatTests.cs#L223) |
+| <a id="symbol-tests-listingdiscordchattests-cs-228-fd00295d10"></a><code>ListingDiscordChatTests.Transport.Send</code><br><code>Task Send(DiscordChatRoute route, GameChatMessage message, CancellationToken cancellation)</code> | 메서드 | 경로/메시지/시도를 기록하고 지연·불확실한 POST 오류를 주입한다. 실제 네트워크는 사용하지 않는다. | [L228](../../tests/ListingDiscordChatTests.cs#L228) |
 
 ### 등록된 회귀 시나리오
 
@@ -530,22 +544,24 @@ Dalamud 공개 채팅 이벤트의 두 delegate 형태·읽기 전용 수신·�
 |---|---|
 | <code>chat routes survive configuration reload without changing credentials or notification target</code> | [L19](../../tests/ListingDiscordChatTests.cs#L19) |
 | <code>chat capture requires login a matching character and an enabled configured category</code> | [L27](../../tests/ListingDiscordChatTests.cs#L27) |
-| <code>chat independent category routes preserve receive order and duplicate text messages</code> | [L34](../../tests/ListingDiscordChatTests.cs#L34) |
-| <code>chat logout and character switch cancel preflight and clear queued messages</code> | [L42](../../tests/ListingDiscordChatTests.cs#L42) |
-| <code>chat configuration never posts messages and omitted mention defaults off then preserves its setting</code> | [L50](../../tests/ListingDiscordChatTests.cs#L50) |
-| <code>in-game receive and mention toggles are independent per category and survive reload</code> | [L59](../../tests/ListingDiscordChatTests.cs#L59) |
-| <code>turning receive or mentions off cancels queued and preflight messages even without Discord permissions</code> | [L74](../../tests/ListingDiscordChatTests.cs#L74) |
-| <code>local controls and slash commands serialize against the latest settings without losing other categories</code> | [L84](../../tests/ListingDiscordChatTests.cs#L84) |
-| <code>legacy routes default to enabled and local failures or unconfigured toggles never alter delivery</code> | [L100](../../tests/ListingDiscordChatTests.cs#L100) |
-| <code>chat failed persistence and missing channel permissions leave the original route intact</code> | [L111](../../tests/ListingDiscordChatTests.cs#L111) |
-| <code>chat changing one route discards its queued messages without redirecting other categories</code> | [L121](../../tests/ListingDiscordChatTests.cs#L121) |
-| <code>chat remove command stops only its category and settings can be inspected without AFK</code> | [L128](../../tests/ListingDiscordChatTests.cs#L128) |
-| <code>chat rejects DM wrong server mutations invalid categories and missing mention options</code> | [L135](../../tests/ListingDiscordChatTests.cs#L135) |
-| <code>chat temporary disconnect queues messages until reconnect with bounded overflow reporting</code> | [L144](../../tests/ListingDiscordChatTests.cs#L144) |
-| <code>chat uncertain POST failure is not retried and does not stop later messages</code> | [L151](../../tests/ListingDiscordChatTests.cs#L151) |
-| <code>chat settings cancellation during save does not activate a new destination</code> | [L157](../../tests/ListingDiscordChatTests.cs#L157) |
-| <code>chat cards use three distinct colors and preserve complete Unicode text across parts</code> | [L167](../../tests/ListingDiscordChatTests.cs#L167) |
-| <code>chat command authorization ACK failure and duplicate IDs never mutate routes</code> | [L176](../../tests/ListingDiscordChatTests.cs#L176) |
+| <code>sound-only mentions accept exactly se one through sixteen for party and alliance</code> | [L34](../../tests/ListingDiscordChatTests.cs#L34) |
+| <code>sound mention preferences persist and local receive toggle preserves them while off clears them</code> | [L43](../../tests/ListingDiscordChatTests.cs#L43) |
+| <code>chat independent category routes preserve receive order and duplicate text messages</code> | [L56](../../tests/ListingDiscordChatTests.cs#L56) |
+| <code>chat logout and character switch cancel preflight and clear queued messages</code> | [L64](../../tests/ListingDiscordChatTests.cs#L64) |
+| <code>chat configuration never posts messages and omitted mention defaults off then preserves its setting</code> | [L72](../../tests/ListingDiscordChatTests.cs#L72) |
+| <code>in-game receive and mention toggles are independent per category and survive reload</code> | [L81](../../tests/ListingDiscordChatTests.cs#L81) |
+| <code>turning receive or mentions off cancels queued and preflight messages even without Discord permissions</code> | [L96](../../tests/ListingDiscordChatTests.cs#L96) |
+| <code>local controls and slash commands serialize against the latest settings without losing other categories</code> | [L106](../../tests/ListingDiscordChatTests.cs#L106) |
+| <code>legacy routes default to enabled and local failures or unconfigured toggles never alter delivery</code> | [L122](../../tests/ListingDiscordChatTests.cs#L122) |
+| <code>chat failed persistence and missing channel permissions leave the original route intact</code> | [L133](../../tests/ListingDiscordChatTests.cs#L133) |
+| <code>chat changing one route discards its queued messages without redirecting other categories</code> | [L143](../../tests/ListingDiscordChatTests.cs#L143) |
+| <code>chat remove command stops only its category and settings can be inspected without AFK</code> | [L150](../../tests/ListingDiscordChatTests.cs#L150) |
+| <code>chat rejects DM wrong server mutations invalid categories and missing mention options</code> | [L157](../../tests/ListingDiscordChatTests.cs#L157) |
+| <code>chat temporary disconnect queues messages until reconnect with bounded overflow reporting</code> | [L166](../../tests/ListingDiscordChatTests.cs#L166) |
+| <code>chat uncertain POST failure is not retried and does not stop later messages</code> | [L173](../../tests/ListingDiscordChatTests.cs#L173) |
+| <code>chat settings cancellation during save does not activate a new destination</code> | [L179](../../tests/ListingDiscordChatTests.cs#L179) |
+| <code>chat cards use three distinct colors and preserve complete Unicode text across parts</code> | [L189](../../tests/ListingDiscordChatTests.cs#L189) |
+| <code>chat command authorization ACK failure and duplicate IDs never mutate routes</code> | [L198](../../tests/ListingDiscordChatTests.cs#L198) |
 
 <a id="file-tests-listingdiscordconnectiontests-cs"></a>
 ## tests/ListingDiscordConnectionTests.cs
@@ -679,7 +695,7 @@ Dalamud 공개 채팅 이벤트의 두 delegate 형태·읽기 전용 수신·�
 | 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
 |---|---|---|---|
 | <a id="symbol-tests-listingdiscordnotificationsdktests-cs-7-0430313662"></a><code>ListingDiscordConnectionTests.RunNotificationSdk</code><br><code>void RunNotificationSdk(Action&lt;string, Action&gt; test, Action&lt;bool, string&gt; check)</code> | 메서드 | 실제 Discord.Net SDK가 선택 채널로 고정 본문/everyone allowed_mentions를 한 번 전송하는지와 권한 부족 시 미전송을 확인한다. | [L7](../../tests/ListingDiscordNotificationSdkTests.cs#L7) |
-| <a id="symbol-tests-listingdiscordnotificationsdktests-cs-55-d11715d992"></a><code>ListingDiscordConnectionTests.OfflineTransport.NotificationGuild</code><br><code>Task NotificationGuild(ulong permissions = 134144, ulong[]? channelIds = null)</code> | 메서드 | READY에 예고된 서버의 역할·텍스트 채널·봇 멤버 GUILD_CREATE를 모의 전송한다. everyone 권한 bit를 바꿔 허용/거부를 검증한다. | [L55](../../tests/ListingDiscordNotificationSdkTests.cs#L55) |
+| <a id="symbol-tests-listingdiscordnotificationsdktests-cs-69-d991ef7024"></a><code>ListingDiscordConnectionTests.OfflineTransport.NotificationGuild</code><br><code>Task NotificationGuild(ulong permissions = 134144, ulong[]? channelIds = null)</code> | 메서드 | READY에 예고된 서버의 역할·텍스트 채널·봇 멤버 GUILD_CREATE를 모의 전송한다. everyone 권한 bit를 바꿔 허용/거부를 검증한다. | [L69](../../tests/ListingDiscordNotificationSdkTests.cs#L69) |
 
 ### 등록된 회귀 시나리오
 
@@ -687,7 +703,8 @@ Dalamud 공개 채팅 이벤트의 두 delegate 형태·읽기 전용 수신·�
 |---|---|
 | <code>Discord SDK completion POST serializes exact everyone mention once to selected server channel</code> | [L9](../../tests/ListingDiscordNotificationSdkTests.cs#L9) |
 | <code>Discord SDK rejects missing everyone channel permission before posting</code> | [L27](../../tests/ListingDiscordNotificationSdkTests.cs#L27) |
-| <code>Discord SDK does not report success or repeat POST if the server did not confirm everyone</code> | [L38](../../tests/ListingDiscordNotificationSdkTests.cs#L38) |
+| <code>Discord SDK reserved-seat completion uses its own text and deduplicates everyone</code> | [L38](../../tests/ListingDiscordNotificationSdkTests.cs#L38) |
+| <code>Discord SDK does not report success or repeat POST if the server did not confirm everyone</code> | [L52](../../tests/ListingDiscordNotificationSdkTests.cs#L52) |
 
 <a id="file-tests-listingdiscordnotificationtests-cs"></a>
 ## tests/ListingDiscordNotificationTests.cs
@@ -706,7 +723,7 @@ Dalamud 공개 채팅 이벤트의 두 delegate 형태·읽기 전용 수신·�
 | <a id="symbol-tests-listingdiscordnotificationtests-cs-124-7c540c0a68"></a><code>ListingDiscordNotificationTests.NotificationResponse.Modal</code><br><code>Task Modal(Modal modal)</code> | 메서드 | 채널 선택에서 모달 호출이 발생하면 테스트를 실패시킨다. | [L124](../../tests/ListingDiscordNotificationTests.cs#L124) |
 | <a id="symbol-tests-listingdiscordnotificationtests-cs-125-54e28baf7f"></a><code>ListingDiscordNotificationTests.NotificationResponse.Screen</code><br><code>Task Screen(DiscordScreen screen, bool replace, bool deferred)</code> | 메서드 | 채널 설정의 응답을 소비한다. 외부 메시지를 보내지 않는다. | [L125](../../tests/ListingDiscordNotificationTests.cs#L125) |
 | <a id="symbol-tests-listingdiscordnotificationtests-cs-136-98cf3d8a0d"></a><code>ListingDiscordNotificationTests.NotificationFakeTransport.CheckChannel</code><br><code>Task&lt;string?&gt; CheckChannel(DiscordNotificationTarget target, CancellationToken cancellation)</code> | 메서드 | 권한 실패·중단 가능한 지연 확인을 모사하고 확인 시작 신호를 보낸다. | [L136](../../tests/ListingDiscordNotificationTests.cs#L136) |
-| <a id="symbol-tests-listingdiscordnotificationtests-cs-142-c8dc955f55"></a><code>ListingDiscordNotificationTests.NotificationFakeTransport.SendCompletion</code><br><code>Task SendCompletion(DiscordNotificationTarget target, CancellationToken cancellation)</code> | 메서드 | 전송 횟수/목적지를 기록하고 결과 불확실 예외를 주입한다. 실제 네트워크는 사용하지 않는다. | [L142](../../tests/ListingDiscordNotificationTests.cs#L142) |
+| <a id="symbol-tests-listingdiscordnotificationtests-cs-142-e9386c4aac"></a><code>ListingDiscordNotificationTests.NotificationFakeTransport.SendCompletion</code><br><code>Task SendCompletion(DiscordNotificationTarget target, CancellationToken cancellation, bool excludesSingleJob = false)</code> | 메서드 | 전송 횟수/목적지를 기록하고 결과 불확실 예외를 주입한다. 실제 네트워크는 사용하지 않는다. | [L142](../../tests/ListingDiscordNotificationTests.cs#L142) |
 
 ### 등록된 회귀 시나리오
 

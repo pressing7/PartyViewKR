@@ -8,6 +8,10 @@ public sealed record DiscordChatRoute
     public ulong ChannelId { get; init; }
     public bool Enabled { get; init; } = true;
     public bool MentionEveryone { get; init; }
+    public bool MentionOnSound { get; init; }
+    internal string MentionLabel => MentionEveryone ? "항상 @everyone" : MentionOnSound && Kind is "party" or "alliance" ? "효과음만 @everyone" : "끄기";
+    internal bool ShouldMention(GameChatMessage message) => MentionEveryone ||
+        MentionOnSound && message.Kind is GameChatKind.Party or GameChatKind.Alliance && GameChat.HasSoundEffect(message.Text);
 }
 
 public sealed record DiscordChatSettings
@@ -22,18 +26,26 @@ public sealed record DiscordChatSettings
                 .GroupBy(r => r.Kind).Select(g => g.Last()).OrderBy(r => r.Kind, StringComparer.Ordinal).ToArray() : []
     };
 
-    internal DiscordChatSettings WithOptions(GameChatKind kind, bool? enabled, bool? mention) => this with {
+    internal DiscordChatSettings WithOptions(GameChatKind kind, bool? enabled, bool? mention, bool? sound = null) => this with {
         Routes = Routes.Select(r => r.Kind == GameChat.Key(kind)
-            ? r with { Enabled = enabled ?? r.Enabled, MentionEveryone = mention ?? r.MentionEveryone } : r).ToArray()
+            ? r with { Enabled = enabled ?? r.Enabled, MentionEveryone = mention ?? r.MentionEveryone,
+                MentionOnSound = kind != GameChatKind.Tell && (sound ?? (mention.HasValue ? false : r.MentionOnSound)) } : r).ToArray()
     };
 }
 
 internal enum GameChatKind { Party, Tell, Alliance }
 internal sealed record GameChatMessage(GameChatKind Kind, string Name, string World, string Text, DateTimeOffset At);
-internal sealed record DiscordChatCommand(string Action, string Kind = "", ulong ChannelId = 0, bool? MentionEveryone = null);
+internal sealed record DiscordChatCommand(string Action, string Kind = "", ulong ChannelId = 0, bool? MentionEveryone = null, bool? MentionOnSound = null);
 
 internal static class GameChat
 {
+    internal static bool HasSoundEffect(string text)
+    {
+        // Exact tags only: 0, 17, padded numbers and incomplete tags are not sounds.
+        for (var i = 1; i <= 16; i++)
+            if (text.Contains($"<se.{i}>", StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
+    }
     // API 15 XivChatType values; CrossParty belongs to the same user-facing category.
     internal static GameChatKind? FromType(ushort type) => type switch {
         14 or 32 => GameChatKind.Party, 13 => GameChatKind.Tell, 15 => GameChatKind.Alliance, _ => null

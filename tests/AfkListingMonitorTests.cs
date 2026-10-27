@@ -176,6 +176,7 @@ sealed class AfkFakeHost : IAfkListingHost
     public long RequestRevision { get; set; }
     public long DetailRevision { get; set; }
     public int RegisteredCapacity { get; set; } = 8;
+    public ListingSlots? RegisteredSlots { get; set; }
     public bool TryReadRoster(out PartyRoster? roster) { RosterReads++; roster = Readable ? Roster : null; return Readable; }
     public string? QueryBlockReason(bool ownQueryInProgress) => Blocked ?? (QueryBusy && !ownQueryInProgress ? "query busy" : null);
     public bool OwnListingMatches(PartyRoster roster) => OwnReady && Listed == roster;

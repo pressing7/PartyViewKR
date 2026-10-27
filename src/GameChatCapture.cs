@@ -84,8 +84,30 @@ internal sealed class GameChatCapture : IDisposable
         // Same-world/local senders can omit the world link. An explicit remote
         // world always wins, even if its name cannot currently be resolved.
         if (!explicitWorld && !crossWorld) world = homeWorld();
+        // BoxedOutlinedNumber0..9 are game-font party number glyphs, not names.
+        name = new string(name.Where(c => c is < '\uE0E0' or > '\uE0E9').ToArray()).Trim();
+        text = IncludeSoundEffects(message, text);
         receive(new(kind, name, world, text, timestamp > 0 ? DateTimeOffset.FromUnixTimeSeconds(timestamp) : DateTimeOffset.UtcNow));
         error("");
+    }
+
+    private static string IncludeSoundEffects(object message, string text)
+    {
+        // The public TextValue normally evaluates fixed(200,5,n) to <se.n+1>.
+        // Some API-15 builds leave the macro as a non-text payload. Read its
+        // public encoding as well; never evaluate/play it or modify the message.
+        if (Property(message, "Payloads") is not IEnumerable payloads) return text;
+        foreach (var payload in payloads) {
+            if (payload == null || payload.GetType().Name is not ("RawPayload" or "AutoTranslatePayload")) continue;
+            var bytes = Property(payload, "Data") as byte[] ??
+                payload.GetType().GetMethod("Encode", [typeof(bool)])?.Invoke(payload, [false]) as byte[];
+            // Canonical Fixed macro with three small integer expressions.
+            if (bytes is not { Length: 7 } || bytes[0] != 2 || bytes[1] != 0x2E || bytes[2] != 4 ||
+                bytes[3] != 201 || bytes[4] != 6 || bytes[5] is < 1 or > 16 || bytes[6] != 3) continue;
+            var tag = $"<se.{bytes[5]}>";
+            if (!text.Contains(tag, StringComparison.OrdinalIgnoreCase)) text += (text.Length == 0 ? "" : " ") + tag;
+        }
+        return text;
     }
     public void Dispose()
     {

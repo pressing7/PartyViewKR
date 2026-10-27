@@ -57,6 +57,7 @@ public sealed partial class Plugin
         public long DetailRevision => plugin.listingReader.DetailRevision;
         public int RegisteredCapacity => plugin.Listing.Slots is { CountsAgree: true, MappingValid: true } slots
             ? slots.TotalSlots : 0;
+        public ListingSlots RegisteredSlots => plugin.Listing.Slots;
         public bool OwnListingMatches(PartyRoster roster)
         {
             var listing = plugin.Listing;

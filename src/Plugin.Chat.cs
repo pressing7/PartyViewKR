@@ -53,19 +53,19 @@ public sealed partial class Plugin
     }
     private void ReceiveCapturedChat(GameChatMessage message) => discordClient?.ReceiveChat(chatSession.SelfId, message);
 
-    internal void SetDiscordChat(GameChatKind kind, bool? enabled = null, bool? mention = null)
+    internal void SetDiscordChat(GameChatKind kind, bool? enabled = null, bool? mention = null, bool? sound = null)
     {
         if (disposed || !CanConfigureDiscordChat) return;
-        chatSettingTask = ChangeDiscordChat(kind, enabled, mention);
+        chatSettingTask = ChangeDiscordChat(kind, enabled, mention, sound);
     }
 
-    private async Task ChangeDiscordChat(GameChatKind kind, bool? enabled, bool? mention)
+    private async Task ChangeDiscordChat(GameChatKind kind, bool? enabled, bool? mention, bool? sound)
     {
         try {
             chatSettingStatus = "채팅 설정 저장 중입니다.";
             var client = discordClient;
             if (client?.Running == true) {
-                chatSettingStatus = await client.ConfigureChat(kind, enabled, mention);
+                chatSettingStatus = await client.ConfigureChat(kind, enabled, mention, sound);
                 return;
             }
             var config = PluginInterface.GetPluginConfig() as RelayConfiguration ?? new();
@@ -74,7 +74,7 @@ public sealed partial class Plugin
             if (!saved.Routes.Any(r => r.Kind == GameChat.Key(kind))) {
                 chatSettingStatus = "먼저 /pvkr-chat 설정으로 수신 채널을 지정해 주세요."; return;
             }
-            config.DiscordChat = saved.WithOptions(kind, enabled, mention);
+            config.DiscordChat = saved.WithOptions(kind, enabled, mention, sound);
             PluginInterface.SavePluginConfig(config);
             chatSettingStatus = "채팅 설정을 저장했습니다. 다음 디스코드 연결부터 적용합니다.";
         }
