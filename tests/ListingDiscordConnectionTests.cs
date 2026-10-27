@@ -270,12 +270,14 @@ static partial class ListingDiscordConnectionTests
                 if (parsed.RootElement.TryGetProperty("embeds", out var embeds) && embeds.GetArrayLength() > 0)
                     ChatMessages.Enqueue((endpoint, parsed.RootElement.Clone()));
                 else NotificationMessages.Enqueue(parsed.RootElement.Clone());
-                var content = parsed.RootElement.TryGetProperty("content", out var text) ? text.GetString() : null;
+                // Embed-only requests may omit content, but Discord's Message
+                // response uses an empty string. Null crashes SDK tag parsing.
+                var content = parsed.RootElement.TryGetProperty("content", out var text) ? text.GetString() ?? "" : "";
                 body = JsonSerializer.Serialize(new {
                     id = (++messageId).ToString(), channel_id = endpoint.Split('/')[1], type = 0,
                     author = new { id = "500", username = "PVKR", discriminator = "0", bot = true },
                     timestamp = DateTimeOffset.UtcNow, content,
-                    mention_everyone = !DropEveryoneMention && content?.StartsWith("@everyone") == true, mentions = Array.Empty<object>(), mention_roles = Array.Empty<string>(),
+                    mention_everyone = !DropEveryoneMention && content.StartsWith("@everyone"), mentions = Array.Empty<object>(), mention_roles = Array.Empty<string>(),
                     attachments = Array.Empty<object>(), embeds = Array.Empty<object>(), flags = 0
                 });
             }

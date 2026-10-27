@@ -14,6 +14,14 @@ static partial class ListingDiscordConnectionTests
             transport.Ready(true).GetAwaiter().GetResult(); transport.NotificationGuild(permissions, [800, 801, 802]).GetAwaiter().GetResult();
             Wait(() => client.Connected || !client.Running); check(client.Connected, client.Status); return client;
         }
+        void WaitForDelivery(ListingDiscordClient client, int count)
+        {
+            // Capturing a POST is not success: Discord.Net still has to parse
+            // the response, and the chat worker must confirm the delivery.
+            var expected = $"전송 {count} · 실패 0 · 제외 0 · 대기 0";
+            Wait(() => client.ChatStatus.Contains(expected) || !client.ChatStatus.Contains("실패 0") || !client.Running);
+            check(client.ChatStatus.Contains(expected), client.ChatStatus);
+        }
         var party = ListingDiscordChatTests.Party;
         test("Discord SDK registers pvkr chat separately with localized choices and text channel picker", () => {
             var t = new OfflineTransport(); using var client = ConnectedChat(t);
@@ -27,7 +35,7 @@ static partial class ListingDiscordConnectionTests
         test("Discord SDK posts persistent colored chat with exact sender and no mentions by default", () => {
             var t = new OfflineTransport(); using var client = ConnectedChat(t, ListingDiscordChatTests.Settings(party));
             client.ObserveChat(true, 10); client.ReceiveChat(10, ListingDiscordChatTests.Chat(text: "안녕 @everyone <@600>"));
-            Wait(() => t.ChatMessages.Count == 1 || client.ChatStatus.Contains("실패 1"));
+            WaitForDelivery(client, 1);
             check(t.ChatMessages.TryPeek(out var result), client.ChatStatus); var body = result.Body;
             check(result.Endpoint == "channels/800/messages" && (!body.TryGetProperty("content", out var content) || string.IsNullOrEmpty(content.GetString())), "chat text escaped embed or wrong target");
             check(body.GetProperty("allowed_mentions").GetProperty("parse").GetArrayLength() == 0, "game text can trigger mention");
@@ -42,13 +50,36 @@ static partial class ListingDiscordConnectionTests
                 party with { Kind = "tell", ChannelId = 801, MentionEveryone = true }, party with { Kind = "alliance", ChannelId = 802 }));
             client.ObserveChat(true, 10);
             foreach (var kind in Enum.GetValues<GameChatKind>()) client.ReceiveChat(10, ListingDiscordChatTests.Chat(kind));
-            Wait(() => t.ChatMessages.Count == 3 || client.ChatStatus.Contains("실패 1"));
+            WaitForDelivery(client, 3);
             var sent = t.ChatMessages.ToArray(); check(sent.Length == 3, client.ChatStatus);
             check(sent.Select(s => s.Endpoint).SequenceEqual(["channels/800/messages", "channels/801/messages", "channels/802/messages"]), "category destination changed");
             check(sent.Select(s => s.Body.GetProperty("embeds")[0].GetProperty("color").GetUInt32()).SequenceEqual(new uint[] { 0x4D9CFF, 0xFF77B7, 0xFFA34D }), "wrong embed colors");
             check(sent[1].Body.GetProperty("content").GetString() == "@everyone" &&
                 sent[1].Body.GetProperty("allowed_mentions").GetProperty("parse")[0].GetString() == "everyone", "configured mention missing");
             client.Dispose(); client.Completion.GetAwaiter().GetResult();
+        });
+        test("Discord SDK completes all split chat messages and mentions everyone only on the first", () => {
+            var t = new OfflineTransport(); using var client = ConnectedChat(t, ListingDiscordChatTests.Settings(party with { MentionEveryone = true }));
+            var message = ListingDiscordChatTests.Chat(text: new string('가', 8000));
+            client.ObserveChat(true, 10); client.ReceiveChat(10, message); WaitForDelivery(client, 1);
+            var sent = t.ChatMessages.ToArray();
+            check(sent.Length == 3 && sent.All(s => s.Endpoint == "channels/800/messages"), "split message destination or count changed");
+            check(sent[0].Body.GetProperty("content").GetString() == "@everyone" &&
+                sent[0].Body.GetProperty("allowed_mentions").GetProperty("parse")[0].GetString() == "everyone", "first part did not mention");
+            check(sent.Skip(1).All(s => (!s.Body.TryGetProperty("content", out var content) || string.IsNullOrEmpty(content.GetString())) &&
+                s.Body.GetProperty("allowed_mentions").GetProperty("parse").GetArrayLength() == 0), "later parts repeated the mention");
+            var text = string.Concat(sent.Select(s => s.Body.GetProperty("embeds")[0].GetProperty("description").GetString()));
+            check(text == "모험가@\u200b초코보 : " + message.Text, "split chat content lost");
+            client.Dispose(); client.Completion.GetAwaiter().GetResult();
+        });
+        test("Discord SDK chat reports an unconfirmed everyone mention without retrying the message", () => {
+            var t = new OfflineTransport { DropEveryoneMention = true };
+            using var client = ConnectedChat(t, ListingDiscordChatTests.Settings(party with { MentionEveryone = true }));
+            client.ObserveChat(true, 10); client.ReceiveChat(10, ListingDiscordChatTests.Chat());
+            Wait(() => client.ChatStatus.Contains("실패 1"));
+            check(client.ChatStatus.Contains("전송 0 · 실패 1") && client.ChatStatus.Contains("InvalidOperationException"), client.ChatStatus);
+            client.Dispose(); client.Completion.GetAwaiter().GetResult();
+            check(t.ChatMessages.Count == 1, "unconfirmed chat POST repeated");
         });
         test("Discord SDK chat permission checks require embeds and everyone only when selected", () => {
             foreach (var permissions in new ulong[] { 3072, 19456 }) {
@@ -58,7 +89,7 @@ static partial class ListingDiscordConnectionTests
                 client.Dispose(); client.Completion.GetAwaiter().GetResult();
             }
             var ordinary = new OfflineTransport(); using var withoutPing = ConnectedChat(ordinary, ListingDiscordChatTests.Settings(party), permissions: 19456);
-            withoutPing.ObserveChat(true, 10); withoutPing.ReceiveChat(10, ListingDiscordChatTests.Chat()); Wait(() => ordinary.ChatMessages.Count == 1);
+            withoutPing.ObserveChat(true, 10); withoutPing.ReceiveChat(10, ListingDiscordChatTests.Chat()); WaitForDelivery(withoutPing, 1);
             withoutPing.Dispose(); withoutPing.Completion.GetAwaiter().GetResult();
         });
         test("Discord SDK slash routing channel mention and removal work from guild interactions", () => {

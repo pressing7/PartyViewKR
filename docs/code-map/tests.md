@@ -2,9 +2,9 @@
 
 [전체 지도](../CODE_MAP.md) · [전체 파일 목록](files.md)
 
-이 문서는 테스트를 실행한 보고서가 아니라 현재 소스에 등록된 검증 범위의 지도다. 관리형 runner의 481개 등록 시나리오, Node 테스트와 Python 테스트를 source 위치에 연결한다. 실제 게임·Windows DPAPI·Discord live 검증은 fake 테스트와 별개다.
+이 문서는 테스트를 실행한 보고서가 아니라 현재 소스에 등록된 검증 범위의 지도다. 관리형 runner의 483개 등록 시나리오, Node 테스트와 Python 테스트를 source 위치에 연결한다. 실제 게임·Windows DPAPI·Discord live 검증은 fake 테스트와 별개다.
 
-기준: 0.3.52.0 소스. 기반 main `6e6e482b4e56a7c409c7e58fdb0ed5b2d1d24bce` 이후 상시 채팅·인게임 수신/멘션 토글·홈 서버 보완·점유 자리 직업 자동 정규화 검증 변경을 포함한다. 2026-10-26 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
+기준: 0.3.52.0 소스. 기반 main `25591e676807a52801cba73278669983e7bb0e02` 이후 Discord 모의 Message 응답 수정·전송 완료 검증 보강을 포함한다. 2026-10-27 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
 
 표에는 직접 선언한 메서드·생성자·로컬 함수·계산 속성·인터페이스 메서드를 각각 포함한다. 자동 생성 record 메서드/단순 auto-property accessor는 제외한다. 이름 없는 LINQ/타이머/콜백은 이를 소유한 함수 설명에 포함하며, 중요한 DOM 이벤트 handler와 명명된 테스트 시나리오는 별도로 표시한다.
 
@@ -478,7 +478,7 @@ Dalamud 공개 채팅 이벤트의 두 delegate 형태·읽기 전용 수신·�
 <a id="file-tests-listingdiscordchatsdktests-cs"></a>
 ## tests/ListingDiscordChatSdkTests.cs
 
-[소스 파일](../../tests/ListingDiscordChatSdkTests.cs) · 명명된 항목/진입점 3개
+[소스 파일](../../tests/ListingDiscordChatSdkTests.cs) · 명명된 항목/진입점 4개
 
 실제 SDK 채팅 slash 등록/파싱·일반 임베드 POST·색상/멘션 직렬화를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다.
 
@@ -486,17 +486,20 @@ Dalamud 공개 채팅 이벤트의 두 delegate 형태·읽기 전용 수신·�
 |---|---|---|---|
 | <a id="symbol-tests-listingdiscordchatsdktests-cs-7-4a762ae416"></a><code>ListingDiscordConnectionTests.RunChatSdk</code><br><code>void RunChatSdk(Action&lt;string, Action&gt; test, Action&lt;bool, string&gt; check)</code> | 메서드 | 실제 SDK 채팅 slash 등록/파싱·일반 임베드 POST·색상/멘션 직렬화 관련 시나리오를 실행한다. 개별 등록 조건은 아래 test 목록을 참조한다. | [L7](../../tests/ListingDiscordChatSdkTests.cs#L7) |
 | <a id="symbol-tests-listingdiscordchatsdktests-cs-9-6428b4da1e"></a><code>ListingDiscordConnectionTests.RunChatSdk.ConnectedChat</code><br><code>ListingDiscordClient ConnectedChat(OfflineTransport transport, DiscordChatSettings? settings = null, Func&lt;DiscordChatSettings, CancellationToken, Task&gt;? save = null, ulong permissions = 150528)</code> | 로컬 함수 | 실제 Discord.Net을 fake REST/Gateway에 연결하고3개 서버 텍스트 채널과 설정 저장 callback을 준비한다. | [L9](../../tests/ListingDiscordChatSdkTests.cs#L9) |
-| <a id="symbol-tests-listingdiscordchatsdktests-cs-84-89e40433a8"></a><code>ListingDiscordConnectionTests.OfflineTransport.ChatInteraction</code><br><code>void ChatInteraction(string action, object[] options)</code> | 메서드 | 종류·resolved 텍스트 채널·멘션 옵션이 있는 실제 guild slash INTERACTION_CREATE JSON을 주입한다. | [L84](../../tests/ListingDiscordChatSdkTests.cs#L84) |
+| <a id="symbol-tests-listingdiscordchatsdktests-cs-17-ae380bfc80"></a><code>ListingDiscordConnectionTests.RunChatSdk.WaitForDelivery</code><br><code>void WaitForDelivery(ListingDiscordClient client, int count)</code> | 로컬 함수 | 가짜 REST의 POST 접수 수만 보고 통과시키지 않는다. 실제 SDK의 응답 역직렬화와 채팅 worker의 성공 계수까지 기다리고 실패/제외/미처리 대기가 없는지 검증한다. | [L17](../../tests/ListingDiscordChatSdkTests.cs#L17) |
+| <a id="symbol-tests-listingdiscordchatsdktests-cs-115-37e3604afe"></a><code>ListingDiscordConnectionTests.OfflineTransport.ChatInteraction</code><br><code>void ChatInteraction(string action, object[] options)</code> | 메서드 | 종류·resolved 텍스트 채널·멘션 옵션이 있는 실제 guild slash INTERACTION_CREATE JSON을 주입한다. | [L115](../../tests/ListingDiscordChatSdkTests.cs#L115) |
 
 ### 등록된 회귀 시나리오
 
 | 소스의 시나리오 이름 | 위치 |
 |---|---|
-| <code>Discord SDK registers pvkr chat separately with localized choices and text channel picker</code> | [L18](../../tests/ListingDiscordChatSdkTests.cs#L18) |
-| <code>Discord SDK posts persistent colored chat with exact sender and no mentions by default</code> | [L27](../../tests/ListingDiscordChatSdkTests.cs#L27) |
-| <code>Discord SDK delivers each chat category to its own channel and only configured everyone mentions</code> | [L40](../../tests/ListingDiscordChatSdkTests.cs#L40) |
-| <code>Discord SDK chat permission checks require embeds and everyone only when selected</code> | [L53](../../tests/ListingDiscordChatSdkTests.cs#L53) |
-| <code>Discord SDK slash routing channel mention and removal work from guild interactions</code> | [L64](../../tests/ListingDiscordChatSdkTests.cs#L64) |
+| <code>Discord SDK registers pvkr chat separately with localized choices and text channel picker</code> | [L26](../../tests/ListingDiscordChatSdkTests.cs#L26) |
+| <code>Discord SDK posts persistent colored chat with exact sender and no mentions by default</code> | [L35](../../tests/ListingDiscordChatSdkTests.cs#L35) |
+| <code>Discord SDK delivers each chat category to its own channel and only configured everyone mentions</code> | [L48](../../tests/ListingDiscordChatSdkTests.cs#L48) |
+| <code>Discord SDK completes all split chat messages and mentions everyone only on the first</code> | [L61](../../tests/ListingDiscordChatSdkTests.cs#L61) |
+| <code>Discord SDK chat reports an unconfirmed everyone mention without retrying the message</code> | [L75](../../tests/ListingDiscordChatSdkTests.cs#L75) |
+| <code>Discord SDK chat permission checks require embeds and everyone only when selected</code> | [L84](../../tests/ListingDiscordChatSdkTests.cs#L84) |
+| <code>Discord SDK slash routing channel mention and removal work from guild interactions</code> | [L95](../../tests/ListingDiscordChatSdkTests.cs#L95) |
 
 <a id="file-tests-listingdiscordchattests-cs"></a>
 ## tests/ListingDiscordChatTests.cs
@@ -568,9 +571,9 @@ Dalamud 공개 채팅 이벤트의 두 delegate 형태·읽기 전용 수신·�
 | <a id="symbol-tests-listingdiscordconnectiontests-cs-203-ce64e0be91"></a><code>ListingDiscordConnectionTests.OfflineTransport.SendAsync</code><br><code>Task&lt;RestResponse&gt; SendAsync(string method, string endpoint, CancellationToken cancelToken, bool headerOnly = false, string? reason = null, IEnumerable&lt;KeyValuePair&lt;string, IEnumerable&lt;string&gt;&gt;&gt;? requestHeaders = null)</code> | 메서드 | SDK의 Gateway 또는 REST 요청을 fake transport에서 검사하고 지정 응답/실패를 모사한다. | [L203](../../tests/ListingDiscordConnectionTests.cs#L203) |
 | <a id="symbol-tests-listingdiscordconnectiontests-cs-205-c8538285de"></a><code>ListingDiscordConnectionTests.OfflineTransport.SendAsync</code><br><code>Task&lt;RestResponse&gt; SendAsync(string method, string endpoint, string json, CancellationToken cancelToken, bool headerOnly = false, string? reason = null, IEnumerable&lt;KeyValuePair&lt;string, IEnumerable&lt;string&gt;&gt;&gt;? requestHeaders = null)</code> | 메서드 | SDK의 Gateway 또는 REST 요청을 fake transport에서 검사하고 지정 응답/실패를 모사한다. | [L205](../../tests/ListingDiscordConnectionTests.cs#L205) |
 | <a id="symbol-tests-listingdiscordconnectiontests-cs-207-64cb7e89c6"></a><code>ListingDiscordConnectionTests.OfflineTransport.SendAsync</code><br><code>Task&lt;RestResponse&gt; SendAsync(string method, string endpoint, IReadOnlyDictionary&lt;string, object&gt; multipartParams, CancellationToken cancelToken, bool headerOnly = false, string? reason = null, IEnumerable&lt;KeyValuePair&lt;string, IEnumerable&lt;string&gt;&gt;&gt;? requestHeaders = null)</code> | 메서드 | SDK의 Gateway 또는 REST 요청을 fake transport에서 검사하고 지정 응답/실패를 모사한다. | [L207](../../tests/ListingDiscordConnectionTests.cs#L207) |
-| <a id="symbol-tests-listingdiscordconnectiontests-cs-210-d7c5a689a0"></a><code>ListingDiscordConnectionTests.OfflineTransport.Reply</code><br><code>Task&lt;RestResponse&gt; Reply(string method, string endpoint, string? json = null)</code> | 메서드 | 특정 REST 경로에 기대한 JSON 응답을 만들어 fake HTTP 응답 stream으로 반환한다. | [L210](../../tests/ListingDiscordConnectionTests.cs#L210) |
-| <a id="symbol-tests-listingdiscordconnectiontests-cs-298-d144a62e54"></a><code>ListingDiscordConnectionTests.OfflineTransport.MakeMessage</code><br><code>JsonElement MakeMessage(JsonElement data, bool fresh = false)</code> | 메서드 | Discord SDK가 읽을 message/component JSON을 만든다. | [L298](../../tests/ListingDiscordConnectionTests.cs#L298) |
-| <a id="symbol-tests-listingdiscordconnectiontests-cs-312-d358add4a8"></a><code>ListingDiscordConnectionTests.OfflineTransport.ValidateCard</code><br><code>void ValidateCard(JsonElement data)</code> | 메서드 | Components V2 flag/구조/표시 크기와 구형 content/embeds 제거를 확인한다. | [L312](../../tests/ListingDiscordConnectionTests.cs#L312) |
+| <a id="symbol-tests-listingdiscordconnectiontests-cs-210-d7c5a689a0"></a><code>ListingDiscordConnectionTests.OfflineTransport.Reply</code><br><code>Task&lt;RestResponse&gt; Reply(string method, string endpoint, string? json = null)</code> | 메서드 | 특정 REST 경로에 기대한 JSON 응답을 만들어 fake HTTP 응답 stream으로 반환한다. 임베드 전용 요청에서 content가 생략되거나 null이어도 응답 Message.content는 빈 문자열로 반환해 SDK의 태그 파싱 계약을 지킨다. | [L210](../../tests/ListingDiscordConnectionTests.cs#L210) |
+| <a id="symbol-tests-listingdiscordconnectiontests-cs-300-5c5485555f"></a><code>ListingDiscordConnectionTests.OfflineTransport.MakeMessage</code><br><code>JsonElement MakeMessage(JsonElement data, bool fresh = false)</code> | 메서드 | Discord SDK가 읽을 message/component JSON을 만든다. | [L300](../../tests/ListingDiscordConnectionTests.cs#L300) |
+| <a id="symbol-tests-listingdiscordconnectiontests-cs-314-086d03a1fa"></a><code>ListingDiscordConnectionTests.OfflineTransport.ValidateCard</code><br><code>void ValidateCard(JsonElement data)</code> | 메서드 | Components V2 flag/구조/표시 크기와 구형 content/embeds 제거를 확인한다. | [L314](../../tests/ListingDiscordConnectionTests.cs#L314) |
 
 ### 등록된 회귀 시나리오
 

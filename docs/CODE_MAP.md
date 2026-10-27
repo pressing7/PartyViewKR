@@ -4,12 +4,12 @@
 
 ## 기준과 범위
 
-- 정리일: 2026-10-26. 플러그인 `0.3.52.0`, Dalamud API `15`.
-- 소스 기준: `0.3.52.0`. 기반 main [`6e6e482b4e56a7c409c7e58fdb0ed5b2d1d24bce`](https://github.com/pressing7/PartyViewKR/commit/6e6e482b4e56a7c409c7e58fdb0ed5b2d1d24bce) 이후 상시 채팅·종류별 수신/멘션 토글·홈 서버 보완·점유 자리 자동 직업 정규화 검증 변경을 포함한다.
+- 정리일: 2026-10-27. 플러그인 `0.3.52.0`, Dalamud API `15`.
+- 소스 기준: `0.3.52.0`. 기반 main [`25591e676807a52801cba73278669983e7bb0e02`](https://github.com/pressing7/PartyViewKR/commit/25591e676807a52801cba73278669983e7bb0e02) 이후 Discord 모의 Message 응답 수정·전송 완료 검증 보강을 포함한다.
 - 문서 자체와 신규 채팅/역할 검증 파일을 포함한 추적 파일 260개 전체를 [파일 지도](code-map/files.md)에 분류했다. 소스 위치는 이 버전의 행 번호다.
-- C# Roslyn 구문 분석, JavaScript Acorn 구문 분석, Python AST로 **1,441개 명명된 항목/진입점**을 대조했다: C# 1,319, JS 91, Python 31. 메서드뿐 아니라 생성자·로컬 함수·계산 속성·인터페이스 선언을 포함한 숫자다.
+- C# Roslyn 구문 분석, JavaScript Acorn 구문 분석, Python AST로 **1,442개 명명된 항목/진입점**을 대조했다: C# 1,320, JS 91, Python 31. 메서드뿐 아니라 생성자·로컬 함수·계산 속성·인터페이스 선언을 포함한 숫자다.
 - 자동 생성 record 메서드와 단순 auto-property accessor는 별도 함수로 세지 않는다. 이름 없는 LINQ/콜백은 소유 함수에서 설명하고, 중요한 DOM handler와 테스트 시나리오는 따로 연결했다.
-- 현재 C# 등록 테스트는 481개, Node 등록 테스트는 15개, Python `test_*` 메서드는 12개다. 등록 범위와 실행 결과를 구분하며 이번 채팅 변경의 검증 환경은 아래에 기록한다.
+- 현재 C# 등록 테스트는 483개, Node 등록 테스트는 15개, Python `test_*` 메서드는 12개다. 등록 범위와 실행 결과를 구분하며 이번 채팅 변경의 검증 환경은 아래에 기록한다.
 
 현재 구현은 **기존 본인 모집글의 조회·수정·수동 갱신 및 AFK 명단 감시에 따른 자동 조회**다. AFK 모집 완료 everyone 알림과 파티·받은 귓속말·연합파티 채팅 전달을 제공한다. 새 모집 시작과 콘텐츠/파티 유형 변경은 아직 구현하지 않았다. 루트의 `PartyViewKR.dll/json/deps.json`은 이전 수동 배포본이다. 빌드 기준은 `src/PartyViewKR.csproj`와 `src/PartyViewKR.json`, 설치 대상은 Releases ZIP이다.
 
@@ -184,13 +184,16 @@ PIN은 `ExtraCriteria`나 외부 snapshot에 넣지 않는다. 수정창 passwor
 | 재시작마다 토큰/이모지를 다시 요구 | `RestoreDiscordConnection`, `PrepareDiscordConnection`, `ListingDiscordEmojiAssets.Sync` | 기억/자동 연결·DPAPI 복원, 기존 application emoji 목록 재사용 |
 | Discord 자리 이미지가 현재 직업과 다름 | `ListingDiscordIcons.ConditionKey/ForSlot` | 의도적으로 모집 제한 mask+참가 여부를 표시한다. 실시간 JobId로 대체하지 않는다. |
 | 긴 Discord 결과가 안 보임 | `PaginateResult`, `DrawResults`, `RunResults` 테스트 | 표시 예산·Unicode/escape 분할·전체 결과 버튼 및 페이지 nonce |
+| Actions 채팅 SDK 테스트에서 exit134 / `NullReferenceException` | `OfflineTransport.Reply`, `RunChatSdk.WaitForDelivery` | 임베드 전용 Message 응답의 content는 null이 아닌 빈 문자열이어야 한다. POST 접수만으로 통과시키지 않고 SDK 응답 처리와 worker 성공까지 확인한다. |
 | `Project and manifest versions disagree` | `tools/release.py.package` | src csproj의 Version/AssemblyVersion/FileVersion과 src manifest 및 build DLL. 루트 옛 manifest 제외 |
 
 진단은 먼저 `refreshStage`, `refreshResult`, `refreshEditCalls`, `refreshSubmitCalls`로 **어디까지 실행했는지** 확인한 뒤 `refreshNativeCheck`와 해당 `*EditCheck`/`editorRole*`로 좁힌다. 이후의 passive snapshot이 오류 시점과 달라질 수 있으므로 보존된 host diagnostic도 함께 본다.
 
 ## 검증과 문서 갱신
 
-0.3.52에서 관리형 테스트481개와 Python 배포 테스트12개를 통과했다. 점유 자리의 입장 직업 자동 축소와 실제 참가자/직업/빈자리 조건 변경을 구분하고 일반·연합·친선의 수정 전/수정창/결과 검증을 확인했다. 상시 채팅·종류별 수신/멘션 토글·동시 설정 저장·홈 서버 보완도 검사했다. 공개 채팅 이벤트 두 형태·일반/서버 초월 분류·원본 미변경·로그인/캐릭터/앱별 경로·저장 실패 보존·ACK/권한·큐 순서/취소/overflow·Unicode 분할 및 실제 SDK slash/색상 embed/allowed_mentions 직렬화를 검사했다. NuGet 캐시/WindowsDesktop 참조 팩이 없는 환경이므로 기존0.3.47 build의 의존 DLL을 직접 참조하는 별도 오프라인 프로젝트로 테스트 및 전체 C# 소스 컴파일을 수행했다. 소스 컴파일은 `net10.0`+Windows platform attribute에서 경고0/오류0이었으며, 정식 `net10.0-windows` 패키지 빌드/Actions 실행이나 인게임 검증을 대신하지 않는다. 이번 변경은 native ABI 계약을 추가하거나 변경하지 않는다.
+0.3.52에서 관리형 테스트483개와 Python 배포 테스트12개를 통과했다. 점유 자리의 입장 직업 자동 축소와 실제 참가자/직업/빈자리 조건 변경을 구분하고 일반·연합·친선의 수정 전/수정창/결과 검증을 확인했다. 상시 채팅·종류별 수신/멘션 토글·동시 설정 저장·홈 서버 보완도 검사했다. 공개 채팅 이벤트 두 형태·일반/서버 초월 분류·원본 미변경·로그인/캐릭터/앱별 경로·저장 실패 보존·ACK/권한·큐 순서/취소/overflow·Unicode 분할 및 실제 SDK slash/색상 embed/allowed_mentions 직렬화를 검사했다. NuGet 캐시/WindowsDesktop 참조 팩이 없는 환경이므로 기존0.3.47 build의 의존 DLL을 직접 참조하는 별도 오프라인 프로젝트로 테스트 및 전체 C# 소스 컴파일을 수행했다. 소스 컴파일은 `net10.0`+Windows platform attribute에서 경고0/오류0이었으며, 정식 `net10.0-windows` 패키지 빌드/Actions 실행이나 인게임 검증을 대신하지 않는다. 이번 변경은 native ABI 계약을 추가하거나 변경하지 않는다.
+
+2026-10-27 CI 보정: [실패 실행](https://github.com/pressing7/PartyViewKR/actions/runs/40509674856)은 `Regression tests` 단계의 모의 Discord Message에서 content=null을 돌려줘 SDK `MessageHelper.ParseTags`가 예외를 던진 경우다. 기존 테스트는 POST 접수 직후 끝날 수 있어 SDK 응답 처리 실패를 놓쳤다. `Reply`는 빈 문자열을 반환하고 `WaitForDelivery`는 SDK 응답 처리 및 worker 성공 계수까지 기다린다. 실제 SDK에서 긴 채팅의 모든 분할 전송·첫 메시지만 멘션·멘션 미확인 실패의 비재시도를 추가 검증했다. 플러그인 소스/버전·native 계약·Actions 설정·배포 feed는 변경하지 않는다.
 
 기능 변경 후 해당 모델/host/외부 어댑터와 관련 테스트를 함께 확인한다. 다음은 필요할 때 개발 환경에서 실행하는 명령이다. GitHub Actions 실행은 사용자가 담당한다.
 
