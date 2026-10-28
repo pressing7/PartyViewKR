@@ -40,7 +40,7 @@ internal static class NativeCompatibility
                 $"nativeCheck={(differences.Length == 0 ? "structure_match" : "structure_mismatch")}; " +
                 $"nativeBuildVersion={expected.BuildVersion}; nativeLoadedVersion={actual.BuildVersion}; " +
                 $"nativeCheckedEntries={expected.Entries.Count + runtimeExpected.Entries.Count}; nativeDifferenceCount={differences.Length}; " +
-                $"nativeDifferences={string.Join('|', differences.Take(6))}");
+                $"nativeDifferences={string.Join('|', differences.Take(32))}; nativeDifferencesOmitted={Math.Max(0, differences.Length - 32)}");
         }
         catch (Exception e)
         {

@@ -2,9 +2,9 @@
 
 [전체 지도](../CODE_MAP.md) · [전체 파일 목록](files.md)
 
-이 문서는 테스트를 실행한 보고서가 아니라 현재 소스에 등록된 검증 범위의 지도다. 관리형 runner의 508개 등록 시나리오, Node 테스트와 Python 테스트를 source 위치에 연결한다. 실제 게임·Windows DPAPI·Discord live 검증은 fake 테스트와 별개다.
+이 문서는 테스트를 실행한 보고서가 아니라 현재 소스에 등록된 검증 범위의 지도다. 관리형 runner의 513개 등록 시나리오, Node 테스트와 Python 테스트를 source 위치에 연결한다. 실제 게임·Windows DPAPI·Discord live 검증은 fake 테스트와 별개다.
 
-기준: 0.3.54.0 소스. 기반 main `374b48f6795dd6851529f5c55adf092ff07450c0` 이후 Discord→게임 채팅 전송과 답장 대상 검사를 포함한다. 2026-10-27(UTC) 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
+기준: 0.3.55.0 소스. 기반 main `8e2082b724d2f93da48bcba8c0a9a1e3742ece42` 이후 채팅 전송의 포인터 전용 타입 호환 검사 수정을 포함한다. 2026-10-28(UTC) 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
 
 표에는 직접 선언한 메서드·생성자·로컬 함수·계산 속성·인터페이스 메서드를 각각 포함한다. 자동 생성 record 메서드/단순 auto-property accessor는 제외한다. 이름 없는 LINQ/타이머/콜백은 이를 소유한 함수 설명에 포함하며, 중요한 DOM 이벤트 handler와 명명된 테스트 시나리오는 별도로 표시한다.
 
@@ -55,6 +55,7 @@
 - [tests/ListingUniqueJobsEditTests.cs](#file-tests-listinguniquejobsedittests-cs)
 - [tests/ListingWebEditTests.cs](#file-tests-listingwebedittests-cs)
 - [tests/ListingWebTests.cs](#file-tests-listingwebtests-cs)
+- [tests/NativePointerContractTests.cs](#file-tests-nativepointercontracttests-cs)
 - [tests/Program.cs](#file-tests-program-cs)
 - [tests/RelayFixture.cs](#file-tests-relayfixture-cs)
 - [tests/WebBrowserFixture.cs](#file-tests-webbrowserfixture-cs)
@@ -1498,6 +1499,29 @@ snapshot 최소 노출·query queue·Host/Origin/Bearer·HTTP 종료와 소유�
 | <code>web real listener authenticates queries, rejects other origins and serves embedded assets</code> | [L182](../../tests/ListingWebTests.cs#L182) |
 | <code>web listener stop interrupts unfinished connections and restart rotates its key</code> | [L183](../../tests/ListingWebTests.cs#L183) |
 
+<a id="file-tests-nativepointercontracttests-cs"></a>
+## tests/NativePointerContractTests.cs
+
+[소스 파일](../../tests/NativePointerContractTests.cs) · 명명된 항목/진입점 3개
+
+포인터 전용 UIModule의 실제 PE 구조 변경·호출 필드/함수 보존·직접 접근 구조 검사를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다.
+
+| 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
+|---|---|---|---|
+| <a id="symbol-tests-nativepointercontracttests-cs-10-566d5b6be5"></a><code>NativePointerContractTests.Run</code><br><code>void Run(Action&lt;string, Action&gt; test, Action&lt;bool, string&gt; check)</code> | 메서드 | 포인터 전용 UIModule의 실제 PE 구조 변경·호출 필드/함수 보존·직접 접근 구조 검사 관련 시나리오를 실행한다. 개별 등록 조건은 아래 test 목록을 참조한다. | [L10](../../tests/NativePointerContractTests.cs#L10) |
+| <a id="symbol-tests-nativepointercontracttests-cs-70-67a1f8ae83"></a><code>NativePointerContractTests.Capture</code><br><code>NativeContract Capture(bool moveUnusedStorage = false, bool omitUnusedStorage = false, bool moveVtable = false, bool moveSlot = false, bool omitSlot = false, bool changeSendSignature = false, bool omitSend = false, string uiName = Ui)</code> | 메서드 | 선택한 저장 공간·vtable·함수 변경을 갖는 임시 PE DLL을 만들고 실행하지 않은 채 NativeContract로 읽은 뒤 삭제한다. | [L70](../../tests/NativePointerContractTests.cs#L70) |
+| <a id="symbol-tests-nativepointercontracttests-cs-106-0887437e43"></a><code>NativePointerContractTests.DefineStub</code><br><code>void DefineStub(TypeBuilder type, string name, MethodAttributes attributes, Type result, Type[] arguments)</code> | 메서드 | 실행 시 예외를 던지는 테스트용 메서드 본문과 호출 시그니처를 PE fixture에 추가한다. | [L106](../../tests/NativePointerContractTests.cs#L106) |
+
+### 등록된 회귀 시나리오
+
+| 소스의 시나리오 이름 | 위치 |
+|---|---|
+| <code>unused UIModule storage can move or disappear without disabling native access</code> | [L12](../../tests/NativePointerContractTests.cs#L12) |
+| <code>UIModule dispatch pointer and acquaintance virtual slot changes remain blocked</code> | [L21](../../tests/NativePointerContractTests.cs#L21) |
+| <code>missing or changed chat entry methods remain blocked</code> | [L31](../../tests/NativePointerContractTests.cs#L31) |
+| <code>pointer-only storage policy does not apply to similarly named unrelated structs</code> | [L39](../../tests/NativePointerContractTests.cs#L39) |
+| <code>shipped contract retains chat calls and all directly read reply and string fields</code> | [L47](../../tests/NativePointerContractTests.cs#L47) |
+
 <a id="file-tests-program-cs"></a>
 ## tests/Program.cs
 
@@ -1512,30 +1536,30 @@ snapshot 최소 노출·query queue·Host/Origin/Bearer·HTTP 종료와 소유�
 | <a id="symbol-tests-program-cs-8-423ce5a35d"></a><code>Test</code><br><code>void Test(string name, Action body)</code> | 로컬 함수 | 등록된 test body를 실행하고 성공 횟수와 PASS 이름을 출력한다. | [L8](../../tests/Program.cs#L8) |
 | <a id="symbol-tests-program-cs-9-38aec8dfb2"></a><code>StartToEditor</code><br><code>(FakeHost h, ListingRefresh flow) StartToEditor()</code> | 로컬 함수 | 기본 갱신 요청과 조회 완료를 시뮬레이션해 OpeningEditor 상태를 만든다. | [L9](../../tests/Program.cs#L9) |
 | <a id="symbol-tests-program-cs-16-24c4d6a476"></a><code>StartToVerify</code><br><code>(FakeHost h, ListingRefresh flow) StartToVerify()</code> | 로컬 함수 | 기본 편집/제출을 진행해 제출 후 Verifying 상태를 만든다. | [L16](../../tests/Program.cs#L16) |
-| <a id="symbol-tests-program-cs-321-660c48fd55"></a><code>FakeHost.QueryOwn</code><br><code>void QueryOwn()</code> | 메서드 | 실제 네이티브 조회 대신 요청 횟수와 query busy 상태를 기록한다. | [L321](../../tests/Program.cs#L321) |
-| <a id="symbol-tests-program-cs-322-0ba7780627"></a><code>FakeHost.FinishQuery</code><br><code>void FinishQuery()</code> | 메서드 | 새 상세 revision/성공 여부를 지정하여 fake 조회 응답을 완료한다. | [L322](../../tests/Program.cs#L322) |
-| <a id="symbol-tests-program-cs-323-707d891d40"></a><code>FakeHost.CancelQuery</code><br><code>void CancelQuery()</code> | 메서드 | fake 조회의 취소 횟수와 busy 상태를 갱신한다. | [L323](../../tests/Program.cs#L323) |
-| <a id="symbol-tests-program-cs-324-dc92be935a"></a><code>FakeHost.TryGetOwn</code><br><code>bool TryGetOwn(out RefreshTarget target, out string error)</code> | 메서드 | 설정된 source와 OwnVerified/오류 상태로 본인 상세 읽기를 모사한다. | [L324](../../tests/Program.cs#L324) |
-| <a id="symbol-tests-program-cs-325-bc7710f3a6"></a><code>FakeHost.OpenEditor</code><br><code>bool OpenEditor(RefreshTarget target, out string error)</code> | 메서드 | fake 수정창 표시/수명 revision을 갱신하고 열기 횟수·실패/예외를 모사한다. | [L325](../../tests/Program.cs#L325) |
-| <a id="symbol-tests-program-cs-331-ebf0a2f6b0"></a><code>FakeHost.Submit</code><br><code>bool Submit(RefreshTarget target, string? description, out string error)</code> | 메서드 | 테스트 fixture에서는 modal 제출 또는 fake 네이티브 갱신 제출을 모사하며 호출 횟수/허용 여부/예외를 기록한다. | [L331](../../tests/Program.cs#L331) |
-| <a id="symbol-tests-program-cs-339-e4d8327aac"></a><code>FakeHost.BeginSlotEdit</code><br><code>bool BeginSlotEdit(RefreshTarget target, ListingJobEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L339](../../tests/Program.cs#L339) |
-| <a id="symbol-tests-program-cs-346-117a417649"></a><code>FakeHost.UpdateSlotEdit</code><br><code>SlotEditProgress UpdateSlotEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L346](../../tests/Program.cs#L346) |
-| <a id="symbol-tests-program-cs-351-881be042ba"></a><code>FakeHost.BeginDescriptionEdit</code><br><code>bool BeginDescriptionEdit(RefreshTarget target, ListingDescriptionEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L351](../../tests/Program.cs#L351) |
-| <a id="symbol-tests-program-cs-358-51e7a01ea1"></a><code>FakeHost.UpdateDescriptionEdit</code><br><code>SlotEditProgress UpdateDescriptionEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L358](../../tests/Program.cs#L358) |
-| <a id="symbol-tests-program-cs-363-14851ae026"></a><code>FakeHost.BeginObjectiveEdit</code><br><code>bool BeginObjectiveEdit(RefreshTarget target, ListingObjectiveEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L363](../../tests/Program.cs#L363) |
-| <a id="symbol-tests-program-cs-372-019aae096c"></a><code>FakeHost.UpdateObjectiveEdit</code><br><code>SlotEditProgress UpdateObjectiveEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L372](../../tests/Program.cs#L372) |
-| <a id="symbol-tests-program-cs-377-356b16f028"></a><code>FakeHost.BeginBeginnerEdit</code><br><code>bool BeginBeginnerEdit(RefreshTarget target, ListingBeginnerEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L377](../../tests/Program.cs#L377) |
-| <a id="symbol-tests-program-cs-385-545c757077"></a><code>FakeHost.UpdateBeginnerEdit</code><br><code>SlotEditProgress UpdateBeginnerEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L385](../../tests/Program.cs#L385) |
-| <a id="symbol-tests-program-cs-390-e0aaf3ab41"></a><code>FakeHost.BeginUniqueJobsEdit</code><br><code>bool BeginUniqueJobsEdit(RefreshTarget target, ListingUniqueJobsEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L390](../../tests/Program.cs#L390) |
-| <a id="symbol-tests-program-cs-398-dfb0afd324"></a><code>FakeHost.UpdateUniqueJobsEdit</code><br><code>SlotEditProgress UpdateUniqueJobsEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L398](../../tests/Program.cs#L398) |
-| <a id="symbol-tests-program-cs-403-bb72b87592"></a><code>FakeHost.BeginPrivateEdit</code><br><code>bool BeginPrivateEdit(RefreshTarget target, ListingPrivateEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L403](../../tests/Program.cs#L403) |
-| <a id="symbol-tests-program-cs-411-3e0535614e"></a><code>FakeHost.UpdatePrivateEdit</code><br><code>SlotEditProgress UpdatePrivateEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L411](../../tests/Program.cs#L411) |
-| <a id="symbol-tests-program-cs-416-79560d02b0"></a><code>FakeHost.BeginCompletionEdit</code><br><code>bool BeginCompletionEdit(RefreshTarget target, ListingCompletionEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L416](../../tests/Program.cs#L416) |
-| <a id="symbol-tests-program-cs-424-44e0fbde28"></a><code>FakeHost.UpdateCompletionEdit</code><br><code>SlotEditProgress UpdateCompletionEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L424](../../tests/Program.cs#L424) |
-| <a id="symbol-tests-program-cs-429-ee26ded83b"></a><code>FakeHost.BeginItemLevelEdit</code><br><code>bool BeginItemLevelEdit(RefreshTarget target, ListingItemLevelEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L429](../../tests/Program.cs#L429) |
-| <a id="symbol-tests-program-cs-437-9b9aa7eb37"></a><code>FakeHost.UpdateItemLevelEdit</code><br><code>SlotEditProgress UpdateItemLevelEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L437](../../tests/Program.cs#L437) |
-| <a id="symbol-tests-program-cs-442-ef5f960463"></a><code>FakeHost.BeginRuleEdit</code><br><code>bool BeginRuleEdit(RefreshTarget target, ListingRuleEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L442](../../tests/Program.cs#L442) |
-| <a id="symbol-tests-program-cs-449-fe1762e18e"></a><code>FakeHost.UpdateRuleEdit</code><br><code>SlotEditProgress UpdateRuleEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L449](../../tests/Program.cs#L449) |
+| <a id="symbol-tests-program-cs-322-73de13ad54"></a><code>FakeHost.QueryOwn</code><br><code>void QueryOwn()</code> | 메서드 | 실제 네이티브 조회 대신 요청 횟수와 query busy 상태를 기록한다. | [L322](../../tests/Program.cs#L322) |
+| <a id="symbol-tests-program-cs-323-2d5c4e6a4c"></a><code>FakeHost.FinishQuery</code><br><code>void FinishQuery()</code> | 메서드 | 새 상세 revision/성공 여부를 지정하여 fake 조회 응답을 완료한다. | [L323](../../tests/Program.cs#L323) |
+| <a id="symbol-tests-program-cs-324-57b6153d1c"></a><code>FakeHost.CancelQuery</code><br><code>void CancelQuery()</code> | 메서드 | fake 조회의 취소 횟수와 busy 상태를 갱신한다. | [L324](../../tests/Program.cs#L324) |
+| <a id="symbol-tests-program-cs-325-acddc9d773"></a><code>FakeHost.TryGetOwn</code><br><code>bool TryGetOwn(out RefreshTarget target, out string error)</code> | 메서드 | 설정된 source와 OwnVerified/오류 상태로 본인 상세 읽기를 모사한다. | [L325](../../tests/Program.cs#L325) |
+| <a id="symbol-tests-program-cs-326-5bbc2ce3ee"></a><code>FakeHost.OpenEditor</code><br><code>bool OpenEditor(RefreshTarget target, out string error)</code> | 메서드 | fake 수정창 표시/수명 revision을 갱신하고 열기 횟수·실패/예외를 모사한다. | [L326](../../tests/Program.cs#L326) |
+| <a id="symbol-tests-program-cs-332-734edf6c56"></a><code>FakeHost.Submit</code><br><code>bool Submit(RefreshTarget target, string? description, out string error)</code> | 메서드 | 테스트 fixture에서는 modal 제출 또는 fake 네이티브 갱신 제출을 모사하며 호출 횟수/허용 여부/예외를 기록한다. | [L332](../../tests/Program.cs#L332) |
+| <a id="symbol-tests-program-cs-340-8af86ceb76"></a><code>FakeHost.BeginSlotEdit</code><br><code>bool BeginSlotEdit(RefreshTarget target, ListingJobEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L340](../../tests/Program.cs#L340) |
+| <a id="symbol-tests-program-cs-347-ef961473a1"></a><code>FakeHost.UpdateSlotEdit</code><br><code>SlotEditProgress UpdateSlotEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L347](../../tests/Program.cs#L347) |
+| <a id="symbol-tests-program-cs-352-4e44f5f577"></a><code>FakeHost.BeginDescriptionEdit</code><br><code>bool BeginDescriptionEdit(RefreshTarget target, ListingDescriptionEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L352](../../tests/Program.cs#L352) |
+| <a id="symbol-tests-program-cs-359-b4a3ff3e28"></a><code>FakeHost.UpdateDescriptionEdit</code><br><code>SlotEditProgress UpdateDescriptionEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L359](../../tests/Program.cs#L359) |
+| <a id="symbol-tests-program-cs-364-4b7e348afb"></a><code>FakeHost.BeginObjectiveEdit</code><br><code>bool BeginObjectiveEdit(RefreshTarget target, ListingObjectiveEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L364](../../tests/Program.cs#L364) |
+| <a id="symbol-tests-program-cs-373-b3f9eca306"></a><code>FakeHost.UpdateObjectiveEdit</code><br><code>SlotEditProgress UpdateObjectiveEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L373](../../tests/Program.cs#L373) |
+| <a id="symbol-tests-program-cs-378-ea8b5e9d3a"></a><code>FakeHost.BeginBeginnerEdit</code><br><code>bool BeginBeginnerEdit(RefreshTarget target, ListingBeginnerEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L378](../../tests/Program.cs#L378) |
+| <a id="symbol-tests-program-cs-386-c0f7fba6bc"></a><code>FakeHost.UpdateBeginnerEdit</code><br><code>SlotEditProgress UpdateBeginnerEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L386](../../tests/Program.cs#L386) |
+| <a id="symbol-tests-program-cs-391-d120998f3f"></a><code>FakeHost.BeginUniqueJobsEdit</code><br><code>bool BeginUniqueJobsEdit(RefreshTarget target, ListingUniqueJobsEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L391](../../tests/Program.cs#L391) |
+| <a id="symbol-tests-program-cs-399-ff5bf26521"></a><code>FakeHost.UpdateUniqueJobsEdit</code><br><code>SlotEditProgress UpdateUniqueJobsEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L399](../../tests/Program.cs#L399) |
+| <a id="symbol-tests-program-cs-404-de55a84d13"></a><code>FakeHost.BeginPrivateEdit</code><br><code>bool BeginPrivateEdit(RefreshTarget target, ListingPrivateEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L404](../../tests/Program.cs#L404) |
+| <a id="symbol-tests-program-cs-412-290986e487"></a><code>FakeHost.UpdatePrivateEdit</code><br><code>SlotEditProgress UpdatePrivateEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L412](../../tests/Program.cs#L412) |
+| <a id="symbol-tests-program-cs-417-7bbef311dc"></a><code>FakeHost.BeginCompletionEdit</code><br><code>bool BeginCompletionEdit(RefreshTarget target, ListingCompletionEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L417](../../tests/Program.cs#L417) |
+| <a id="symbol-tests-program-cs-425-ee58710e60"></a><code>FakeHost.UpdateCompletionEdit</code><br><code>SlotEditProgress UpdateCompletionEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L425](../../tests/Program.cs#L425) |
+| <a id="symbol-tests-program-cs-430-aaf0dc0bdf"></a><code>FakeHost.BeginItemLevelEdit</code><br><code>bool BeginItemLevelEdit(RefreshTarget target, ListingItemLevelEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L430](../../tests/Program.cs#L430) |
+| <a id="symbol-tests-program-cs-438-dfceb61843"></a><code>FakeHost.UpdateItemLevelEdit</code><br><code>SlotEditProgress UpdateItemLevelEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L438](../../tests/Program.cs#L438) |
+| <a id="symbol-tests-program-cs-443-cefb8fcab8"></a><code>FakeHost.BeginRuleEdit</code><br><code>bool BeginRuleEdit(RefreshTarget target, ListingRuleEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L443](../../tests/Program.cs#L443) |
+| <a id="symbol-tests-program-cs-450-249f52ad28"></a><code>FakeHost.UpdateRuleEdit</code><br><code>SlotEditProgress UpdateRuleEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L450](../../tests/Program.cs#L450) |
 
 ### 등록된 회귀 시나리오
 

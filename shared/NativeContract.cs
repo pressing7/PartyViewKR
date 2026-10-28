@@ -31,11 +31,16 @@ internal sealed record NativeContract(int Schema, int ApiLevel, string AssemblyN
             if (!definitions.TryGetValue(name, out var handle)) continue; // comparator reports missing type
             var type = md.GetTypeDefinition(handle);
             var layout = type.GetLayout();
-            entries[$"type:{name}"] = $"size={layout.Size};pack={layout.PackingSize};layout={type.Attributes & TypeAttributes.LayoutMask};" +
+            var pointerFields = PointerOnlyFields(name);
+            // These receivers are never allocated, copied, indexed, or sized by PVKR.
+            // Their unrelated internal storage is owned by the loaded native library.
+            // Retain type/layout/inheritance, the selected dispatch fields, and methods.
+            var storage = pointerFields == null ? $"size={layout.Size};pack={layout.PackingSize};" : "access=pointer;";
+            entries[$"type:{name}"] = storage + $"layout={type.Attributes & TypeAttributes.LayoutMask};" +
                 Attributes(md, names, type.GetCustomAttributes());
             // Sequential structs have offset=-1 in metadata, so declaration
             // order is also ABI evidence (including generated inline arrays).
-            if ((type.Attributes & TypeAttributes.LayoutMask) == TypeAttributes.SequentialLayout)
+            if (pointerFields == null && (type.Attributes & TypeAttributes.LayoutMask) == TypeAttributes.SequentialLayout)
                 entries[$"layout:{name}.instanceFieldOrder"] = string.Join("|", type.GetFields()
                     .Select(md.GetFieldDefinition).Where(f => (f.Attributes & FieldAttributes.Static) == 0)
                     .Select(f => md.GetString(f.Name)));
@@ -43,6 +48,7 @@ internal sealed record NativeContract(int Schema, int ApiLevel, string AssemblyN
             {
                 var field = md.GetFieldDefinition(fh);
                 var fieldName = md.GetString(field.Name);
+                if (pointerFields != null && !pointerFields.Contains(fieldName, StringComparer.Ordinal)) continue;
                 // Only enum constants used by the plugin are part of the contract.
                 if (name.EndsWith(".AtkEventType") && fieldName is not ("value__" or "ButtonClick" or "MouseOver" or "MouseOut" or
                     "ValueUpdate" or "ListItemClick" or "ListItemHighlight" or "MouseMove" or "ListItemRollOver" or "ListItemSelect")) continue;
@@ -77,6 +83,17 @@ internal sealed record NativeContract(int Schema, int ApiLevel, string AssemblyN
         return new(1, apiLevel, md.GetString(assembly.Name), assembly.Version.ToString(),
             md.GetGuid(md.GetModuleDefinition().Mvid), selected, entries);
     }
+
+    private static string[]? PointerOnlyFields(string name) => name switch
+    {
+        // UIModule.Instance -> Framework.GetUIModule; ProcessChatBoxEntry calls a
+        // resolved member function. Neither path reads UIModule's embedded modules.
+        // AcquaintanceModule.Instance uses GetAcquaintanceModule's virtual dispatch;
+        // keep both the vtable pointer and that function pointer's offset/signature.
+        "FFXIVClientStructs.FFXIV.Client.UI.UIModule" => ["VirtualTable"],
+        "FFXIVClientStructs.FFXIV.Client.UI.UIModule+UIModuleVirtualTable" => ["GetAcquaintanceModule"],
+        _ => null // Every directly accessed struct keeps its full storage contract.
+    };
 
     internal string[] Differences(NativeContract actual)
     {

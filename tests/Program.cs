@@ -273,6 +273,7 @@ ListingDiscordTests.Run(Test, Check);
 DiscordSettingsTests.Run(Test, Check);
 ListingDiscordConnectionTests.Run(Test, Check);
 CompatibilityTests.Run(Test, Check);
+NativePointerContractTests.Run(Test, Check);
 Console.WriteLine($"All {passed} tests passed. Native game interaction still requires in-game validation.");
 
 class FakeHost : IListingRefreshHost

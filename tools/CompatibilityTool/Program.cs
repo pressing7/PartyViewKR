@@ -19,6 +19,7 @@ if (args[0].StartsWith("capture", StringComparison.Ordinal))
     const string ui = "FFXIVClientStructs.FFXIV.Client.UI.";
     var types = new Dictionary<string, string[]> {
         [ui + "UIModule"] = ["Instance", "ProcessChatBoxEntry", "GetAcquaintanceModule"],
+        [ui + "UIModule+UIModuleVirtualTable"] = [],
         [ui + "Misc.AcquaintanceModule"] = ["Instance", "GetTellHistory"],
         [ui + "Misc.AcquaintanceModule+Acquaintance"] = [],
         ["FFXIVClientStructs.FFXIV.Client.System.String.AllowedEntities"] = [],

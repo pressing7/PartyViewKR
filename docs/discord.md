@@ -112,6 +112,12 @@
 
 해외 구현도 다릅니다. [AetherLink의 ReplyCommand](https://github.com/Ashylila/AetherLink/blob/main/AetherLink/Discord/SlashCommands/ReplyCommand.cs)는 `/r`을 보내며, [ChatTwo의 Chat](https://github.com/Infiziert90/ChatTwo/blob/4046d82427f4859d53ddfeb71cf22785a1e709d9/ChatTwo/GameFunctions/Chat.cs)와 [SendHandler](https://github.com/Infiziert90/ChatTwo/blob/4046d82427f4859d53ddfeb71cf22785a1e709d9/ChatTwo/Ui/Handler/SendHandler.cs)는 대상 CID·서버·TellReason을 함께 처리합니다. PVKR0.3.54는 전자의 게임 명령 경로를 사용하며, **모집 문의로 들어온 타 서버 귓속말까지 한섭에서 답장 가능한지는 미검증**입니다. 일반 답장, 타 서버 친구, 타 서버 모집 문의, 모집 종료 후 답장을 구분해 인게임에서 확인해야 합니다. `/r`과 `Alt+R`의 내부 처리가 같다고 가정하거나 해외 플러그인의 시그니처/미확인 오프셋을 한섭에 복사하지 않습니다.
 
+### 구조 DLL 검사로 전송이 막힐 때
+
+0.3.54에서 `UIModule.AddonSheetName`, `CompletionSheetName`, `LastTalkName` 등 사용하지 않는 내부 필드가 바뀌어 채팅 전송과 모집 조회를 함께 차단하던 문제는0.3.55에서 수정했습니다. `UIModule`은 포인터를 얻어 함수를 호출하는 용도로만 사용하므로 이 타입의 전체 크기와 내부 저장 공간을 계약에서 제외했습니다. 호출 메서드, `VirtualTable` 위치와 `GetAcquaintanceModule` 가상 함수의 위치·시그니처, 직접 읽는 귓속말 이력과 문자열 구조는 계속 검사합니다.
+
+업데이트 후에도 차단되면 `/pvkr` 진단의 `nativeCheck`, `nativeDifferenceCount`, `nativeDifferences`, `nativeDifferencesOmitted`를 확인합니다. 차이 목록은 최대32항목을 표시합니다. MVID가 다르다는 사실만으로 막지는 않으며, 실제 필요한 구조가 다른 경우 검사를 끄지 않습니다.
+
 ## 게임 채팅 수신
 
 게임과 PVKR·디스코드 봇이 연결돼 있고 해당 종류의 수신을 켜면, **AFK 여부와 관계없이** 새 채팅을 Discord 서버 텍스트 채널로 전달합니다. 파티 채팅에는 일반 파티와 서버 초월 파티를 모두 포함하며, 귓속말은 받은 메시지만 전달합니다. 서버의 봇 소유자가 `/pvkr-chat`을 실행하고 옵션을 선택합니다. 모바일에서도 동일한 슬래시 명령을 사용합니다.

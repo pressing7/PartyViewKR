@@ -4,12 +4,12 @@
 
 ## 기준과 범위
 
-- 정리일: 2026-10-27(UTC). 플러그인 `0.3.54.0`, Dalamud API `15`.
-- 소스 기준: `0.3.54.0`. 기반 main [`374b48f6795dd6851529f5c55adf092ff07450c0`](https://github.com/pressing7/PartyViewKR/commit/374b48f6795dd6851529f5c55adf092ff07450c0) 이후 Discord→게임 채팅 전송과 답장 대상 검사를 포함한다.
-- 문서 자체와 신규 채팅 전송 파일을 포함한 추적 파일 266개 전체를 [파일 지도](code-map/files.md)에 분류했다. 소스 위치는 이 버전의 행 번호다.
-- C# Roslyn 구문 분석, JavaScript Acorn 구문 분석, Python AST로 **1,492개 명명된 항목/진입점**을 대조했다: C# 1,370, JS 91, Python 31. 메서드뿐 아니라 생성자·로컬 함수·계산 속성·인터페이스 선언을 포함한 숫자다.
+- 정리일: 2026-10-28(UTC). 플러그인 `0.3.55.0`, Dalamud API `15`.
+- 소스 기준: `0.3.55.0`. 기반 main [`8e2082b724d2f93da48bcba8c0a9a1e3742ece42`](https://github.com/pressing7/PartyViewKR/commit/8e2082b724d2f93da48bcba8c0a9a1e3742ece42) 이후 채팅 전송의 포인터 전용 타입 호환 검사 수정을 포함한다.
+- 문서 자체와 신규 호환 회귀 테스트를 포함한 추적 파일 267개 전체를 [파일 지도](code-map/files.md)에 분류했다. 소스 위치는 이 버전의 행 번호다.
+- C# Roslyn 구문 분석, JavaScript Acorn 구문 분석, Python AST로 **1,496개 명명된 항목/진입점**을 대조했다: C# 1,374, JS 91, Python 31. 메서드뿐 아니라 생성자·로컬 함수·계산 속성·인터페이스 선언을 포함한 숫자다.
 - 자동 생성 record 메서드와 단순 auto-property accessor는 별도 함수로 세지 않는다. 이름 없는 LINQ/콜백은 소유 함수에서 설명하고, 중요한 DOM handler와 테스트 시나리오는 따로 연결했다.
-- 현재 C# 테스트 등록문은 508개이며 반복 시나리오를 포함한 실행은 516건이다. Node 등록 테스트는 15개, Python `test_*` 메서드는 12개다. 등록 범위와 실행 결과를 구분하며 이번 채팅 변경의 검증 환경은 아래에 기록한다.
+- 현재 C# 테스트 등록문은 513개이며 반복 시나리오를 포함한 실행은 521건이다. Node 등록 테스트는 15개, Python `test_*` 메서드는 12개다. 등록 범위와 실행 결과를 구분하며 이번 호환 검사 변경의 검증 환경은 아래에 기록한다.
 
 현재 구현은 **기존 본인 모집글의 조회·수정·수동 갱신 및 AFK 명단 감시에 따른 자동 조회**다. AFK 모집 완료 everyone 알림과 파티·받은 귓속말·연합파티 채팅 전달, Discord에서 파티·연합파티·명시 귓속말·최근 상대 답장 전송을 제공한다. 새 모집 시작과 콘텐츠/파티 유형 변경은 아직 구현하지 않았다. 루트의 `PartyViewKR.dll/json/deps.json`은 이전 수동 배포본이다. 빌드 기준은 `src/PartyViewKR.csproj`와 `src/PartyViewKR.json`, 설치 대상은 Releases ZIP이다.
 
@@ -291,3 +291,15 @@ AFK의 `IAfkListingHost`에는 수정/제출 계약이 없다. 모집 완료 알
 영문·일문 공식 자료와 해외 구현의 비교 및 링크는 [디스코드 안내](discord.md#타-서버-귓속말과-답장)에 있다. `/r`의 마지막 수신자 답장과 `Alt+R`의 임시 답장 모드는 동일한 내부 경로로 확인되지 않았다. 특히 모집 문의로 온 비친구 타 서버 상대의 답장은 한섭 인게임 검증이 필요하다. ChatTwo의 TellReason/CID 네트워크 함수나 XIVInstantMessenger의 미문서화 이력 오프셋은 복사하지 않았다.
 
 native 계약은 `UIModule`, `AcquaintanceModule/Acquaintance`, `AllowedEntities`, 사용한 Utf8String 메서드를 추가해1,237항목이다. 기존1,088항목의 값은 전부 보존하고149항목을 추가했으며 고정 참조 DLL과 비교한다. 관리형516건에서 채널/한글 바이트·대상 변경/로그아웃·대기 만료/취소·중복/실패 ACK·실제 SDK4종 모달/ephemeral ACK/1회 전송을 검사했다. 전체 소스 컴파일, Python 배포 테스트와 ABI 결과는 실제 한섭 송수신·Android 조작·정식 Windows 패키지 빌드를 대신하지 않는다. Actions는 사용자가 실행한다.
+
+## 채팅 전송의 포인터 전용 호환 검사 (0.3.55)
+
+0.3.54의 `UIModule` 전체 필드 캡처 때문에 사용자 DLL에서 `AddonSheetName`, `CompletionCloseIconMacro`, `CompletionOpenIconMacro`, `CompletionSheetName`, `InfoModule`, `LastTalkName` 등 불일치14개가 보고됐다. 당시 진단에는 앞6개만 표시됐으므로 나머지 항목까지 확인한 것으로 취급하지 않는다. 공용 `NativeCompatibility`가 false가 되어 채팅뿐 아니라 모집 조회도 막혔다.
+
+고정 참조 DLL의 IL을 읽어 `UIModule.Instance → Framework.Instance/GetUIModule`과 `ProcessChatBoxEntry → MemberFunctionPointers` 호출이 UIModule의 내부 필드를 직접 읽지 않음을 확인했다. `AcquaintanceModule.Instance → UIModule.GetAcquaintanceModule`은 `VirtualTable`과 그 테이블의 가상 함수 항목을 사용한다. `Plugin.ChatSend`는 UIModule을 할당·복사·배열 인덱싱하거나 `sizeof(UIModule)`로 접근하지 않는다.
+
+`NativeContract.PointerOnlyFields`는 정확히 `UIModule`과 중첩 `UIModuleVirtualTable`만 선별한다. 이 두 타입은 `access=pointer`로 표시하고 전체 크기/pack/필드 순서를 계약으로 잡지 않되, 타입 존재·layout·상속 attribute, `VirtualTable` 필드와 `GetAcquaintanceModule` 함수 포인터의 위치·시그니처를 보존한다. 메서드 계약은 그대로 유지한다. 새 필드 직접 접근이나 할당을 추가하면 이 정책도 반드시 재검토해야 한다. AcquaintanceModule/Acquaintance, Utf8String 및 기존 모집 구조는 전체 저장 구조 검사를 유지한다.
+
+계약을 검토해 사용하지 않는 UIModule 필드97개와 해당 필드에서만 참조하던 FixedSizeArray23/57의6항목을 제거하고, 가상 테이블 타입과 함수 항목2개를 추가했다. UIModule의 타입 항목만 포인터 접근 형태로 바꿨으며 다른 기존 항목의 값은 보존했다. native1,136항목·interop2항목을 검사한다. 진단에는 최대32개의 차이와 `nativeDifferencesOmitted`를 기록한다.
+
+`NativePointerContractTests`는 임시 PE DLL을 생성해 사용하지 않는 저장 공간의 이동·제거·전체 크기 변경은 허용하고, 사용 vtable/가상 함수 위치 및 메서드 변경·누락은 차단하는지 검사한다. 이름이 비슷한 다른 구조체에는 예외를 적용하지 않는다. 관리형521건, Python 배포12건, 고정 DLL7.57.0.9378과 계약 비교(차이0), 전체 소스 컴파일(경고0/오류0)을 통과했다. 사용자 DLL7.57.0.9700 자체와 실제 게임 송수신은 이 환경에 없어 검증하지 못했다. Actions 빌드·배포는 사용자가 실행한다.
