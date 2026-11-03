@@ -58,24 +58,39 @@ internal sealed class PartyWindow : Window
     {
         var enabled = plugin.AfkEnabled;
         ImGui.BeginDisabled(!enabled && (!Plugin.ClientState.IsLoggedIn || !Plugin.PlayerState.IsLoaded));
-        if (ImGui.Checkbox("AFK 모드 · 모집글 자동 조회", ref enabled)) plugin.SetAfkEnabled(enabled);
+        if (ImGui.Checkbox("AFK 모드 · 모집 관리", ref enabled)) plugin.SetAfkEnabled(enabled);
         ImGui.EndDisabled();
         if (enabled)
         {
             ImGui.TextWrapped(plugin.AfkStatus);
             ImGui.TextDisabled("명단 변화 시 조회 · 직업 변경은 비교하지 않음");
         }
-        if (ImGui.TreeNode("AFK 조회·알림 설정"))
+        if (enabled && plugin.AfkOptions.RefreshEnabled || plugin.AutoRefreshInFlight)
+            ImGui.TextWrapped(plugin.AutoRefreshStatus);
+        if (ImGui.TreeNode("AFK 조회·갱신·알림 설정"))
         {
             var settings = plugin.AfkOptions;
             var periodic = settings.PeriodicEnabled; var minutes = settings.PeriodMinutes;
             var retry = settings.RetryEnabled; var seconds = settings.RetrySeconds;
             var singleJobCompletion = settings.SingleJobCompletionEnabled;
+            var autoRefresh = settings.RefreshEnabled; var refreshMinutes = settings.RefreshMinutes;
             var changed = ImGui.Checkbox("주기적으로 추가 조회", ref periodic);
             ImGui.BeginDisabled(!periodic);
             ImGui.SetNextItemWidth(160);
             changed |= ImGui.InputInt("조회 주기 (1~55분)", ref minutes);
             ImGui.EndDisabled();
+            changed |= ImGui.Checkbox("주기적으로 모집 갱신", ref autoRefresh);
+            ImGui.BeginDisabled(!autoRefresh);
+            ImGui.SetNextItemWidth(160);
+            changed |= ImGui.InputInt("갱신 주기 (1~55분)", ref refreshMinutes);
+            ImGui.EndDisabled();
+            if (autoRefresh || plugin.AutoRefreshInFlight)
+            {
+                ImGui.TextWrapped("AFK 모드에서 기존 조건으로 갱신합니다. 이미 열린 수정창의 갱신은 마무리한 뒤 꺼집니다.");
+                if (!enabled) ImGui.TextWrapped(plugin.AutoRefreshStatus);
+            }
+            if (plugin.AutoRefreshLastResult.Length > 0)
+                ImGui.TextWrapped("최근 자동 갱신 결과: " + plugin.AutoRefreshLastResult);
             changed |= ImGui.Checkbox("조회 실패 시 자동 재시도", ref retry);
             ImGui.BeginDisabled(!retry);
             ImGui.SetNextItemWidth(160);
@@ -84,7 +99,7 @@ internal sealed class PartyWindow : Window
             changed |= ImGui.Checkbox("단일 직업 빈자리 제외 모집 완료 알림", ref singleJobCompletion);
             if (singleJobCompletion)
                 ImGui.TextWrapped("허용 직업이 정확히 하나인 빈자리만 남으면 알립니다. 디스코드 조회 카드에서 알림 채널을 지정하세요.");
-            if (changed) plugin.SaveAfkSettings(new(periodic, minutes, retry, seconds, singleJobCompletion));
+            if (changed) plugin.SaveAfkSettings(new(periodic, minutes, retry, seconds, singleJobCompletion, autoRefresh, refreshMinutes));
             if (plugin.AfkSettingsError.Length > 0) ImGui.TextWrapped(plugin.AfkSettingsError);
             ImGui.TreePop();
         }

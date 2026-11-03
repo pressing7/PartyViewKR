@@ -75,13 +75,14 @@ public sealed partial class Plugin : IDalamudPlugin
     }
     internal ListingObjectiveTrace ObjectiveTrace { get; }
     internal bool ListingBusy => listingReader.Busy;
-    internal string Diagnostic => Snapshot.Diagnostic + "\n" + Listing.Diagnostic + "\n" + Refresh.Diagnostic + "\n" + refreshHost.Diagnostic + "\n" + ObjectiveTrace.Diagnostic + "\n" + afk.Diagnostic + "\n" + afkReader.Diagnostic;
+    internal string Diagnostic => Snapshot.Diagnostic + "\n" + Listing.Diagnostic + "\n" + Refresh.Diagnostic + "\n" + refreshHost.Diagnostic + "\n" + ObjectiveTrace.Diagnostic + "\n" + afk.Diagnostic + "\n" + afkReader.Diagnostic + "\n" + autoRefresh.Diagnostic;
 
     public Plugin()
     {
         ObjectiveTrace = new ListingObjectiveTrace(this);
         refreshHost = new ListingRefreshHost(this, listingReader);
         Refresh = new ListingRefresh(refreshHost);
+        autoRefresh = new(Refresh);
         window = new PartyWindow(this);
         windows.AddWindow(window);
         Commands.AddHandler("/pvkr", new CommandInfo(OnCommand) { HelpMessage = "파티원·모집글 조회 및 수동 갱신 창 열기" });
@@ -427,7 +428,7 @@ public sealed partial class Plugin : IDalamudPlugin
         try
         {
             webHost?.BeforeRead(now);
-            if (afkHost != null) afk.BeforeRead(afkHost, now);
+            if (afkHost != null) { afk.BeforeRead(afkHost, now); autoRefresh.BeforeRead(afkHost, now); }
             Listing = listingReader.Read(Snapshot, Listing);
             lastListingError = "";
         }
@@ -456,7 +457,7 @@ public sealed partial class Plugin : IDalamudPlugin
             Log.Error(ex, "PartyViewKR: manual listing refresh stopped");
         }
         UpdateWeb(now);
-        if (afkHost != null) afk.Update(afkHost, now);
+        if (afkHost != null) { afk.Update(afkHost, now); autoRefresh.Update(afkHost, now); }
         UpdateDiscordCompletion();
         UpdateDiscordChat();
     }

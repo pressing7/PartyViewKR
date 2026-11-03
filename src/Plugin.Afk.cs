@@ -3,6 +3,7 @@ namespace PartyViewKR;
 public sealed partial class Plugin
 {
     private readonly AfkListingMonitor afk = new();
+    private readonly AfkRefreshScheduler autoRefresh;
     private readonly PartyRosterReader afkReader = new();
     private AfkHost? afkHost;
     private bool afkSettingsLoaded;
@@ -10,12 +11,16 @@ public sealed partial class Plugin
     internal AfkSettings AfkOptions { get { LoadAfkSettings(); return afk.Settings; } }
     internal bool AfkEnabled => afk.Enabled;
     internal string AfkStatus => afk.Status;
+    internal string AutoRefreshStatus => autoRefresh.Status;
+    internal string AutoRefreshLastResult => autoRefresh.LastResult;
+    internal bool AutoRefreshInFlight => autoRefresh.InFlight;
 
     internal void SetAfkEnabled(bool enabled)
     {
         LoadAfkSettings();
         afkHost ??= new(this);
         afk.SetEnabled(enabled, afkHost, Environment.TickCount64);
+        autoRefresh.BeforeRead(afkHost, Environment.TickCount64);
         UpdateDiscordCompletion();
         RequestRead();
     }
@@ -27,6 +32,7 @@ public sealed partial class Plugin
         try {
             var config = PluginInterface.GetPluginConfig() as RelayConfiguration ?? new();
             afk.Configure(config.ReadAfkSettings(), Environment.TickCount64);
+            autoRefresh.Configure(config.ReadAfkSettings(), Environment.TickCount64);
         }
         catch (Exception) { AfkSettingsError = "AFK 설정을 읽지 못해 기본값을 사용합니다."; }
     }
@@ -38,15 +44,23 @@ public sealed partial class Plugin
             var config = PluginInterface.GetPluginConfig() as RelayConfiguration ?? new();
             config.WriteAfkSettings(settings); PluginInterface.SavePluginConfig(config);
             afk.Configure(config.ReadAfkSettings(), Environment.TickCount64);
+            autoRefresh.Configure(config.ReadAfkSettings(), Environment.TickCount64);
             AfkSettingsError = ""; RequestRead();
         }
         catch (Exception) { AfkSettingsError = "AFK 설정을 저장하지 못했습니다. 다시 시도해 주세요."; }
     }
 
-    private sealed class AfkHost(Plugin plugin) : IAfkListingHost
+    private sealed class AfkHost(Plugin plugin) : IAfkListingHost, IAfkRefreshHost
     {
         public bool LoggedIn => ClientState.IsLoggedIn;
         public ulong SelfId => LoggedIn && PlayerState.IsLoaded ? PlayerState.ContentId : 0;
+        public bool AfkEnabled => plugin.afk.Enabled;
+        public bool RecruitmentKnown => plugin.afk.RecruitmentCapacity > 0;
+        public bool RosterReadable => plugin.afk.RosterReadable;
+        public bool RecruitmentComplete => plugin.afk.RecruitmentComplete;
+        public string? RefreshBlockReason(bool ownQueuedRefresh) => plugin.GetQueryUnavailableReason(false, ownQueuedRefresh) ??
+            (plugin.PendingChanges.Items.Count > 0 ? "적용 대기 중인 변경사항을 먼저 처리해 주세요." : null);
+        public void WakeReader() => plugin.RequestRead();
         public bool TryReadRoster(out PartyRoster? roster) => plugin.afkReader.TryRead(out roster);
         public string? QueryBlockReason(bool ownQueryInProgress) => plugin.GetQueryUnavailableReason(ownQueryInProgress) ??
             (plugin.PendingChanges.Items.Count > 0 ? "적용 대기 중인 변경사항을 먼저 처리해 주세요." :

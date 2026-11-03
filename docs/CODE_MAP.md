@@ -4,20 +4,20 @@
 
 ## 기준과 범위
 
-- 정리일: 2026-10-28(UTC). 플러그인 `0.3.55.0`, Dalamud API `15`.
-- 소스 기준: `0.3.55.0`. 기반 main [`8e2082b724d2f93da48bcba8c0a9a1e3742ece42`](https://github.com/pressing7/PartyViewKR/commit/8e2082b724d2f93da48bcba8c0a9a1e3742ece42) 이후 채팅 전송의 포인터 전용 타입 호환 검사 수정을 포함한다.
-- 문서 자체와 신규 호환 회귀 테스트를 포함한 추적 파일 267개 전체를 [파일 지도](code-map/files.md)에 분류했다. 소스 위치는 이 버전의 행 번호다.
-- C# Roslyn 구문 분석, JavaScript Acorn 구문 분석, Python AST로 **1,496개 명명된 항목/진입점**을 대조했다: C# 1,374, JS 91, Python 31. 메서드뿐 아니라 생성자·로컬 함수·계산 속성·인터페이스 선언을 포함한 숫자다.
+- 정리일: 2026-11-03(Asia/Seoul). 플러그인 `0.3.56.0`, Dalamud API `15`.
+- 소스 기준: `0.3.56.0`. 기반 main [`dec071d39f91fbf678bdbf22f4752facc735c2b2`](https://github.com/pressing7/PartyViewKR/commit/dec071d39f91fbf678bdbf22f4752facc735c2b2) 이후 AFK 선택형 주기 모집 갱신을 포함한다.
+- 문서 자체와 신규 자동 갱신/회귀 테스트를 포함한 추적 파일 269개 전체를 [파일 지도](code-map/files.md)에 분류했다. 소스 위치는 이 버전의 행 번호다.
+- C# Roslyn 구문 분석, JavaScript Acorn 구문 분석, Python AST로 **1,525개 명명된 항목/진입점**을 대조했다: C# 1,403, JS 91, Python 31. 메서드뿐 아니라 생성자·로컬 함수·계산 속성·인터페이스 선언을 포함한 숫자다.
 - 자동 생성 record 메서드와 단순 auto-property accessor는 별도 함수로 세지 않는다. 이름 없는 LINQ/콜백은 소유 함수에서 설명하고, 중요한 DOM handler와 테스트 시나리오는 따로 연결했다.
-- 현재 C# 테스트 등록문은 513개이며 반복 시나리오를 포함한 실행은 521건이다. Node 등록 테스트는 15개, Python `test_*` 메서드는 12개다. 등록 범위와 실행 결과를 구분하며 이번 호환 검사 변경의 검증 환경은 아래에 기록한다.
+- 현재 C# 테스트 등록문은 530개이며 반복 시나리오를 포함한 실행은 538건이다. Node 등록 테스트는 15개, Python `test_*` 메서드는 12개다. 등록 범위와 실행 결과를 구분하며 이번 주기 갱신 변경의 검증 환경은 아래에 기록한다.
 
-현재 구현은 **기존 본인 모집글의 조회·수정·수동 갱신 및 AFK 명단 감시에 따른 자동 조회**다. AFK 모집 완료 everyone 알림과 파티·받은 귓속말·연합파티 채팅 전달, Discord에서 파티·연합파티·명시 귓속말·최근 상대 답장 전송을 제공한다. 새 모집 시작과 콘텐츠/파티 유형 변경은 아직 구현하지 않았다. 루트의 `PartyViewKR.dll/json/deps.json`은 이전 수동 배포본이다. 빌드 기준은 `src/PartyViewKR.csproj`와 `src/PartyViewKR.json`, 설치 대상은 Releases ZIP이다.
+현재 구현은 **기존 본인 모집글의 조회·수정·수동 갱신 및 AFK 명단 감시·자동 조회·선택형 주기 갱신**다. AFK 모집 완료 everyone 알림과 파티·받은 귓속말·연합파티 채팅 전달, Discord에서 파티·연합파티·명시 귓속말·최근 상대 답장 전송을 제공한다. 새 모집 시작과 콘텐츠/파티 유형 변경은 아직 구현하지 않았다. 루트의 `PartyViewKR.dll/json/deps.json`은 이전 수동 배포본이다. 빌드 기준은 `src/PartyViewKR.csproj`와 `src/PartyViewKR.json`, 설치 대상은 Releases ZIP이다.
 
 ## 함수별 문서
 
 | 문서 | 찾을 내용 |
 |---|---|
-| [플러그인 수명·조회·자리 매핑](code-map/core.md) | `Plugin`, `PartyReader`, `ListingReader`, AFK `PartyRosterReader`/`AfkListingMonitor`, ownership/소개말, 슬롯·직업·친선 padding, 인게임 UI |
+| [플러그인 수명·조회·자리 매핑](code-map/core.md) | `Plugin`, `PartyReader`, `ListingReader`, AFK `PartyRosterReader`/`AfkListingMonitor`/`AfkRefreshScheduler`, ownership/소개말, 슬롯·직업·친선 padding, 인게임 UI |
 | [편집 모델·대기 변경·상태 기계](code-map/edits.md) | `Draft`, `Edit`, `Expected`, typed 조건, `ListingChange`, checkbox/dropdown/numeric UI 순서 |
 | [갱신 흐름·네이티브 UI](code-map/refresh.md) | 단일/배치 갱신, `ListingRefreshHost` partial 전체, native 이벤트·guard·최종 제출 |
 | [Discord](code-map/discord.md) | Gateway/REST·ACK·카드·모달·전체 결과·이모지 동기화·DPAPI 토큰 복원·종류별 채팅 경로/명령/전송 |
@@ -44,7 +44,7 @@ flowchart TD
   V --> B
 ```
 
-`Plugin.OnUpdate`가 게임 스레드에서 처리한다. 저장 Discord 연결 복원·채팅 로그인/CID 상태·trace를 먼저 진행하고, 기본 500ms 간격 또는 `RequestRead`에 따라 우선 수정창 닫기 → 현재 파티 표시용 읽기 → 외부/AFK 요청 guard → 모집글 읽기 → 초안 준비 → 갱신 상태 기계 → 외부 snapshot 발행 → AFK 감시를 수행한다. 닫기 진행 중에는 일반 초안/갱신 진행을 건너뛴다. 기존 현재 파티·직업 읽기는 PVKR 창을 표시하거나 명시 읽기를 요청했을 때만 진행한다. AFK 전용 전체 CID 읽기는 AFK가 켜진 동안만 진행한다.
+`Plugin.OnUpdate`가 게임 스레드에서 처리한다. 저장 Discord 연결 복원·채팅 로그인/CID 상태·trace를 먼저 진행하고, 기본 500ms 간격 또는 `RequestRead`에 따라 우선 수정창 닫기 → 현재 파티 표시용 읽기 → 외부/AFK 조회/AFK 갱신 요청 guard → 모집글 읽기 → 초안 준비 → 갱신 상태 기계 → 외부 snapshot 발행 → AFK 감시 → 주기 갱신 예약를 수행한다. 닫기 진행 중에는 일반 초안/갱신 진행을 건너뛴다. 기존 현재 파티·직업 읽기는 PVKR 창을 표시하거나 명시 읽기를 요청했을 때만 진행한다. AFK 전용 전체 CID 읽기는 AFK가 켜진 동안만 진행한다.
 
 네트워크 callback은 네이티브 포인터를 읽지 않는다. `ListingWebBridge`의 lock 안에서 관리형 snapshot을 읽고 작업을 예약한다. 실제 `RequestQuery`/`StartRefresh`는 Framework에서 실행된다. `ListingWebRequestGuard`/`ListingWebRefreshGuard`는 **이 외부 연결이 시작한 revision**만 취소하므로 이후의 수동 요청까지 취소하면 안 된다.
 
@@ -221,11 +221,11 @@ PVKR 창 상단의 AFK 체크박스로 활성화한다. 시작 시 꺼져 있으
 
 `PartyRosterReader`는 현재 직업을 읽지 않는다. 일반 파티는 `IPartyList`의 로컬 명단, 일반 연합은 공개 alliance API의20개 영역을 추가로 확인한다. 서버 초월은 `CrossRealmGroups` 전체1~6개 그룹을 읽으므로 친선 관전·다른 연합 그룹도 포함한다. 본인 누락·0 CID·중복·범위 오류·읽는 중 형태 변경은 불완전한 관측으로 처리한다. 활성 서버 초월 명단이 불완전하면 일반 파티1명으로 축소하지 않는다. 기존 `PartyReader`의 로컬 그룹/현재 직업 표시와는 서로 다른 경로다.
 
-`AfkListingMonitor.Update`는 명단이 바뀌면 `Pending`과 `generation`을 남긴다. A→B→A처럼 원상복귀해도 지우지 않는다. 주기 조회는 기본 꺼짐이며 사용자가 켜면1~55분 간격으로 추가 조회한다. 읽기 실패는 이전 정상 명단을 유지한다. 조회 실패 재시도는 기본 켜짐·5초이며1~3600초 고정 대기로 설정한다. 꺼진 상태의 같은 실패는 반복하지 않고 새 명단 변화 또는 별도로 켠 주기를 기다린다. 네 옵션만 RelayConfiguration에 저장하며 AFK 모드 자체는 저장하지 않는다. 영역 이동 여부를 별도로 판정하지 않고 기존 조회 guard에 접속/이동/수정창 판단을 맡긴다.
+`AfkListingMonitor.Update`는 명단이 바뀌면 `Pending`과 `generation`을 남긴다. A→B→A처럼 원상복귀해도 지우지 않는다. 주기 조회는 기본 꺼짐이며 사용자가 켜면1~55분 간격으로 추가 조회한다. 읽기 실패는 이전 정상 명단을 유지한다. 조회 실패 재시도는 기본 켜짐·5초이며1~3600초 고정 대기로 설정한다. 꺼진 상태의 같은 실패는 반복하지 않고 새 명단 변화 또는 별도로 켠 주기를 기다린다. 조회/재시도4개·단일 직업 완료1개·주기 갱신2개 옵션을 RelayConfiguration에 저장하며 AFK 모드 자체는 저장하지 않는다. 영역 이동 여부를 별도로 판정하지 않고 기존 조회 guard에 접속/이동/수정창 판단을 맡긴다.
 
 성공은 자기 request revision, 새 detail revision, `Live/Self`, 참가 CID 전체 일치로 확인한다. 조회 중 generation이 변했으면 성공 후에도 후속 조회를 남긴다. 요청 최소 간격은2초, 완료 대기는15초다. `BeforeRead`는 기존 request guard를 재사용해 아직 native dispatch 전인 요청도 재검사한다. 다른 수동/외부 요청이 같은 Reader를 사용하므로 **자기 revision만 취소**한다. 적용 대기 변경/편집/갱신 동안에는 자동 조회를 미루고 필요 표시를 유지한다.
 
-AFK의 `IAfkListingHost`에는 수정/제출 계약이 없다. 모집 완료 알림은 성공한 본인 모집 상세에서 **등록 정원만 먼저 기억**하고, 이후 현재 CID 명단 인원이 그 정원에 도달하면 판정한다. 정원이 차면 모집글이 자동 종료되므로 완료 시점의 재조회 성공을 요구하면 안 된다. 고정 직업 자리 제외 조건과 Discord 조회 카드 자동 업데이트는 아직 구현하지 않았다. 현재 직업으로 등록 직업을 덮어쓰면 안 된다. 감시 사이에 들어왔다 나간 모든 중간 이력은 보장하지 않는다. 관측 사이 재입장 보완이 필요하면 주기적으로 추가 조회를 켠다.
+AFK의 `IAfkListingHost`에는 수정/제출 계약이 없다. 모집 완료 알림은 성공한 본인 모집 상세에서 **등록 정원만 먼저 기억**하고, 이후 현재 CID 명단 인원이 그 정원에 도달하면 판정한다. 정원이 차면 모집글이 자동 종료되므로 완료 시점의 재조회 성공을 요구하면 안 된다. 단일 직업 공석 제외 완료는 별도 선택 옵션이며 아래 조건별 멘션 항목을 따른다. Discord 조회 카드 자동 업데이트는 구현하지 않았다. 현재 직업으로 등록 직업을 덮어쓰면 안 된다. 감시 사이에 들어왔다 나간 모든 중간 이력은 보장하지 않는다. 관측 사이 재입장 보완이 필요하면 주기적으로 추가 조회를 켠다.
 
 
 ## Discord 수정창 닫기
@@ -303,3 +303,19 @@ native 계약은 `UIModule`, `AcquaintanceModule/Acquaintance`, `AllowedEntities
 계약을 검토해 사용하지 않는 UIModule 필드97개와 해당 필드에서만 참조하던 FixedSizeArray23/57의6항목을 제거하고, 가상 테이블 타입과 함수 항목2개를 추가했다. UIModule의 타입 항목만 포인터 접근 형태로 바꿨으며 다른 기존 항목의 값은 보존했다. native1,136항목·interop2항목을 검사한다. 진단에는 최대32개의 차이와 `nativeDifferencesOmitted`를 기록한다.
 
 `NativePointerContractTests`는 임시 PE DLL을 생성해 사용하지 않는 저장 공간의 이동·제거·전체 크기 변경은 허용하고, 사용 vtable/가상 함수 위치 및 메서드 변경·누락은 차단하는지 검사한다. 이름이 비슷한 다른 구조체에는 예외를 적용하지 않는다. 관리형521건, Python 배포12건, 고정 DLL7.57.0.9378과 계약 비교(차이0), 전체 소스 컴파일(경고0/오류0)을 통과했다. 사용자 DLL7.57.0.9700 자체와 실제 게임 송수신은 이 환경에 없어 검증하지 못했다. Actions 빌드·배포는 사용자가 실행한다.
+
+
+## AFK 주기적 모집 갱신 (0.3.56)
+
+`AfkRefreshScheduler`가 Framework tick에서 시간과 자기 요청 revision을 관리한다. 조회 monitor의 `IAfkListingHost`는 계속 조회 전용이며 자동 갱신은 별도 `IAfkRefreshHost`와 기존 `ListingRefresh`를 조합한다. native 계약·메모리 쓰기·UI 클릭 경로를 추가하지 않는다.
+
+- `AfkSettings.RefreshEnabled/RefreshMinutes`: 기본 꺼짐·30분,1~55분. `RelayConfiguration`에 보존하며 AFK 활성화 상태는 저장하지 않는다.
+- `Synchronize/Configure`: AFK+옵션+로그인이 충족되면 본인 CID에 묶인 주기를 시작한다. 켠 즉시 실행하지 않고 전체 주기를 기다린다. 주기/선택 변경만 시간을 다시 잡으며 조회 설정 변경은 영향을 주지 않는다.
+- `BeforeRead`: native 조회 전에 자기 request revision·CID·로그인·Framework freshness를 재검사한다. 다른 수동 요청을 취소하지 않는다. 옵션/AFK를 끄면 Queued/ReadingOwn은 취소하되 이미 열린 수정창의 한 번은 기존 상태 기계로 마무리한다. 로그아웃·CID 변경·stale guard는 계속 적용한다.
+- `Update`: 최근 전체 명단·알려진 정원이 필요하다. 전체 모집 완료, 수동 조회/편집, 관리형 초안/대기 변경, 열린 수정창, 접속/이동/native 차단, cooldown 동안 기다린다. 주기가 지나면 source나 edit를 주입하지 않은 `ListingRefresh.Request(now)` 한 건만 예약한다. 매 회 새 조회·소유권/원본 검증·기존 조건 보존·1회 제출·결과 검증을 통과해야 한다.
+- `ObserveRefresh`: 수동/자동 갱신이 종료되면 다음 전체 주기를 다시 계산한다. 성공/미확인/중단을 별도로 집계하고 자동 결과를 보존한다. 실패 즉시 재요청하지 않으며 열린 오류 수정창을 덮어쓰지 않는다.
+- `Postpone`: `Plugin.StopForRecovery`가 호출해 수정창 복구 직후 기한이 지난 자동 작업으로 창이 다시 열리는 것을 막는다.
+- `Plugin.OnUpdate`: guard는 `ListingReader.Read`보다 앞에, 스케줄 예약은 수동/외부 처리와 AFK 조회 뒤에 둔다. 독립 Task/타이머가 없어 네트워크 스레드가 게임을 호출하지 않는다.
+- `PartyWindow.DrawAfk`: 독립 조회/갱신 선택, 분 입력, 남은 시간/대기 사유, 최근 자동 결과를 표시한다. `autoRefresh*` 진단은 옵션·진행·소유 revision·요청/결과 수를 기록한다.
+
+순수 scheduler와 실제 `ListingRefresh`를 fake host에 연결한17개 회귀 검사를 추가했다. 기본/이전 설정·저장·1/55분 경계·새 조건 읽기·단일 제출·수동 작업/완료 이후 간격·설정 변경·예약 후 충돌·끄기 시점·모집 완료·로그아웃/캐릭터·stale·요청 교체·실패/미확인·복구 지연을 검사한다. 기존 검사 포함 관리형538개 및 Python 배포12개 통과, 오프라인 전체 소스 컴파일 경고/오류0, 고정 참조 ABI1136항목 차이0. Windows 대상 배포 빌드와 실제 게임/Discord 조작은 실행하지 않았으며 Actions는 사용자가 실행한다. 설치 피드와 이전 릴리스는 변경하지 않는다.

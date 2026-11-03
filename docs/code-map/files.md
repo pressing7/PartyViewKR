@@ -2,7 +2,7 @@
 
 [전체 지도](../CODE_MAP.md)
 
-현재 문서와 신규 채팅/역할 검증 파일을 포함한 git tracked 파일 전체를 분류했다. 생성물(bin/obj/node_modules/relay/assets), 사용자 설정/토큰, 로컬 분석 도구는 문서 범위에서 제외한다. 이 문서 묶음 자체는 아래 안내와 연결되어 있다.
+현재 문서와 신규 AFK 갱신/회귀 검증 파일을 포함한 git tracked 파일 전체를 분류했다. 생성물(bin/obj/node_modules/relay/assets), 사용자 설정/토큰, 로컬 분석 도구는 문서 범위에서 제외한다. 이 문서 묶음 자체는 아래 안내와 연결되어 있다.
 
 | 경로 | 역할 / 연결 문서 |
 |---|---|
@@ -28,7 +28,8 @@
 | [relay/wrangler.jsonc](../../relay/wrangler.jsonc) | Worker entry·ASSETS·ROOM(PvkrRoom) binding·SQLite migration v1·compatibility date·run_worker_first를 선언한다. PVKR_CONNECT_KEY 실제 값은 여기 저장하지 않는다. |
 | [shared/NativeContract.cs](../../shared/NativeContract.cs) | 실행/Assembly.Load 없이 PE metadata를 읽는 ABI 계약 도구. 플러그인 runtime 검사와 CompatibilityTool이 같은 코드를 공유한다. [함수 목록](compat-release.md#file-shared-nativecontract-cs) |
 | [src/AfkListingMonitor.cs](../../src/AfkListingMonitor.cs) | AFK 감시의 순수 상태 기계. CID 명단 변화와 선택한 주기로 내 모집글을 조회하고 실패한 필요 상태를 보존한다. host 계약에는 수정/제출 기능이 없다. [함수 목록](core.md#file-src-afklistingmonitor-cs) |
-| [src/AfkSettings.cs](../../src/AfkSettings.cs) | 영구 저장할 AFK 조회 정책의 불변 값. 주기 조회는 기본 꺼짐, 실패 재시도는 기본 켜짐·5초이며 AFK 실행 여부는 저장하지 않는다. [함수 목록](core.md#file-src-afksettings-cs) |
+| [src/AfkRefreshScheduler.cs](../../src/AfkRefreshScheduler.cs) | Framework tick에서 선택형 자동 갱신 주기와 요청 소유권을 관리한다. 매 회 기존 ListingRefresh로 새 본인 모집글을 읽고 조건을 유지해 갱신하며 직접 native 호출·백그라운드 타이머·빠른 재시도를 만들지 않는다. [함수 목록](core.md#file-src-afkrefreshscheduler-cs) |
+| [src/AfkSettings.cs](../../src/AfkSettings.cs) | AFK 조회·재시도·단일 직업 공석 완료 알림·선택형 주기 갱신 설정. 활성 모드는 저장하지 않으며 주기와 대기 범위를 정규화한다. [함수 목록](core.md#file-src-afksettings-cs) |
 | [src/DiscordChatFormatting.cs](../../src/DiscordChatFormatting.cs) | 채팅을 모바일에서도 표시되는 색상 임베드로 만든다. 일반 봇 메시지이며 조회 카드의 Components V2/만료 수명과 별개다. [함수 목록](discord.md#file-src-discordchatformatting-cs) |
 | [src/DiscordChatSettings.cs](../../src/DiscordChatSettings.cs) | 채팅 종류별 서버/채널/everyone 선호 설정과 관리형 메시지·명령 모델. 설정에는 채팅 본문을 저장하지 않는다. [함수 목록](discord.md#file-src-discordchatsettings-cs) |
 | [src/DiscordIcons/HD.png](../../src/DiscordIcons/HD.png) | embedded 슬롯 이미지 `HD`의 빈자리/일반 변형. 실제 이모지 이름/ID 재사용은 [EmojiAssets](discord.md#file-src-listingdiscordemojiassets-cs)가 담당한다. |
@@ -187,8 +188,8 @@
 | [src/PartyReader.cs](../../src/PartyReader.cs) | 현재 파티의 관찰용 스냅샷. 일반 파티 목록, 서버 초월의 로컬 그룹, 본인 정보 순으로 읽는다. 모집 등록 직업/빈자리 규칙의 기준으로 사용하면 안 된다. [함수 목록](core.md#file-src-partyreader-cs) |
 | [src/PartyRoster.cs](../../src/PartyRoster.cs) | AFK 비교 전용 불변 CID 명단. 직업·이름·레벨·정렬 순서·그룹 내 위치는 비교에 넣지 않는다. [함수 목록](core.md#file-src-partyroster-cs) |
 | [src/PartyRosterReader.cs](../../src/PartyRosterReader.cs) | AFK가 켜진 동안만 현재 전체 파티 CID를 읽는다. 기존 PartyReader의 실시간 직업 표시와 별개이며 서버 초월은 최대6개 그룹 전체를 순회한다. [함수 목록](core.md#file-src-partyrosterreader-cs) |
-| [src/PartyViewKR.csproj](../../src/PartyViewKR.csproj) | net10.0-windows/x64/unsafe, 버전0.3.55/0.3.55.0, Discord.Net3.20.2·DPAPI 의존성 및 Web/PNG/contracts embedded resource, native references 지정. |
-| [src/PartyViewKR.json](../../src/PartyViewKR.json) | 현재 플러그인 manifest/API15/AssemblyVersion0.3.55.0. package 검증의 기준이며 csproj와 반드시 맞아야 한다. |
+| [src/PartyViewKR.csproj](../../src/PartyViewKR.csproj) | net10.0-windows/x64/unsafe, 버전0.3.56/0.3.56.0, Discord.Net3.20.2·DPAPI 의존성 및 Web/PNG/contracts embedded resource, native references 지정. |
+| [src/PartyViewKR.json](../../src/PartyViewKR.json) | 현재 플러그인 manifest/API15/AssemblyVersion0.3.56.0. package 검증의 기준이며 csproj와 반드시 맞아야 한다. |
 | [src/PartyWindow.cs](../../src/PartyWindow.cs) | 인게임 ImGui 화면. 현재 파티/모집글/외부 연결/수정 초안/대기 변경/진단을 표시하고 Plugin에 의도만 전달한다. [함수 목록](core.md#file-src-partywindow-cs) |
 | [src/Plugin.Afk.cs](../../src/Plugin.Afk.cs) | 인게임 AFK 토글과 순수 monitor를 실제 Reader/기존 조회 guard에 연결한다. 별도의 지역 이동 상태 기계나 자동 갱신/알림 전송 경로를 만들지 않는다. [함수 목록](core.md#file-src-plugin-afk-cs) |
 | [src/Plugin.Chat.cs](../../src/Plugin.Chat.cs) | 공개 채팅 이벤트와 Discord 큐를 로그인/CID 기반으로 연결한다. 인게임의 종류별 수신/멘션 토글과 홈 서버 보완을 제공하며 AFK 상태에 의존하지 않는다. [함수 목록](core.md#file-src-plugin-chat-cs) |
@@ -208,6 +209,7 @@
 | [src/packages.lock.json](../../src/packages.lock.json) | 플러그인의 NuGet 전이 의존성 버전/해시 lock. |
 | [tests/AfkCompletionTests.cs](../../tests/AfkCompletionTests.cs) | 모집 자동 종료 뒤 현재 명단과 기억한 등록 정원으로 완료 감지·중복 억제를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-afkcompletiontests-cs) |
 | [tests/AfkListingMonitorTests.cs](../../tests/AfkListingMonitorTests.cs) | AFK CID 명단 정규화, 가입/탈퇴 변경 보존,60초 보완 조회, 실패 backoff, 요청 revision 소유권과 캐릭터 수명를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-afklistingmonitortests-cs) |
+| [tests/AfkRefreshSchedulerTests.cs](../../tests/AfkRefreshSchedulerTests.cs) | AFK 선택형 주기 갱신·시간 경계·수동 작업 우선·요청 소유권·중단/복구·중복 제출 방지를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-afkrefreshschedulertests-cs) |
 | [tests/AfkSettingsTests.cs](../../tests/AfkSettingsTests.cs) | AFK 주기·재시도 선택/경계·설정 저장를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-afksettingstests-cs) |
 | [tests/CompatibilityTests.cs](../../tests/CompatibilityTests.cs) | 네이티브/interop ABI 계약 변화, MVID/버전 독립성 및 fail-closed 비교를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-compatibilitytests-cs) |
 | [tests/DalamudConfigurationStub.cs](../../tests/DalamudConfigurationStub.cs) | 테스트 전용 IPluginConfiguration 최소 interface stub. RelayConfiguration을 실제 Dalamud DLL 없이 빌드하도록 Version 속성 계약만 제공한다. 실행 함수는 없다. |

@@ -186,3 +186,10 @@
 `ListingDiscordEmojiAssets`는 `src/DiscordIcons`의 80개 원본 PNG를 내장 리소스로 읽습니다. `ListingDiscordIcons`는 `job_{직업 ID}`·`anyone`·`role_t/h/d/th/td/hd/thd`와 각각의 `checked_` 키를 해당 봇의 이모지 ID에 연결합니다. 봇 연결마다 애플리케이션의 이모지 목록을 조회하고 현재 이름이 없으면 기존 `pvkr_` 이름을 ID를 유지한 채 변경하거나 새로 등록합니다. 관련 없는 이모지를 삭제하거나 바꾸지 않으며, 목록 조회에 실패하면 중복 업로드를 시도하지 않습니다. 등록은 Gateway 준비 후 비동기로 진행하고 Discord.Net의 속도 제한 재시도를 사용합니다. 연결 종료 시 취소하며, 이모지 준비 실패는 게임 조작 연결을 종료하지 않습니다. 비공개·초보자 환영은 기존 🔒·🌱 표시를 유지합니다.
 
 구현은 [Discord Gateway](https://docs.discord.com/developers/events/gateway), [Interactions](https://docs.discord.com/developers/interactions/receiving-and-responding), [Components](https://docs.discord.com/developers/components/reference), [Discord.Net](https://docs.discordnet.dev/) API를 사용합니다. 봇 만들기 기본 절차는 [Discord 공식 시작 안내](https://docs.discord.com/developers/quick-start/getting-started)를 참고할 수 있습니다.
+
+
+## AFK 주기적 모집 갱신 (0.3.56)
+
+게임에서 `/pvkr` → **AFK 조회·갱신·알림 설정**의 **주기적으로 모집 갱신**과 상단 **AFK 모드 · 모집 관리**를 켭니다. 기본 꺼짐·30분이며1~55분으로 설정합니다. 봇 연결 여부와 관계없이 게임/플러그인에서 실행하므로 휴대폰에서 매번 갱신 버튼을 누를 필요가 없습니다. Discord의 수동 갱신/수정이 끝나면 다음 자동 주기를 새로 계산합니다.
+
+수정창이나 대기 변경사항이 있으면 자동 갱신을 미룹니다. Discord **수정창 닫기**로 복구한 뒤에는 전체 주기를 기다려 창을 곧바로 다시 열지 않습니다. 자동 갱신 실패·미확인은 즉시 재시도하지 않습니다. 설정/카운트다운/최근 자동 결과는 인게임 AFK 화면에서 확인하며, 새 Discord 명령은 추가하지 않았습니다.

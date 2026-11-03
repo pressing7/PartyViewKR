@@ -8,6 +8,7 @@
     <Compile Include="../src/PartyRoster.cs" Link="PartyRoster.cs" />
     <Compile Include="../src/AfkListingMonitor.cs" Link="AfkListingMonitor.cs" />
     <Compile Include="../src/AfkSettings.cs" Link="AfkSettings.cs" />
+    <Compile Include="../src/AfkRefreshScheduler.cs" Link="AfkRefreshScheduler.cs" />
     <Compile Include="../src/ListingDiscordNotifications.cs" Link="ListingDiscordNotifications.cs" />
     <Compile Include="../src/ListingDiscordClient.Notifications.cs" Link="ListingDiscordClient.Notifications.cs" />
     <Compile Include="../src/ListingDiscordSession.Notifications.cs" Link="ListingDiscordSession.Notifications.cs" />

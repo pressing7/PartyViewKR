@@ -53,7 +53,8 @@ internal interface IListingRefreshHost
 
 internal enum RefreshStage { Idle, Queued, ReadingOwn, OpeningEditor, EditingSlot, EditingDescription, EditingObjective, EditingBeginner, EditingUniqueJobs, EditingPrivate, EditingCompletion, EditingItemLevel, EditingRule, EditingBatch, WaitingResult, Verifying, Completed, Unconfirmed, Stopped }
 
-// No timers/tasks or automatic retries: every run comes from one button press.
+// One explicitly requested run, from a button or the opt-in AFK scheduler.
+// No timers/tasks or automatic retries inside this refresh state machine.
 // Advancing the stage BEFORE dispatch also prevents a thrown callback being retried.
 internal sealed class ListingRefresh(IListingRefreshHost host)
 {

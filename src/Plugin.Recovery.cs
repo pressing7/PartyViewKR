@@ -15,6 +15,7 @@ public sealed partial class Plugin
     private void StopForRecovery()
     {
         Refresh.Cancel(); listingReader.FailRequest(); ObjectiveTrace.RequestStop();
+        autoRefresh.Postpone(Environment.TickCount64);
         requestedSlot = null; requestedDescription = requestedObjective = requestedBeginner = requestedUniqueJobs =
             requestedPrivate = requestedCompletion = requestedItemLevel = false; requestedRule = null;
         JobDraft = null; DescriptionDraft = null; ObjectiveDraft = null; BeginnerDraft = null;

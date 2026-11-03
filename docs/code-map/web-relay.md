@@ -4,7 +4,7 @@
 
 네트워크 thread는 관리형 snapshot과 queue만 다룬다. query는 새 모집 조회 요청이고 GET state polling은 마지막 snapshot 읽기다. loopback/Cloudflare/Discord 모두 같은 editor/refresh 의미를 공유한다.
 
-기준: 0.3.55.0 소스. 기반 main `8e2082b724d2f93da48bcba8c0a9a1e3742ece42` 이후 채팅 전송의 포인터 전용 타입 호환 검사 수정을 포함한다. 2026-10-28(UTC) 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
+기준: 0.3.56.0 소스. 기반 main `dec071d39f91fbf678bdbf22f4752facc735c2b2` 이후 AFK 선택형 주기 모집 갱신을 포함한다. 2026-11-03(Asia/Seoul) 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
 
 표에는 직접 선언한 메서드·생성자·로컬 함수·계산 속성·인터페이스 메서드를 각각 포함한다. 자동 생성 record 메서드/단순 auto-property accessor는 제외한다. 이름 없는 LINQ/타이머/콜백은 이를 소유한 함수 설명에 포함하며, 중요한 DOM 이벤트 handler와 명명된 테스트 시나리오는 별도로 표시한다.
 
@@ -299,7 +299,7 @@ Plugin에서 loopback/relay/Discord 중 하나의 Bridge를 Framework에 연결�
 | <a id="symbol-src-plugin-web-cs-11-027ca77eb4"></a><code>Plugin.WebLink</code><br><code>string WebLink</code> | 계산 속성 | loopback 활성 시 인증 fragment 접속 링크를 반환한다. 계산식: <code>WebEnabled ? webServer!.ConnectionUrl : ""</code>. | [L11](../../src/Plugin.Web.cs#L11) |
 | <a id="symbol-src-plugin-web-cs-12-cf87b77ea1"></a><code>Plugin.WebStatus</code><br><code>string WebStatus</code> | 계산 속성 | loopback 연결/종료 상태를 사용자용 문구로 반환한다. 계산식: <code>webServer is { Running: false } ? "연결이 종료됐습니다. 브라우저 조회를 다시 켜 주세요." : webStatus</code>. | [L12](../../src/Plugin.Web.cs#L12) |
 | <a id="symbol-src-plugin-web-cs-14-4ad052e971"></a><code>Plugin.QueryUnavailableReason</code><br><code>string? QueryUnavailableReason</code> | 계산 속성 | 새 수동/외부 조회가 불가능한 이유를 공통 guard로 계산한다. 계산식: <code>GetQueryUnavailableReason(false)</code>. | [L14](../../src/Plugin.Web.cs#L14) |
-| <a id="symbol-src-plugin-web-cs-15-1ce390354a"></a><code>Plugin.GetQueryUnavailableReason</code><br><code>string? GetQueryUnavailableReason(bool ownQueryInProgress)</code> | 메서드 | disposed·네이티브 차단·진행 조회/갱신·게임 수정창·열린/예약된 PVKR 초안 때문에 새 조회를 실행할 수 없는 이유를 반환한다. | [L15](../../src/Plugin.Web.cs#L15) |
+| <a id="symbol-src-plugin-web-cs-15-996aade56a"></a><code>Plugin.GetQueryUnavailableReason</code><br><code>string? GetQueryUnavailableReason(bool ownQueryInProgress, bool ownQueuedRefresh = false)</code> | 메서드 | 종료·복구·접속/이동·native·게임창·초안/요청·조회·갱신·trace 충돌을 확인한다. ownQueryInProgress/ownQueuedRefresh 예외는 해당 요청의 자체 busy 검사만 제외하고 다른 guard는 유지한다. | [L15](../../src/Plugin.Web.cs#L15) |
 | <a id="symbol-src-plugin-web-cs-30-4067b3b4c4"></a><code>Plugin.TryQueryOwnListing</code><br><code>bool TryQueryOwnListing(out string error)</code> | 메서드 | 공통 조회 guard 통과 후 ListingReader.RequestOwn과 RequestRead를 예약한다. | [L30](../../src/Plugin.Web.cs#L30) |
 | <a id="symbol-src-plugin-web-cs-37-c757a37280"></a><code>Plugin.StartWeb</code><br><code>void StartWeb()</code> | 메서드 | Discord 자동 연결을 끄고 다른 연결을 정리한 뒤 loopback server와 WebHost를 만든다. | [L37](../../src/Plugin.Web.cs#L37) |
 | <a id="symbol-src-plugin-web-cs-57-6172a3dffd"></a><code>Plugin.StopWeb</code><br><code>void StopWeb()</code> | 메서드 | relay/Discord/loopback 모두 종료하고 각 연결이 소유한 요청만 취소한다. | [L57](../../src/Plugin.Web.cs#L57) |

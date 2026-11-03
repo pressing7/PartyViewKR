@@ -12,12 +12,12 @@ public sealed partial class Plugin
     internal string WebStatus => webServer is { Running: false } ? "연결이 종료됐습니다. 브라우저 조회를 다시 켜 주세요." : webStatus;
 
     internal string? QueryUnavailableReason => GetQueryUnavailableReason(false);
-    private string? GetQueryUnavailableReason(bool ownQueryInProgress)
+    private string? GetQueryUnavailableReason(bool ownQueryInProgress, bool ownQueuedRefresh = false)
     {
         if (disposed) return "플러그인이 종료 중입니다.";
         if (Recovering) return "수정창을 닫는 중입니다.";
         if (refreshHost.BlockReason is { } reason) return reason;
-        if (Refresh.Busy || !ownQueryInProgress && ListingBusy) return "모집글 조회 또는 갱신을 처리하는 중입니다.";
+        if (!ownQueuedRefresh && Refresh.Busy || !ownQueryInProgress && ListingBusy) return "모집글 조회 또는 갱신을 처리하는 중입니다.";
         if (refreshHost.EditorVisible) return "게임의 파티 모집 수정창을 먼저 닫아 주세요.";
         if (JobDraft != null || DescriptionDraft != null || ObjectiveDraft != null || BeginnerDraft != null ||
             UniqueJobsDraft != null || PrivateDraft != null || CompletionDraft != null || ItemLevelDraft != null || RuleDraft != null ||

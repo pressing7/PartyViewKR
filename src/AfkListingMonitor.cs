@@ -36,6 +36,7 @@ internal sealed class AfkListingMonitor
     internal bool Enabled { get; private set; }
     internal bool Pending { get; private set; }
     internal bool InFlight => requestRevision >= 0;
+    internal bool RosterReadable => Enabled && readable;
     internal int RecruitmentCapacity { get; private set; }
     internal long CompletionRevision { get; private set; }
     internal bool RecruitmentComplete => Enabled && readable && complete;
