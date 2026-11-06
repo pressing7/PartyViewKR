@@ -13,7 +13,7 @@ internal interface IDiscordResponse
 
 // One editor per personal bot. This class is independent of the Gateway so ACK
 // failures, repeated events and shutdown can be tested without a real token.
-internal sealed partial class ListingDiscordSession(ListingWebBridge bridge, ulong appId, ulong ownerId,
+internal sealed partial class ListingDiscordSession(ListingBridge bridge, ulong appId, ulong ownerId,
     CancellationToken cancellation, Func<long>? clock = null, ListingDiscordIcons? iconCatalog = null,
     ListingDiscordNotifications? notifications = null, ListingDiscordChat? chat = null, GameChatSendBridge? chatSending = null)
 {
@@ -99,14 +99,14 @@ internal sealed partial class ListingDiscordSession(ListingWebBridge bridge, ulo
         if (cancellation.IsCancellationRequested) return;
         try { await response.Screen(screen, false, deferred); } catch (Exception) { }
     }
-    private static bool Pending(WebReply reply) => reply.Body is WebQuery { State: "queued" or "running" } or WebOperation { State: "queued" or "running" } or WebRecovery { State: "queued" or "running" };
-    internal static string ResultSummary(WebOperation operation) => operation.Results.Length == 0 ? "" :
+    private static bool Pending(RemoteReply reply) => reply.Body is RemoteQuery { State: "queued" or "running" } or RemoteOperation { State: "queued" or "running" } or RemoteRecovery { State: "queued" or "running" };
+    internal static string ResultSummary(RemoteOperation operation) => operation.Results.Length == 0 ? "" :
         $"적용 {operation.Results.Count(r => r.Applied == true)}개 · 미적용 {operation.Results.Count(r => r.Applied == false)}개 · 확인 필요 {operation.Results.Count(r => r.Applied == null)}개";
-    internal static string Describe(WebReply reply)
+    internal static string Describe(RemoteReply reply)
     {
-        if (reply.Body is WebQuery query) return query.Message;
-        if (reply.Body is WebRecovery recovery) return recovery.Message;
-        if (reply.Body is WebOperation operation) {
+        if (reply.Body is RemoteQuery query) return query.Message;
+        if (reply.Body is RemoteRecovery recovery) return recovery.Message;
+        if (reply.Body is RemoteOperation operation) {
             var summary = ResultSummary(operation);
             return (summary.Length > 0 ? summary + "\n" : "") + operation.Message +
                 (operation.Results.Length == 0 ? "" : "\n\n" + string.Join("\n\n", operation.Results.Select(r =>

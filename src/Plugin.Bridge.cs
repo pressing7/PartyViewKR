@@ -2,14 +2,7 @@ namespace PartyViewKR;
 
 public sealed partial class Plugin
 {
-    private ListingWebServer? webServer;
-    private WebHost? webHost;
-    private string webStatus = "브라우저 조회가 꺼져 있습니다.";
-    internal bool WebEnabled => webServer?.Running == true;
-    private bool AnyWebEnabled => WebEnabled || RelayEnabled || DiscordEnabled;
-    internal string WebAddress => webServer?.BaseUrl ?? "";
-    internal string WebLink => WebEnabled ? webServer!.ConnectionUrl : "";
-    internal string WebStatus => webServer is { Running: false } ? "연결이 종료됐습니다. 브라우저 조회를 다시 켜 주세요." : webStatus;
+    private DiscordHost? discordHost;
 
     internal string? QueryUnavailableReason => GetQueryUnavailableReason(false);
     private string? GetQueryUnavailableReason(bool ownQueryInProgress, bool ownQueuedRefresh = false)
@@ -34,48 +27,18 @@ public sealed partial class Plugin
         listingReader.RequestOwn(); RequestRead(); return true;
     }
 
-    internal void StartWeb()
+    private void UpdateDiscordBridge(long now)
     {
-        if (disposed || WebEnabled) return;
-        if (!DisableDiscordAutoConnect()) { webStatus = "디스코드 자동 연결 설정을 저장하지 못했습니다. 다시 시도해 주세요."; return; }
-        StopWeb();
-        try
-        {
-            var version = typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "unknown";
-            webServer = new ListingWebServer(new ListingWebBridge(version));
-            webHost ??= new WebHost(this);
-            webStatus = "연결 준비됨 · 같은 PC의 브라우저에서 내 모집글을 조회·수정·갱신할 수 있습니다.";
-            RequestRead();
-        }
-        catch (Exception ex)
-        {
-            webStatus = "브라우저 연결을 열지 못했습니다. 다시 켜 주세요.";
-            Log.Error(ex, "PartyViewKR: could not start browser query");
-        }
-    }
-
-    internal void StopWeb()
-    {
-        StopRelay();
-        StopDiscord();
-        var server = Interlocked.Exchange(ref webServer, null);
-        server?.Dispose();
-        if (server != null) { webHost?.CancelOwnedQuery(); webHost?.CancelOwnedRefresh(); }
-        webStatus = "브라우저 조회가 꺼져 있습니다.";
-    }
-
-    private void UpdateWeb(long now)
-    {
-        var bridge = WebEnabled ? webServer!.Bridge : RelayEnabled ? relayClient!.Bridge : DiscordEnabled ? discordClient!.Bridge : null;
-        if (bridge == null || webHost == null) return;
-        try { bridge.Update(webHost, now); }
+        var bridge = DiscordEnabled ? discordClient!.Bridge : null;
+        if (bridge == null || discordHost == null) return;
+        try { bridge.Update(discordHost, now); }
         catch (Exception) { bridge.PublicationFailed(); }
     }
 
-    private sealed partial class WebHost(Plugin plugin) : IListingWebEditHost
+    private sealed partial class DiscordHost(Plugin plugin) : IListingEditHost
     {
-        private readonly ListingWebRequestGuard ownedQuery = new();
-        private readonly ListingWebRefreshGuard ownedRefresh = new();
+        private readonly ListingRequestGuard ownedQuery = new();
+        private readonly ListingRefreshGuard ownedRefresh = new();
         private long refreshRevision = -1;
         public ulong SelfId => ClientState.IsLoggedIn && PlayerState.IsLoaded ? PlayerState.ContentId : 0;
         public string? QueryBlockReason => plugin.QueryUnavailableReason;
@@ -105,8 +68,8 @@ public sealed partial class Plugin
             ownedRefresh.Started(SelfId, refreshRevision, Environment.TickCount64);
             plugin.RequestRead(); return true;
         }
-        public WebRefreshProgress? ReadRefresh() => refreshRevision == plugin.Refresh.RequestRevision
-            ? WebRefreshProgress.From(plugin.Refresh) : null;
+        public RemoteRefreshProgress? ReadRefresh() => refreshRevision == plugin.Refresh.RequestRevision
+            ? RemoteRefreshProgress.From(plugin.Refresh) : null;
         public bool RequestQuery(out string error)
         {
             if (!plugin.TryQueryOwnListing(out error)) return false;
@@ -115,12 +78,12 @@ public sealed partial class Plugin
         internal void BeforeRead(long now)
         {
             if (ownedRefresh.BeforeRead(SelfId, plugin.Refresh.RequestRevision, plugin.Refresh.Busy,
-                plugin.AnyWebEnabled, plugin.Refresh.Stage == RefreshStage.Queued, now)) CancelOwnedRefresh();
+                plugin.DiscordEnabled, plugin.Refresh.Stage == RefreshStage.Queued, now)) CancelOwnedRefresh();
             // RequestOwn sets a flag; native dispatch happens in a later Read.
             // Recheck then too, especially if the character/editor changed in
             // the intervening frame. Never cancel a newer local request.
             if (ownedQuery.Owns(plugin.listingReader.RequestRevision, plugin.listingReader.Busy) &&
-                ownedQuery.BeforeRead(SelfId, plugin.listingReader.RequestRevision, true, plugin.AnyWebEnabled,
+                ownedQuery.BeforeRead(SelfId, plugin.listingReader.RequestRevision, true, plugin.DiscordEnabled,
                     plugin.GetQueryUnavailableReason(true) != null, now))
                 CancelOwnedQuery();
         }

@@ -10,7 +10,7 @@ static class ListingDiscordEmojiTests
         var icons = new ListingDiscordIcons(ids);
         string Icon(string key) => $"<:{assets.Single(a => a.Key == key).Name}:{ids[key]}>";
         static Task<Emote> NoRename(ulong id, string name, CancellationToken ct) => throw new Exception("unexpected rename");
-        static WebSlot Slot(bool member, bool anyone, params uint[] jobs) =>
+        static RemoteSlot Slot(bool member, bool anyone, params uint[] jobs) =>
             new(0, "1", member, "나이트", anyone, true, []) { JobId = 19, AllowedJobIds = jobs };
 
         test("discord emoji manifest embeds all 80 distinct PNGs with readable joined names", () => {
@@ -35,14 +35,14 @@ static class ListingDiscordEmojiTests
                 assets.Count(a => a.Name.EndsWith("_role")) == 16, "job/class/role naming incorrect");
         });
         test("discord occupied TH stays TH until a new listing changes its flags to paladin", () => {
-            var sample = ListingWebTests.Sample(); var rules = sample.Slots.JobRules;
+            var sample = ListingBridgeTests.Sample(); var rules = sample.Slots.JobRules;
             var th = rules.Choices.Where(j => j.Id is 19 or 24).Aggregate(0ul, (a, j) => a | j.Flag);
             var paladin = rules.Choices.Single(j => j.Id == 19).Flag;
-            WebSlot Read(ulong flags, bool joined) {
+            RemoteSlot Read(ulong flags, bool joined) {
                 var slots = ListingSlots.Read(true, 1, joined ? 1 : 0, 1, false,
                     new byte[] { joined ? (byte)19 : (byte)0 }, new ulong[] { joined ? 500ul : 0ul },
                     new[] { flags }, _ => "나이트", rules);
-                return ListingWebView.From(sample with { Slots = slots }, true, false)!.Groups[0].Slots[0];
+                return ListingViewProjection.From(sample with { Slots = slots }, true, false)!.Groups[0].Slots[0];
             }
             check(icons.ForSlot(Read(th, false)) == Icon("role_th"), "empty TH incorrect");
             var occupied = Read(th, true);
@@ -115,7 +115,7 @@ static class ListingDiscordEmojiTests
             check(count == 1 && registry.Count == 1, "shutdown lost completed registration or continued uploading");
         });
         test("discord all 48 real emoji slots remain within message limits", () => {
-            var host = new WebFakeHost { Listing = ListingWebTests.Sample(48) }; var bridge = new ListingWebBridge("test");
+            var host = new BridgeFakeHost { Listing = ListingBridgeTests.Sample(48) }; var bridge = new ListingBridge("test");
             bridge.Update(host, 1000);
             var panel = new ListingDiscordPanel(bridge, 500, 600, icons); var screen = panel.Complete(1000).Screen!;
             check(screen.Text.Split("<:").Length - 1 == 48, "some party slots omitted");
@@ -164,11 +164,11 @@ static class ListingDiscordEmojiTests
                 "retry lost IDs, repeated completed renames, or changed duplicate entry");
         });
         test("discord longest joined role names show all 48 occupied slots without fallback squares", () => {
-            var sample = ListingWebTests.Sample(48); var rules = sample.Slots.JobRules;
+            var sample = ListingBridgeTests.Sample(48); var rules = sample.Slots.JobRules;
             var thd = rules.Choices.Where(j => j.Id is 19 or 24 or 25).Aggregate(0ul, (a, j) => a | j.Flag);
             var slots = ListingSlots.Read(true, 48, 48, 6, true, Enumerable.Repeat((byte)19, 48).ToArray(),
                 Enumerable.Range(1, 48).Select(i => (ulong)i).ToArray(), Enumerable.Repeat(thd, 48).ToArray(), _ => "나이트", rules);
-            var host = new WebFakeHost { Listing = sample with { Slots = slots } }; var bridge = new ListingWebBridge("test");
+            var host = new BridgeFakeHost { Listing = sample with { Slots = slots } }; var bridge = new ListingBridge("test");
             bridge.Update(host, 1000);
             var panel = new ListingDiscordPanel(bridge, 500, 600, icons); var screen = panel.Complete(1000).Screen!;
             check(screen.Text.Split("<:join_tank_healer_dealer_role:").Length - 1 == 48, "long names omitted slots");

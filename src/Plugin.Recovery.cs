@@ -5,11 +5,11 @@ namespace PartyViewKR;
 
 public sealed partial class Plugin
 {
-    private ListingWebBridge? ActiveBridge => WebEnabled ? webServer!.Bridge : RelayEnabled ? relayClient!.Bridge : DiscordEnabled ? discordClient!.Bridge : null;
+    private ListingBridge? ActiveBridge => DiscordEnabled ? discordClient!.Bridge : null;
     private bool Recovering => ActiveBridge?.RecoveryActive == true;
     private void ProcessRecovery(long now)
     {
-        if (webHost != null) ActiveBridge?.BeforeReadRecovery(webHost, now);
+        if (discordHost != null) ActiveBridge?.BeforeReadRecovery(discordHost, now);
     }
 
     private void StopForRecovery()
@@ -24,7 +24,7 @@ public sealed partial class Plugin
         RequestRead();
     }
 
-    private sealed partial class WebHost : IListingRecoveryHost
+    private sealed partial class DiscordHost : IListingRecoveryHost
     {
         public string? RecoveryBlockReason => plugin.disposed ? "플러그인이 종료 중입니다." :
             !ClientState.IsLoggedIn || SelfId == 0 ? "게임에 로그인해 주세요." :

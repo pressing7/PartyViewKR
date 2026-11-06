@@ -92,7 +92,7 @@ static partial class ListingDiscordConnectionTests
         test("discord Gateway full results open separately and page through every item without replaying the edit", () => {
             using var bot = new InteractionFixture(); bot.Open();
             bot.Host.ReportOverride = new(false, "Completed", "전체 결과 테스트", true, true,
-                Enumerable.Range(1, 59).Select(i => new WebItemResult("item:" + i, "결과" + i, false,
+                Enumerable.Range(1, 59).Select(i => new RemoteItemResult("item:" + i, "결과" + i, false,
                     "내용" + i + " " + new string('한', 150) + " 끝" + i)).ToArray());
             var before = bot.Transport.Responses.Count; bot.Button("apply"); bot.ScreenAfter(before);
             var overview = bot.Transport.Message!.Value;
@@ -177,8 +177,8 @@ static partial class ListingDiscordConnectionTests
     private sealed class InteractionFixture : IDisposable
     {
         internal readonly OfflineTransport Transport = new();
-        internal readonly WebEditFakeHost Host;
-        private readonly ListingWebBridge bridge;
+        internal readonly EditContractFakeHost Host;
+        private readonly ListingBridge bridge;
         private readonly ListingDiscordClient client;
         private long gameTick = Environment.TickCount64;
         internal long OpenedAt;
@@ -186,7 +186,7 @@ static partial class ListingDiscordConnectionTests
         internal string Text => TextOf(Screen);
         internal InteractionFixture()
         {
-            (bridge, Host, _) = ListingWebEditTests.Ready(Environment.TickCount64);
+            (bridge, Host, _) = ListingEditContractTests.Ready(Environment.TickCount64);
             client = new(bridge, FakeToken, Transport.Config());
             Wait(() => Transport.Identified.Task.IsCompleted || !client.Running);
             Transport.Ready().GetAwaiter().GetResult();

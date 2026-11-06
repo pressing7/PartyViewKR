@@ -16,14 +16,14 @@ internal sealed partial class ListingDiscordClient : IDisposable
     private string inviteUrl = "";
     private string emojiStatus = "";
     private int disposed, ready, running = 1;
-    internal ListingWebBridge Bridge { get; }
+    internal ListingBridge Bridge { get; }
     internal bool Running => Volatile.Read(ref running) != 0 && Volatile.Read(ref disposed) == 0;
     internal bool Connected => Running && Volatile.Read(ref ready) != 0 && socket.ConnectionState == ConnectionState.Connected;
     internal string Status => Volatile.Read(ref status);
     internal string InviteUrl => Volatile.Read(ref inviteUrl);
     internal Task Completion => lifetime;
 
-    internal ListingDiscordClient(ListingWebBridge bridge, string token, DiscordSocketConfig? config = null,
+    internal ListingDiscordClient(ListingBridge bridge, string token, DiscordSocketConfig? config = null,
         DiscordNotificationTarget? notificationTarget = null,
         Func<DiscordNotificationTarget, CancellationToken, Task>? saveNotificationTarget = null,
         DiscordChatSettings? chatSettings = null, Func<DiscordChatSettings, CancellationToken, Task>? saveChatSettings = null)

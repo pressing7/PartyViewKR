@@ -26,16 +26,16 @@ internal sealed record DiscordDecision(DiscordScreen? Screen = null, Modal? Moda
 
 // Editors, job details and complete results are separate messages with independent navigation.
 // Only the shared bridge may queue native game operations.
-internal sealed partial class ListingDiscordPanel(ListingWebBridge bridge, ulong applicationId, ulong ownerId,
+internal sealed partial class ListingDiscordPanel(ListingBridge bridge, ulong applicationId, ulong ownerId,
     ListingDiscordIcons? iconCatalog = null, Func<string>? notificationStatus = null)
 {
     private const long Lifetime = 15 * 60 * 1000;
     private readonly ListingDiscordIcons icons = iconCatalog ?? new();
     private Panel? overview, editor, details, results;
     private enum PanelKind { Overview, Editor, Details, Results }
-    private sealed class Panel(WebView view, PanelKind kind = PanelKind.Overview)
+    private sealed class Panel(RemoteView view, PanelKind kind = PanelKind.Overview)
     {
-        internal WebView View = view;
+        internal RemoteView View = view;
         internal readonly PanelKind Kind = kind;
         internal bool Editing => Kind == PanelKind.Editor;
         internal string Nonce = "";
@@ -61,7 +61,7 @@ internal sealed partial class ListingDiscordPanel(ListingWebBridge bridge, ulong
     internal bool Authorized(DiscordInput input) => ownerId != 0 && applicationId != 0 && input.UserId == ownerId && input.ApplicationId == applicationId;
     internal static string RequestId(ulong id) => new Guid(SHA256.HashData(Encoding.ASCII.GetBytes("pvkr-discord:" + id))[..16]).ToString("D");
     private static DiscordDecision Error(string message) => new(ListingDiscordCard.Message(message), Replace: false);
-    private static bool Current(Panel p, WebView view, long now) => now < p.Expires &&
+    private static bool Current(Panel p, RemoteView view, long now) => now < p.Expires &&
         p.View.Session == view.Session && p.View.Editor?.Revision == view.Editor?.Revision;
 
     internal DiscordDecision Handle(DiscordInput input, long now)
@@ -165,8 +165,8 @@ internal sealed partial class ListingDiscordPanel(ListingWebBridge bridge, ulong
         return Error("지원하지 않는 조작입니다. /pvkr로 다시 열어 주세요.");
     }
 
-    internal WebReply Start(DiscordWork work, long now) => work.Query ? bridge.QueueQuery(work.Id, work.Session, now, work.RecoveryRevision) : bridge.QueueApply(work.Id, work.Session, work.Body ?? [], now, work.RecoveryRevision);
-    internal WebReply Progress(DiscordWork work) => work.Query ? bridge.ReadQuery(work.Id) : bridge.ReadOperation(work.Id);
+    internal RemoteReply Start(DiscordWork work, long now) => work.Query ? bridge.QueueQuery(work.Id, work.Session, now, work.RecoveryRevision) : bridge.QueueApply(work.Id, work.Session, work.Body ?? [], now, work.RecoveryRevision);
+    internal RemoteReply Progress(DiscordWork work) => work.Query ? bridge.ReadQuery(work.Id) : bridge.ReadOperation(work.Id);
     internal DiscordDecision Complete(long now, string notice = "")
     {
         Clear(); overview = new(bridge.ReadView());
@@ -197,7 +197,7 @@ internal sealed partial class ListingDiscordPanel(ListingWebBridge bridge, ulong
             !change.ContainsKey("password") && JsonNode.DeepEquals(Original(p, key), change["value"]);
         if (unchanged) p.Changes.Remove(key); else p.Changes[key] = change;
     }
-    private static WebEditSlot[] GroupSlots(Panel p)
+    private static RemoteEditSlot[] GroupSlots(Panel p)
     {
         var groups = p.View.Listing?.Groups ?? [];
         if (p.Group < 0 || p.Group >= groups.Length) return [];

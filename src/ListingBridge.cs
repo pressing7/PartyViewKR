@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace PartyViewKR;
 
-internal interface IListingWebHost
+internal interface IListingQueryHost
 {
     ulong SelfId { get; }
     string? QueryBlockReason { get; }
@@ -13,46 +13,43 @@ internal interface IListingWebHost
     bool RequestQuery(out string error);
 }
 
-internal sealed record WebReply(int Status, object Body);
+internal sealed record RemoteReply(int Status, object Body);
 
-// HTTP only reads a serialized snapshot or queues a bounded request. Update is
+// Discord callbacks only read managed snapshots or queue bounded requests. Update is
 // called exclusively by Framework.Update; every host/game access stays there.
-internal sealed partial class ListingWebBridge
+internal sealed partial class ListingBridge
 {
     internal static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly object gate = new();
-    private readonly Dictionary<string, WebQuery> history = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, RemoteQuery> history = new(StringComparer.Ordinal);
     private readonly Queue<string> historyOrder = new();
     private readonly string version;
-    private WebView view;
-    private byte[] json;
+    private RemoteView view;
     private bool stopped;
     private ulong self;
     private long publishedTick, requestedTick, startedTick, expectedRevision, nextQueryTick;
 
-    internal ListingWebBridge(string version)
+    internal ListingBridge(string version)
     {
         this.version = version;
         view = Empty("게임 상태를 확인하는 중입니다.");
-        json = JsonSerializer.SerializeToUtf8Bytes(view, JsonOptions);
     }
 
-    private WebView Empty(string reason) => new(2, version, Guid.NewGuid().ToString("N"), false, false,
+    private RemoteView Empty(string reason) => new(2, version, Guid.NewGuid().ToString("N"), false, false,
         reason, reason, DateTimeOffset.UtcNow, null, null);
     private bool Active => view.Query?.State is "queued" or "running";
-    internal byte[] ReadState() { lock (gate) return json; }
-    internal WebView ReadView() { lock (gate) return view; }
-    internal WebReply ReadQuery(string id)
+    internal RemoteView ReadView() { lock (gate) return view; }
+    internal RemoteReply ReadQuery(string id)
     {
         if (Guid.TryParseExact(id, "D", out var parsed)) id = parsed.ToString("D");
         lock (gate) return history.TryGetValue(id, out var query) ? new(200, query) : Error(404, "해당 조회 요청을 찾지 못했습니다.");
     }
 
-    internal WebReply QueueQuery(string id, string session, long now, long? recoveryRevision = null)
+    internal RemoteReply QueueQuery(string id, string session, long now, long? recoveryRevision = null)
     {
         lock (gate)
         {
-            if (stopped) return Error(503, "브라우저 조회가 꺼져 있습니다.");
+            if (stopped) return Error(503, "디스코드 연결이 꺼져 있습니다.");
             if (!Guid.TryParseExact(id, "D", out var parsed)) return Error(400, "조회 요청 번호가 올바르지 않습니다.");
             id = parsed.ToString("D");
             if (session != view.Session) return Error(409, "게임 접속 상태가 바뀌었습니다. 화면을 다시 확인해 주세요.");
@@ -64,12 +61,11 @@ internal sealed partial class ListingWebBridge
             requestedTick = now; nextQueryTick = now + 2000;
             SetQuery(new(id, "queued", "게임에 조회를 요청하는 중입니다."));
             view = view with { CanQuery = false, CanRefresh = false, Reason = "조회 요청을 처리하는 중입니다.", RefreshReason = "조회 요청을 처리하는 중입니다." };
-            Serialize();
             return new(202, view.Query!);
         }
     }
 
-    internal void Update(IListingWebHost host, long now)
+    internal void Update(IListingQueryHost host, long now)
     {
         lock (gate)
         {
@@ -110,17 +106,17 @@ internal sealed partial class ListingWebBridge
                 else if (!host.QueryBusy && !host.QuerySucceeded || now - startedTick > 15000)
                     SetQuery(running with { State = "failed", Message = "내 모집글 조회를 확인하지 못했습니다. 게임의 모집 상태를 확인해 주세요." });
             }
-            UpdateOperation(host as IListingWebEditHost, now);
+            UpdateOperation(host as IListingEditHost, now);
             var reason = RecoveryActive ? "수정창을 닫는 중입니다." : host.QueryBlockReason ?? (WriteActive ? "갱신 요청을 처리하는 중입니다." : Active ? "조회 요청을 처리하는 중입니다." : "");
             var loggedIn = self != 0;
             if (!loggedIn) reason = "게임에 로그인해 주세요.";
             view = view with {
                 LoggedIn = loggedIn, CanQuery = loggedIn && reason.Length == 0,
                 Reason = reason, Status = loggedIn ? listing.Status : "게임 로그인 대기",
-                UpdatedAt = DateTimeOffset.UtcNow, Listing = ListingWebView.From(listing, loggedIn, host.QueryBusy)
+                UpdatedAt = DateTimeOffset.UtcNow, Listing = ListingViewProjection.From(listing, loggedIn, host.QueryBusy)
             };
-            PublishEditor(host as IListingWebEditHost, listing);
-            publishedTick = now; Serialize();
+            PublishEditor(host as IListingEditHost, listing);
+            publishedTick = now;
         }
     }
 
@@ -136,7 +132,6 @@ internal sealed partial class ListingWebBridge
             }
             source = null;
             view = view with { CanQuery = false, CanRefresh = false, Editor = null, RefreshReason = "게임 상태를 읽지 못했습니다.", Reason = "게임 상태를 읽지 못했습니다.", Listing = null };
-            Serialize();
         }
     }
     internal void Stop()
@@ -146,16 +141,15 @@ internal sealed partial class ListingWebBridge
             stopped = true; self = 0; history.Clear(); historyOrder.Clear();
             ClearEdits();
             ClearRecovery();
-            view = Empty("브라우저 조회가 꺼져 있습니다."); Serialize();
+            view = Empty("디스코드 연결이 꺼져 있습니다.");
         }
     }
-    private void SetQuery(WebQuery query)
+    private void SetQuery(RemoteQuery query)
     {
         if (!history.ContainsKey(query.Id)) historyOrder.Enqueue(query.Id);
         history[query.Id] = query;
         while (historyOrder.Count > 32) history.Remove(historyOrder.Dequeue());
         view = view with { Query = query };
     }
-    private void Serialize() => json = JsonSerializer.SerializeToUtf8Bytes(view, JsonOptions);
-    internal static WebReply Error(int status, string message) => new(status, new { error = message });
+    internal static RemoteReply Error(int status, string message) => new(status, new { error = message });
 }

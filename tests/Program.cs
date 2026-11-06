@@ -1,7 +1,5 @@
 using PartyViewKR;
 
-if (args.Contains("--web-fixture")) { await WebBrowserFixture.Run(); return; }
-if (args.Contains("--relay-fixture")) { await RelayFixture.Run(args); return; }
 
 var passed = 0;
 void Check(bool value, string label) { if (!value) throw new Exception(label); }
@@ -266,9 +264,8 @@ ListingItemLevelEditTests.Run(Test, Check);
 ListingRuleEditTests.Run(Test, Check);
 ListingBatchTests.Run(Test, Check);
 ListingDescriptionRecoveryTests.Run(Test, Check);
-ListingWebTests.Run(Test, Check);
-ListingWebEditTests.Run(Test, Check);
-ListingRelayTests.Run(Test, Check);
+ListingBridgeTests.Run(Test, Check);
+ListingEditContractTests.Run(Test, Check);
 ListingDiscordTests.Run(Test, Check);
 DiscordSettingsTests.Run(Test, Check);
 ListingDiscordConnectionTests.Run(Test, Check);

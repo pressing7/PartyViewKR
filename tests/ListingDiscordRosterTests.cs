@@ -6,7 +6,7 @@ static partial class ListingDiscordTests
     private static void RunRoster(Action<string, Action> test, Action<bool, string> check)
     {
         test("discord compact roster uses checked recruitment conditions and safe placeholders when assets are missing", () => {
-            var host = new WebFakeHost(); var bridge = new ListingWebBridge("test"); bridge.Update(host, 1000);
+            var host = new BridgeFakeHost(); var bridge = new ListingBridge("test"); bridge.Update(host, 1000);
             var slots = bridge.ReadView().Listing!.Groups[0].Slots;
             check(slots[0].JobId == 25, "recruitment job identity lost in managed projection");
             var icons = new ListingDiscordIcons(new Dictionary<string, ulong> { ["checked_job_25"] = 123456, ["anyone"] = 0 });
@@ -23,8 +23,8 @@ static partial class ListingDiscordTests
             check(bridge.ReadView().Editor == null && host.Calls == 0, "opening details requested game changes");
         });
         test("discord job details preserve draft and full overview and reject forged editing actions", () => {
-            var (bridge, host, _) = ListingWebEditTests.Ready();
-            host.Native.Target = WebEditFakeHost.Target(24); bridge.Update(host, 1001);
+            var (bridge, host, _) = ListingEditContractTests.Ready();
+            host.Native.Target = EditContractFakeHost.Target(24); bridge.Update(host, 1001);
             var panel = new ListingDiscordPanel(bridge, App, Owner);
             var overview = panel.Complete(1001).Screen!;
             var draft = Field(panel, overview, "beginner", "1");
@@ -49,7 +49,7 @@ static partial class ListingDiscordTests
         });
         test("discord job details preserve friendly and sparse alliance groups and never truncate allowed job lists", () => {
             foreach (var (count, friendly) in new[] { (4, false), (24, false), (48, false), (18, true) }) {
-                var sample = ListingWebTests.Sample(count, friendly);
+                var sample = ListingBridgeTests.Sample(count, friendly);
                 var source = sample.Slots;
                 var removed = !friendly && count > 8 ? new[] { 15 } : Array.Empty<int>();
                 string[] allowed = ["나이트", "전사", "암흑기사", "건브레이커", "백마도사", "점성술사", "학자", "현자", "몽크", "용기사", "닌자", "사무라이", "리퍼", "바이퍼", "마수조련사", "음유시인", "기공사", "무도가", "흑마도사", "소환사", "적마도사", "픽토맨서", "청마도사", "검술사", "도끼술사", "환술사", "격투사", "창술사", "쌍검사", "궁술사", "주술사"];
@@ -57,8 +57,8 @@ static partial class ListingDiscordTests
                     Slots = source.Slots.Where(s => !removed.Contains(s.NativeIndex)).Select((s, i) => s with {
                         Position = i + 1, AllowedJobs = s.HasMember ? s.AllowedJobs : new(false, allowed, true)
                     }).ToArray(), UnregisteredNativeIndices = [.. source.UnregisteredNativeIndices, .. removed] };
-                var host = new WebFakeHost { Listing = sample with { Slots = source } };
-                var bridge = new ListingWebBridge("test"); bridge.Update(host, 1000);
+                var host = new BridgeFakeHost { Listing = sample with { Slots = source } };
+                var bridge = new ListingBridge("test"); bridge.Update(host, 1000);
                 var panel = new ListingDiscordPanel(bridge, App, Owner); var overview = panel.Complete(1000).Screen!;
                 var details = panel.Handle(Input(Id(overview, "details")), 1100).Screen!;
                 var groups = bridge.ReadView().Listing!.Groups;
@@ -79,8 +79,8 @@ static partial class ListingDiscordTests
         });
         test("discord relative expiry stays anchored while navigating and updates only from a new snapshot", () => {
             var at = new DateTime(2026, 10, 17, 16, 0, 0, DateTimeKind.Utc);
-            var host = new WebFakeHost { Listing = ListingWebTests.Sample(24) with { ReadAt = at, Remaining = "남은 시간: 35:42", IsLive = false } };
-            var bridge = new ListingWebBridge("test"); bridge.Update(host, 1000);
+            var host = new BridgeFakeHost { Listing = ListingBridgeTests.Sample(24) with { ReadAt = at, Remaining = "남은 시간: 35:42", IsLive = false } };
+            var bridge = new ListingBridge("test"); bridge.Update(host, 1000);
             var panel = new ListingDiscordPanel(bridge, App, Owner);
             var overview = panel.Complete(1000).Screen!;
             var expected = $"<t:{new DateTimeOffset(at).AddSeconds(2142).ToUnixTimeSeconds()}:R>";
@@ -95,8 +95,8 @@ static partial class ListingDiscordTests
         });
         test("discord never invents a countdown or allows detail controls after expiry or logout", () => {
             foreach (var remaining in new[] { "", "모집 종료", "99:00" }) {
-                var host = new WebFakeHost { Listing = ListingWebTests.Sample(24) with { Remaining = remaining } };
-                var bridge = new ListingWebBridge("test"); bridge.Update(host, 1000);
+                var host = new BridgeFakeHost { Listing = ListingBridgeTests.Sample(24) with { Remaining = remaining } };
+                var bridge = new ListingBridge("test"); bridge.Update(host, 1000);
                 var panel = new ListingDiscordPanel(bridge, App, Owner); var overview = panel.Complete(1000).Screen!;
                 check(!overview.Text.Contains(":R>"), "unreadable countdown guessed");
                 var details = panel.Handle(Input(Id(overview, "details")), 1100).Screen!;

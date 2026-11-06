@@ -2,8 +2,8 @@ namespace PartyViewKR;
 
 // RequestOwn first sets a flag; the native request runs on a later frame.
 // Track ownership across that gap so stop/session/editor changes cannot let
-// deferred web work through or accidentally cancel a newer in-game request.
-internal sealed class ListingWebRequestGuard
+// deferred external work through or accidentally cancel a newer in-game request.
+internal sealed class ListingRequestGuard
 {
     private long revision = -1, started;
     private ulong self;
@@ -22,7 +22,7 @@ internal sealed class ListingWebRequestGuard
 
 // Batch edits can legitimately run longer than a minute. Bound pauses between
 // framework ticks, not total elapsed time, and cancel only this exact run.
-internal sealed class ListingWebRefreshGuard
+internal sealed class ListingRefreshGuard
 {
     private long revision = -1, lastTick;
     private ulong self;

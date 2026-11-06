@@ -2,11 +2,12 @@ using Dalamud.Configuration;
 
 namespace PartyViewKR;
 
+// Keep the original public type name so Dalamud can restore existing $type-tagged settings.
+// Web relay support is removed; this type now stores Discord and AFK preferences only.
 [Serializable]
 public sealed class RelayConfiguration : IPluginConfiguration
 {
     public int Version { get; set; } = 1;
-    public string ServerUrl { get; set; } = "";
     public string EncryptedDiscordToken { get; set; } = "";
     public bool RememberDiscordToken { get; set; } = true;
     // Existing saved tokens also reconnect when upgrading from 0.3.46.
@@ -65,5 +66,5 @@ public sealed class RelayConfiguration : IPluginConfiguration
         DiscordAutoConnect = false;
     }
     // Only the DPAPI-protected token, connection/channel preferences and AFK timing are persisted.
-    // No relay key, connection code, recruitment data or PIN is saved.
+    // No plaintext token, recruitment data or PIN is saved.
 }

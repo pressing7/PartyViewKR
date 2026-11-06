@@ -7,14 +7,14 @@ static partial class ListingDiscordTests
     private static void RunResults(Action<string, Action> test, Action<bool, string> check)
     {
         test("discord complete results preserve every status, long line, emoji and Markdown character across pages", () => {
-            var items = Enumerable.Range(1, 59).Select(i => new WebItemResult("item:" + i, "항목" + i,
+            var items = Enumerable.Range(1, 59).Select(i => new RemoteItemResult("item:" + i, "항목" + i,
                 i % 3 == 0 ? null : i % 3 == 1,
                 "시작" + i + " " + string.Concat(Enumerable.Repeat("한😀*_\\[]끝", i == 59 ? 1500 : 30)) + " 마지막" + i)).ToArray();
-            var operation = new WebOperation("test", "partial", "Completed", "모든 처리 결과", true, true, items);
+            var operation = new RemoteOperation("test", "partial", "Completed", "모든 처리 결과", true, true, items);
             var report = ListingDiscordSession.Describe(new(200, operation));
             check(items.All(i => report.Contains(i.Title + "\n" + i.Message)) && !report.Contains("게임의 PVKR"), "result items were omitted");
             check(report.Contains("[적용]") && report.Contains("[미적용]") && report.Contains("[확인 필요]"), "status lost");
-            var (bridge, _, _) = ListingWebEditTests.Ready(); var panel = new ListingDiscordPanel(bridge, App, Owner);
+            var (bridge, _, _) = ListingEditContractTests.Ready(); var panel = new ListingDiscordPanel(bridge, App, Owner);
             var overview = panel.Complete(1000, report).Screen!;
             var decision = panel.Handle(Input(Id(overview, "results")), 1100);
             check(!decision.Replace, "results replaced overview");
@@ -36,7 +36,7 @@ static partial class ListingDiscordTests
             check(panel.Handle(Input(previous.CustomId), 1100).Screen!.Text.Contains($"{pages - 1}/{pages}"), "backwards result navigation failed");
         });
         test("discord results are read-only and do not discard a draft or accept stale page controls", () => {
-            var (bridge, host, _) = ListingWebEditTests.Ready(); var panel = new ListingDiscordPanel(bridge, App, Owner);
+            var (bridge, host, _) = ListingEditContractTests.Ready(); var panel = new ListingDiscordPanel(bridge, App, Owner);
             var overview = panel.Complete(1000, new string('한', 9000)).Screen!;
             Field(panel, overview, "beginner", "1");
             var result = Act(panel, overview, "results");
@@ -54,7 +54,7 @@ static partial class ListingDiscordTests
             check(!panel.Handle(Input(Id(result, "resultpage:1")), 902000).Screen!.HasControls, "expired result accepted");
         });
         test("discord latest operation remains fully readable after another query", () => {
-            var (bridge, host, _) = ListingWebEditTests.Ready(); host.Native.RuleEditAllowed = false;
+            var (bridge, host, _) = ListingEditContractTests.Ready(); host.Native.RuleEditAllowed = false;
             var panel = new ListingDiscordPanel(bridge, App, Owner);
             var draft = Field(panel, panel.Complete(1000).Screen!, "unrestricted", "1");
             draft = Text(panel, draft, "description", "결과 유지 확인");
@@ -62,7 +62,7 @@ static partial class ListingDiscordTests
             panel.Start(work, 1100); long tick;
             for (tick = 1500; tick < 30000; tick += 500) {
                 host.Advance(tick); bridge.Update(host, tick);
-                if (panel.Progress(work).Body is WebOperation { State: not ("queued" or "running") }) break;
+                if (panel.Progress(work).Body is RemoteOperation { State: not ("queued" or "running") }) break;
             }
             var report = ListingDiscordSession.Describe(panel.Progress(work));
             var overview = panel.Complete(tick, report).Screen!;
@@ -75,7 +75,7 @@ static partial class ListingDiscordTests
                 "query lost the previous operation results or replayed it");
         });
         test("discord unified editor groups every setting and removes standalone toggle controls", () => {
-            var (bridge, _, _) = ListingWebEditTests.Ready(); var panel = new ListingDiscordPanel(bridge, App, Owner);
+            var (bridge, _, _) = ListingEditContractTests.Ready(); var panel = new ListingDiscordPanel(bridge, App, Owner);
             var screen = Settings(panel, panel.Complete(1000).Screen!);
             var components = ListingDiscordCard.Walk(screen.Components.Components).ToArray();
             var text = components.OfType<TextDisplayComponent>().Select(t => t.Content).ToArray();

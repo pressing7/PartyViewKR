@@ -61,7 +61,7 @@ static partial class ListingDiscordTests
         ListingDiscordEmojiTests.Run(test, check);
         RunResults(test, check);
         test("discord rejects wrong owner or app without reading or queuing a game action", () => {
-            var (b, h, _) = ListingWebEditTests.Ready(); var p = new ListingDiscordPanel(b, App, Owner);
+            var (b, h, _) = ListingEditContractTests.Ready(); var p = new ListingDiscordPanel(b, App, Owner);
             foreach (var input in new[] { Input() with { Command = "pvkr", UserId = 7 }, Input() with { Command = "pvkr", ApplicationId = 8 } }) {
                 var result = p.Handle(input, 1100);
                 check(result.Work == null && result.Modal == null && !result.Screen!.HasControls, "unauthorized controls exposed");
@@ -69,16 +69,16 @@ static partial class ListingDiscordTests
             b.Update(h, 1200); check(h.StartCalls == 0 && !h.Native.QueryBusy, "unauthorized game access");
         });
         test("discord query uses the shared framework queue and shows the result", () => {
-            var (b, h, _) = ListingWebEditTests.Ready(); var p = new ListingDiscordPanel(b, App, Owner);
+            var (b, h, _) = ListingEditContractTests.Ready(); var p = new ListingDiscordPanel(b, App, Owner);
             var work = p.Handle(Input() with { Command = "pvkr" }, 1100).Work!;
             check(!h.Native.QueryBusy && p.Start(work, 1100).Status == 202 && !h.Native.QueryBusy, "query bypassed framework");
             b.Update(h, 1200); check(h.Native.QueryBusy, "query not queued");
             h.Advance(1500); b.Update(h, 1500);
-            check(p.Progress(work).Body is WebQuery { State: "complete" } && p.Complete(1500).Screen!.Text.Contains("테스트 모집자"), "query result missing");
+            check(p.Progress(work).Body is RemoteQuery { State: "complete" } && p.Complete(1500).Screen!.Text.Contains("테스트 모집자"), "query result missing");
         });
         test("discord stale screens, expired drafts and changed character cannot edit", () => {
             foreach (var mode in new[] { "old", "expired", "character", "revision" }) {
-                var (b, h, _) = ListingWebEditTests.Ready(); var p = new ListingDiscordPanel(b, App, Owner);
+                var (b, h, _) = ListingEditContractTests.Ready(); var p = new ListingDiscordPanel(b, App, Owner);
                 var screen = p.Complete(1000).Screen!; var id = Id(screen, "apply");
                 if (mode == "old") p.Complete(1001);
                 if (mode == "character") { h.Native.Target = h.Native.Target with { SelfId = 99 }; b.Update(h, 1001); }
@@ -88,14 +88,14 @@ static partial class ListingDiscordTests
             }
         });
         test("discord slash command keeps a current draft but recovers from a stale draft", () => {
-            var (b, h, _) = ListingWebEditTests.Ready(); var p = new ListingDiscordPanel(b, App, Owner);
+            var (b, h, _) = ListingEditContractTests.Ready(); var p = new ListingDiscordPanel(b, App, Owner);
             var screen = Field(p, p.Complete(1000).Screen!, "objective", "3");
             check(p.Handle(Input() with { Command = "pvkr" }, 1100).Screen!.Text.Contains("적용 대기"), "pending draft lost");
             h.Native.Target = h.Native.Target with { Description = "외부에서 수정" }; b.Update(h, 1200);
             check(p.Handle(Input() with { Command = "pvkr" }, 1300).Work is { Query: true }, "stale draft trapped user");
         });
         test("discord combines all settings and preserves PIN 0000 without displaying it", () => {
-            var (b, h, v) = ListingWebEditTests.Ready(); var p = new ListingDiscordPanel(b, App, Owner);
+            var (b, h, v) = ListingEditContractTests.Ready(); var p = new ListingDiscordPanel(b, App, Owner);
             var screen = Settings(p, p.Complete(1000).Screen!);
             var modal = p.Handle(Input(Id(screen, "form:settings")), 1100).Modal!;
             check(modal.Component.Components.Count == 5, "unified form exceeds modal limit");
@@ -112,30 +112,30 @@ static partial class ListingDiscordTests
             screen = Text(p, screen, "private", "0000");
             check(!screen.Text.Contains("0000"), "PIN appeared in response");
             var work = p.Handle(Input(Id(screen, "apply")), 1100).Work!;
-            check(ListingWebEdit.Decode(work.Body!, h.Native.Target, v.Editor!.Revision, out var changes, out var error), error);
+            check(ListingEditContract.Decode(work.Body!, h.Native.Target, v.Editor!.Revision, out var changes, out var error), error);
             check(changes.Length == 11 && changes.Select(c => c.Edit).OfType<ListingPrivateEdit>().Single().Password == "0000", "combined edits lost");
             check(p.Start(work, 1100).Status == 202, "batch not accepted");
             for (long now = 1500; now < 60000; now += 500) {
                 h.Advance(now); b.Update(h, now);
-                if (p.Progress(work).Body is WebOperation { State: not ("queued" or "running") }) break;
+                if (p.Progress(work).Body is RemoteOperation { State: not ("queued" or "running") }) break;
             }
-            check(h.Native.SubmitCalls == 1 && p.Progress(work).Body is WebOperation { Results.Length: 11 }, "batch did not submit once");
+            check(h.Native.SubmitCalls == 1 && p.Progress(work).Body is RemoteOperation { Results.Length: 11 }, "batch did not submit once");
         });
         test("discord validates UTF8 byte limit, item-level bounds and four ASCII PIN digits", () => {
             foreach (var (field, value) in new[] { ("description", new string('가', 65)), ("description", "bad\0text"),
                 ("itemLevel", "1000"), ("itemLevel", "-1"), ("private", "123"), ("private", "１２３４") }) {
-                var (b, _, _) = ListingWebEditTests.Ready(); var p = new ListingDiscordPanel(b, App, Owner);
+                var (b, _, _) = ListingEditContractTests.Ready(); var p = new ListingDiscordPanel(b, App, Owner);
                 var screen = Text(p, p.Complete(1000).Screen!, field, value);
                 check(!screen.HasControls && !screen.Text.Contains(value), "invalid value accepted or echoed");
             }
-            var (bridge, host, view) = ListingWebEditTests.Ready(); var panel = new ListingDiscordPanel(bridge, App, Owner);
+            var (bridge, host, view) = ListingEditContractTests.Ready(); var panel = new ListingDiscordPanel(bridge, App, Owner);
             var valid = Text(panel, panel.Complete(1000).Screen!, "description", new string('가', 64));
             var work = panel.Handle(Input(Id(valid, "apply")), 1100).Work!;
-            check(ListingWebEdit.Decode(work.Body!, host.Native.Target, view.Editor!.Revision, out _, out _), "192-byte boundary rejected");
+            check(ListingEditContract.Decode(work.Body!, host.Native.Target, view.Editor!.Revision, out _, out _), "192-byte boundary rejected");
         });
         test("discord job selector preserves 4, 24, 48 and friendly native positions", () => {
             foreach (var (count, friendly) in new[] { (4, false), (24, false), (48, false), (18, true) }) {
-                var (b, h, _) = ListingWebEditTests.Ready(); h.Native.Target = WebEditFakeHost.Target(count, friendly); b.Update(h, 1001);
+                var (b, h, _) = ListingEditContractTests.Ready(); h.Native.Target = EditContractFakeHost.Target(count, friendly); b.Update(h, 1001);
                 var p = new ListingDiscordPanel(b, App, Owner); var screen = Act(p, p.Complete(1001).Screen!, "settings");
                 screen = Act(p, screen, "jobs");
                 var lastGroup = b.ReadView().Listing!.Groups.Length - 1;
@@ -151,10 +151,10 @@ static partial class ListingDiscordTests
             }
         });
         test("discord five role menus include every job and class and preserve other selections", () => {
-            var (b, h, _) = ListingWebEditTests.Ready();
+            var (b, h, _) = ListingEditContractTests.Ready();
             uint[] ids = [19,21,32,37,24,33,28,40,20,22,30,34,39,41,43,23,31,38,25,27,35,42,36,1,3,6,2,4,29,5,7,26];
             var rules = ListingJobRules.Read(ids.Select(id => new RecruitmentJob(id, "직업" + id)));
-            h.Native.Target = WebEditFakeHost.Target(48);
+            h.Native.Target = EditContractFakeHost.Target(48);
             h.Native.Target = h.Native.Target with { Slots = h.Native.Target.Slots with { JobRules = rules } }; b.Update(h, 1001);
             var p = new ListingDiscordPanel(b, App, Owner); var screen = Act(p, p.Complete(1001).Screen!, "settings");
             screen = Act(p, screen, "jobs"); screen = Act(p, screen, "alljobs");
@@ -189,13 +189,13 @@ static partial class ListingDiscordTests
             check(doc.RootElement.GetProperty("changes")[0].GetProperty("jobs").EnumerateArray().Select(x => x.GetUInt32()).SequenceEqual(ids), "job order changed");
         });
         test("discord rejects occupied, unregistered and forged job IDs", () => {
-            var (b, h, _) = ListingWebEditTests.Ready(); h.Native.Target = WebEditFakeHost.Target(18, true); b.Update(h, 1001);
+            var (b, h, _) = ListingEditContractTests.Ready(); h.Native.Target = EditContractFakeHost.Target(18, true); b.Update(h, 1001);
             var p = new ListingDiscordPanel(b, App, Owner); var screen = Act(p, p.Complete(1001).Screen!, "settings"); screen = Act(p, screen, "jobs");
             foreach (var index in new[] { "0", "5", "23" }) check(p.Handle(Input(Id(screen, "slot"), [index]), 1100).Replace == false, "wrong-group/occupied/padding selected");
             check(p.Handle(Input(Id(screen, "choosejobs:0"), ["999"]), 1100).Replace == false, "unknown job accepted");
         });
         test("discord output fits message/component limits with long 48-slot changes", () => {
-            var (b, h, _) = ListingWebEditTests.Ready(); h.Native.Target = WebEditFakeHost.Target(48); b.Update(h, 1001);
+            var (b, h, _) = ListingEditContractTests.Ready(); h.Native.Target = EditContractFakeHost.Target(48); b.Update(h, 1001);
             var p = new ListingDiscordPanel(b, App, Owner); var screen = p.Complete(1001, new string('한', 3000)).Screen!;
             check(screen.Text.Length <= 4000 && ListingDiscordCard.Walk(screen.Components.Components).Count() <= 40, "Discord payload oversized");
             var cut = ListingDiscordPanel.Limit(new string('x', 1898) + "😀끝");
@@ -203,7 +203,7 @@ static partial class ListingDiscordTests
         });
         test("discord failed ACK and shutdown during ACK never enqueue a mutation", () => {
             foreach (var cancel in new[] { false, true }) {
-                var (b, h, _) = ListingWebEditTests.Ready(); using var cts = new CancellationTokenSource();
+                var (b, h, _) = ListingEditContractTests.Ready(); using var cts = new CancellationTokenSource();
                 var session = new ListingDiscordSession(b, App, Owner, cts.Token, () => 1100);
                 h.Blocked = "query blocked"; b.Update(h, 1001);
                 var response = new FakeDiscordResponse(); session.Process(Input() with { Command = "pvkr" }, response).GetAwaiter().GetResult();
@@ -216,7 +216,7 @@ static partial class ListingDiscordTests
             }
         });
         test("discord busy and duplicate events never replay queries", () => {
-            var (b, h, _) = ListingWebEditTests.Ready(); using var cts = new CancellationTokenSource();
+            var (b, h, _) = ListingEditContractTests.Ready(); using var cts = new CancellationTokenSource();
             var session = new ListingDiscordSession(b, App, Owner, cts.Token, () => 1100);
             var ack = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var first = new FakeDiscordResponse { Ack = ack.Task }; var request = Input() with { Command = "pvkr" };
@@ -228,7 +228,7 @@ static partial class ListingDiscordTests
             check(replay.Last!.Text.Contains("이미 접수") && b.ReadView().Query == null && h.StartCalls == 0, "duplicate event replayed");
         });
         test("discord acknowledged refresh is executed once on the framework and returns a usable screen", () => {
-            var (b, h, _) = ListingWebEditTests.Ready(); using var cts = new CancellationTokenSource(); long tick = 1100;
+            var (b, h, _) = ListingEditContractTests.Ready(); using var cts = new CancellationTokenSource(); long tick = 1100;
             var session = new ListingDiscordSession(b, App, Owner, cts.Token, () => tick);
             var response = new FakeDiscordResponse();
             response.OnProgress = () => {
@@ -248,13 +248,13 @@ static partial class ListingDiscordTests
             check(response.Last!.Text.Contains("이미 접수") && h.Native.SubmitCalls == 1, "accepted refresh replayed");
         });
         test("discord unsupported setting is skipped and reports remaining successful changes", () => {
-            var (b, h, _) = ListingWebEditTests.Ready(); h.Native.RuleEditAllowed = false;
+            var (b, h, _) = ListingEditContractTests.Ready(); h.Native.RuleEditAllowed = false;
             var p = new ListingDiscordPanel(b, App, Owner); var screen = p.Complete(1000).Screen!;
             screen = Field(p, screen, "unrestricted", "1"); screen = Text(p, screen, "description", "반영되는 소개말");
             var work = p.Handle(Input(Id(screen, "apply")), 1100).Work!; p.Start(work, 1100);
             for (long now = 1500; now < 30000; now += 500) {
                 h.Advance(now); b.Update(h, now);
-                if (p.Progress(work).Body is WebOperation { State: not ("queued" or "running") }) break;
+                if (p.Progress(work).Body is RemoteOperation { State: not ("queued" or "running") }) break;
             }
             var result = p.Progress(work); check(h.Native.SubmitCalls == 1 && h.Native.Target.Description == "반영되는 소개말", "unsupported setting aborted batch");
             check(ListingDiscordSession.Describe(result).Contains("[미적용] 제한 해제"), "partial result missing");

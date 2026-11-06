@@ -427,7 +427,7 @@ public sealed partial class Plugin : IDalamudPlugin
         }
         try
         {
-            webHost?.BeforeRead(now);
+            discordHost?.BeforeRead(now);
             if (afkHost != null) { afk.BeforeRead(afkHost, now); autoRefresh.BeforeRead(afkHost, now); }
             Listing = listingReader.Read(Snapshot, Listing);
             lastListingError = "";
@@ -456,7 +456,7 @@ public sealed partial class Plugin : IDalamudPlugin
             Refresh.Fail(ex.GetBaseException().Message);
             Log.Error(ex, "PartyViewKR: manual listing refresh stopped");
         }
-        UpdateWeb(now);
+        UpdateDiscordBridge(now);
         if (afkHost != null) { afk.Update(afkHost, now); autoRefresh.Update(afkHost, now); }
         UpdateDiscordCompletion();
         UpdateDiscordChat();
@@ -467,7 +467,7 @@ public sealed partial class Plugin : IDalamudPlugin
         disposed = true;
         chatCapture?.Dispose();
         if (afkHost != null) afk.SetEnabled(false, afkHost, Environment.TickCount64);
-        StopWeb();
+        StopDiscord();
         ObjectiveTrace.Dispose();
         Refresh.Cancel();
         AddonLifecycle.UnregisterListener(AddonEvent.PostSetup, "LookingForGroupDetail", OnDetailUpdated);

@@ -23,7 +23,7 @@ internal sealed class AfkListingMonitor
 {
     private const long QueryTimeout = 15000;
     private const long MinimumQueryInterval = 2000;
-    private readonly ListingWebRequestGuard ownedQuery = new();
+    private readonly ListingRequestGuard ownedQuery = new();
     private PartyRoster? observed;
     private ulong self;
     private long generation, requestedGeneration, requestRevision = -1, detailBefore;

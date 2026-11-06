@@ -4,14 +4,16 @@
 
 ## 기준과 범위
 
-- 정리일: 2026-11-03(Asia/Seoul). 플러그인 `0.3.56.0`, Dalamud API `15`.
-- 소스 기준: `0.3.56.0`. 기반 main [`dec071d39f91fbf678bdbf22f4752facc735c2b2`](https://github.com/pressing7/PartyViewKR/commit/dec071d39f91fbf678bdbf22f4752facc735c2b2) 이후 AFK 선택형 주기 모집 갱신을 포함한다.
-- 문서 자체와 신규 자동 갱신/회귀 테스트를 포함한 추적 파일 269개 전체를 [파일 지도](code-map/files.md)에 분류했다. 소스 위치는 이 버전의 행 번호다.
-- C# Roslyn 구문 분석, JavaScript Acorn 구문 분석, Python AST로 **1,525개 명명된 항목/진입점**을 대조했다: C# 1,403, JS 91, Python 31. 메서드뿐 아니라 생성자·로컬 함수·계산 속성·인터페이스 선언을 포함한 숫자다.
-- 자동 생성 record 메서드와 단순 auto-property accessor는 별도 함수로 세지 않는다. 이름 없는 LINQ/콜백은 소유 함수에서 설명하고, 중요한 DOM handler와 테스트 시나리오는 따로 연결했다.
-- 현재 C# 테스트 등록문은 530개이며 반복 시나리오를 포함한 실행은 538건이다. Node 등록 테스트는 15개, Python `test_*` 메서드는 12개다. 등록 범위와 실행 결과를 구분하며 이번 주기 갱신 변경의 검증 환경은 아래에 기록한다.
+- 정리일: 2026-11-06. 플러그인 `0.3.57.0`, Dalamud API `15`.
+- 소스 기준: `0.3.57.0`. 기반 main [`58fba989007a1ca4e9286eae066422e4dc3134a6`](https://github.com/pressing7/PartyViewKR/commit/58fba989007a1ca4e9286eae066422e4dc3134a6) 이후 웹 제거와 공통 브리지 이름 정리를 포함한다.
+- 구조 계획과 문서를 포함한 추적 예정 파일 247개 전체를 [파일 지도](code-map/files.md)에 분류했다. 소스 위치는 이 버전의 행 번호다.
+- 함수표에는 **1,381개 명명된 항목/진입점**이 있다(C# 1,350, Python 31). 기존 Roslyn·Python AST 기반 목록에서 삭제한 파일/함수를 제외하고 공유 코드 이름과 소스 위치를 대조했다. 메서드뿐 아니라 생성자·로컬 함수·계산 속성·인터페이스 선언을 포함한다.
+- 자동 생성 record 메서드와 단순 auto-property accessor는 별도 함수로 세지 않는다. 이름 없는 LINQ/콜백은 소유 함수에서 설명하고, 명명된 테스트 시나리오는 따로 연결했다.
+- 현재 관리형 회귀 실행은 529건이고 Python 배포 검사는 12건이다. 웹 전용 관리형 검사10건과 JavaScript/중계 테스트를 제거하고 기존 설정 복원 검사1건을 추가했다.
 
 현재 구현은 **기존 본인 모집글의 조회·수정·수동 갱신 및 AFK 명단 감시·자동 조회·선택형 주기 갱신**다. AFK 모집 완료 everyone 알림과 파티·받은 귓속말·연합파티 채팅 전달, Discord에서 파티·연합파티·명시 귓속말·최근 상대 답장 전송을 제공한다. 새 모집 시작과 콘텐츠/파티 유형 변경은 아직 구현하지 않았다. 루트의 `PartyViewKR.dll/json/deps.json`은 이전 수동 배포본이다. 빌드 기준은 `src/PartyViewKR.csproj`와 `src/PartyViewKR.json`, 설치 대상은 Releases ZIP이다.
+
+[구조 정리 계획](ARCHITECTURE_PLAN.md)은 앞으로의 화면·책임 분리 제안이다. 아래 코드 지도는 현재 구현을 설명하며 계획의 적용 완료를 뜻하지 않는다.
 
 ## 함수별 문서
 
@@ -21,9 +23,9 @@
 | [편집 모델·대기 변경·상태 기계](code-map/edits.md) | `Draft`, `Edit`, `Expected`, typed 조건, `ListingChange`, checkbox/dropdown/numeric UI 순서 |
 | [갱신 흐름·네이티브 UI](code-map/refresh.md) | 단일/배치 갱신, `ListingRefreshHost` partial 전체, native 이벤트·guard·최종 제출 |
 | [Discord](code-map/discord.md) | Gateway/REST·ACK·카드·모달·전체 결과·이모지 동기화·DPAPI 토큰 복원·종류별 채팅 경로/명령/전송 |
-| [공통 브리지·웹·중계](code-map/web-relay.md) | 외부 요청 큐·소유권·HTTP·WebSocket·브라우저 JS·Cloudflare Worker |
+| [공통 모집 요청 브리지](code-map/bridge.md) | Discord 요청 큐·소유권·표시 모델·편집 계약·수정창 복구 |
 | [호환 검사·진단·배포](code-map/compat-release.md) | ABI 계약·포인터 읽기·수동 trace·reference/ZIP/release/feed 도구 |
-| [테스트 함수·시나리오](code-map/tests.md) | fake host/SDK/HTTP fixture와 모든 등록 시나리오의 소스 위치 |
+| [테스트 함수·시나리오](code-map/tests.md) | fake host/Discord SDK와 모든 등록 시나리오의 소스 위치 |
 | [전체 파일 지도](code-map/files.md) | 함수 없는 설정/프로젝트/manifest/workflow/이미지까지 포함한 파일별 역할 |
 
 ## 책임과 스레드 경계
@@ -31,8 +33,8 @@
 ```mermaid
 flowchart TD
   G["인게임 PartyWindow"] --> P["Plugin 요청·초안·대기 변경"]
-  W["브라우저·중계·Discord"] --> B["ListingWebBridge 관리형 큐"]
-  B --> F["Plugin.OnUpdate / WebHost"]
+  W["Discord"] --> B["ListingBridge 관리형 큐"]
+  B --> F["Plugin.OnUpdate / DiscordHost"]
   P --> F
   A["AFK CID 명단 감시"] --> F
   F --> C["PartyRosterReader 전체 그룹"]
@@ -46,7 +48,7 @@ flowchart TD
 
 `Plugin.OnUpdate`가 게임 스레드에서 처리한다. 저장 Discord 연결 복원·채팅 로그인/CID 상태·trace를 먼저 진행하고, 기본 500ms 간격 또는 `RequestRead`에 따라 우선 수정창 닫기 → 현재 파티 표시용 읽기 → 외부/AFK 조회/AFK 갱신 요청 guard → 모집글 읽기 → 초안 준비 → 갱신 상태 기계 → 외부 snapshot 발행 → AFK 감시 → 주기 갱신 예약를 수행한다. 닫기 진행 중에는 일반 초안/갱신 진행을 건너뛴다. 기존 현재 파티·직업 읽기는 PVKR 창을 표시하거나 명시 읽기를 요청했을 때만 진행한다. AFK 전용 전체 CID 읽기는 AFK가 켜진 동안만 진행한다.
 
-네트워크 callback은 네이티브 포인터를 읽지 않는다. `ListingWebBridge`의 lock 안에서 관리형 snapshot을 읽고 작업을 예약한다. 실제 `RequestQuery`/`StartRefresh`는 Framework에서 실행된다. `ListingWebRequestGuard`/`ListingWebRefreshGuard`는 **이 외부 연결이 시작한 revision**만 취소하므로 이후의 수동 요청까지 취소하면 안 된다.
+네트워크 callback은 네이티브 포인터를 읽지 않는다. `ListingBridge`의 lock 안에서 관리형 snapshot을 읽고 작업을 예약한다. 실제 `RequestQuery`/`StartRefresh`는 Framework에서 실행된다. `ListingRequestGuard`/`ListingRefreshGuard`는 **이 외부 연결이 시작한 revision**만 취소하므로 이후의 수동 요청까지 취소하면 안 된다.
 
 인게임의 `Apply*Draft`도 즉시 게임을 바꾸지 않는다. `PendingChanges`에 넣고 갱신을 실행할 때 반영한다. 같은 필드/물리 자리는 교체하고, 원래 값으로 되돌리면 대기 변경을 제거한다. 다른 모집 원본과 섞이면 큐를 비우고 다시 선택하도록 한다. 배치는 사전 검증만 실패했을 때 대기 목록을 잃지 않도록 실제 수정창 진입 시점에 소비한다.
 
@@ -141,26 +143,20 @@ PIN은 `ExtraCriteria`나 외부 snapshot에 넣지 않는다. 수정창 passwor
 
 | 구간 | 경계 |
 |---|---|
-| Browser API | `apiVersion=2`, session, request UUID, edit revision. `GET /api/state`, query/operation 결과 GET, `POST /api/query`, `POST /api/apply`만 사용한다. |
 | Bridge writes | ID를 접수 때 소비한다. session당 최대1024개의 write ID를 유지하고 최근 결과32개를 보관한다. 조회 결과를 잃어도 같은 ID로 다시 실행하지 않는다. |
-| 브라우저 불명확한 POST | ID/session/시각만 저장하고 결과를 GET한다. body/PIN 저장과 timeout 후 자동 POST 반복은 하지 않는다. |
-| Relay frame | `v=1`, id/method/path/session/requestId/body/expiresAt. browser API 버전과 별개다. |
-| Cloudflare | host는 서버 secret `PVKR_CONNECT_KEY`, browser는 plugin이 만든 room/browser key를 사용한다. 서버 secret 이름 자체를 value로 넣으면 형식 검증에서 거부된다. |
-| Worker static assets | 최초 페이지 이동을 허용하기 위해 public static GET을 API의 cross-origin 검사 전에 처리한다. API는 인증/Origin 경계를 유지한다. |
-| Relay 재접속 | transport만 backoff 재연결한다. 이미 넘긴 게임 명령을 재발송하지 않는다. host 교체 close4001은 이전 연결을 중단한다. |
 | Discord | 개인 application owner만 허용한다. `Defer` 성공 뒤에만 Bridge 작업을 넣는다. 응답 timeout 때문에 같은 게임 작업을 재제출하지 않는다. |
 | 채팅 | 공개 ChatMessage에서 managed 복사→종류별 queue→bot 채널 POST. 설정 명령은 owner/app/ACK 검사 뒤 실행하며 채팅 메시지는 ephemeral 카드가 아니다. |
 | 카드 | Overview/Editor/Details/Results는 독립 카드다. nonce, session, editor revision,15분 수명을 검사한다. 긴 결과는 전체 페이지로 보관한다. |
 | 이모지 | embedded PNG80개를 봇 application에 등록한다. 매 연결에서 목록을 읽어 재사용/정확한 legacy rename/누락 업로드만 한다. runtime ID를 고정 저장하지 않는다. |
 | 저장 token | `RelayConfiguration`의 DPAPI ciphertext와 자동 연결 설정. 명시 ‘끄기’는 자동 연결을 끄고, 플러그인 Dispose는 저장 token을 삭제하지 않는다. |
 
-`ListingWebView.From`은 CID·raw mask·PIN·내부 진단을 빼고 표시 데이터만 내보낸다. `DraftInvariant`에는 비교용 PIN 숫자가 포함될 수 있으므로 그 문자열을 로그/외부 응답에 추가하지 않는다. 수동 trace도 command16의 PIN과 문자열/pointer payload를 숨긴다.
+`ListingViewProjection.From`은 CID·raw mask·PIN·내부 진단을 빼고 표시 데이터만 내보낸다. `DraftInvariant`에는 비교용 PIN 숫자가 포함될 수 있으므로 그 문자열을 로그/외부 응답에 추가하지 않는다. 수동 trace도 command16의 PIN과 문자열/pointer payload를 숨긴다.
 
 ## 증상에서 시작하는 탐색
 
 | 증상 / diagnostic | 먼저 볼 함수 | 이어서 볼 검증 |
 |---|---|---|
-| AFK 채팅이 오지 않음 | `GameChatCapture.Current/Legacy`, `Plugin.UpdateDiscordChat`, `ListingDiscordChat.Pump` | `/pvkr-chat 상태`·인게임 구독 오류·AFK 본인/종류/앱·채널 권한·Gateway 연결을 순서대로 확인 |
+| Discord 채팅이 오지 않음 | `GameChatCapture.Current/Legacy`, `Plugin.UpdateDiscordChat`, `ListingDiscordChat.Pump` | `/pvkr-chat 상태`·인게임 구독 오류·로그인 본인/종류/앱·채널 권한·Gateway 연결을 순서대로 확인 |
 | 채팅의 서버명/색/멘션이 다름 | `GameChatCapture.Emit`, `DiscordChatFormatting.Render`, `ChatTransport.Send` | PlayerPayload.World.RowId·종류별 색·첫 part content 및 allowed_mentions. 서버명을 현재 서버로 추측하지 않는다. |
 | 구조 DLL 버전이 다른데 읽기가 차단됨 | `NativeCompatibility.Check`, `NativeContract.Differences` | MVID만 비교하지 말고 `nativeDifferences`, 파일/로드 MVID, native+interop 두 계약 |
 | 서버 초월/연합에서 현재 파티 인원이 일부만 나옴 | `PartyReader.ReadCrossRealm` | 현재 local group만 읽는 경계. 전체 모집은 `ListingSlots.Read` |
@@ -169,17 +165,14 @@ PIN은 `ExtraCriteria`나 외부 snapshot에 넣지 않는다. 수정창 passwor
 | 빈 소개말에서 Self 확인 실패 | `ListingDescription.Resolve`, `ListingIdentity.Resolve`, `ListingReader.Read` | UI ‘소개말 없음’과 native empty가 함께 맞는지 |
 | `initial_own_ready_timeout` | `ListingRefresh.WaitForOwn`, `ListingReader.HandleRequest`, `TryGetOwn` | 새 revision·조회 성공·visible/ready·리더 CID/이름/comment |
 | `stored_criteria_mismatch` / `roles` | `ValidateEditor`, `ListingRoleComparison.Describe`, `ListingEditorCriteria.Matches` | 실제 미등록과 친선 padding 구분, display/native 인덱스 |
-| 친선5+5+8의 뒤 관전 자리가 잘림 | `ListingSlots.Read`, `PositionLabel`, `ListingWebView.From` | 전체 물리24칸에서 등록 자리만 추출했는지 |
+| 친선5+5+8의 뒤 관전 자리가 잘림 | `ListingSlots.Read`, `PositionLabel`, `ListingViewProjection.From` | 전체 물리24칸에서 등록 자리만 추출했는지 |
 | 24/48인 또는 직업 선택창에서 정지 | `ListingSlotRoute.TryCreate`, `BeginSlotEdit`, `UpdateSlotEdit` | node/param, registered event target/listener, role revision,48인 멤버 선택 |
 | Anyone였던 자리를 수정한 후 제출 안 됨 | `MatchesSelectedFlags`, `ValidateSlotGuard`, `Expected(..., actualFlags)` | known mask 비교 후 게임의 실제 raw flags로 target을 고정했는지 |
 | 소개말은 입력돼 보이는데 갱신 후 원래 값 | `UpdateDescriptionEdit`, `Submit`, `SubmitBatch` | command15 draft와 command0 제출 문자열을 모두 확인 |
 | 콘텐츠에서 특정 조건을 못 켬 | `ReadRuleControl` 등 각 Read*Controls, `UpdateItems` | disabled 항목 결과와 정리 상태; blanket guard 제거 금지 |
 | 일부 수정 실패 뒤 나머지도 멈춤 | `FinishBatchStep`, `RecoverBatchDescription`, `ReadBatchDraft` | 자기 자식 창 정리, 타인/다른 UI 변경, stored와 visible 차이 |
 | 바뀐 값은 보이나 갱신 결과 미확정 | `RefreshEvidence.ParseSeconds`, 최종 `Verifying` | 내용 일치와 시간 증가 증거를 구분 |
-| 웹은 보이는데 클릭이409/오래된 상태로 거부 | `QueueQuery`, `QueueApply`, `PublishEditor`, `WebHost.BeforeRead` | session/revision/5초 freshness, 게임 수정창, 인게임 대기 초안 |
-| 웹 timeout 뒤 중복 갱신 우려 | `app.js.applyChanges`, `acceptOperation`, `UpdateOperation` | pending UUID ledger와 결과 GET; 자동 POST 재시도 없음 |
-| Worker `/`가403 | `worker.mjs` 기본 `fetch` | static GET 순서와 API `sameOrigin` 경계를 분리했는지 |
-| relay host503 ‘서버 연결 키’ | Worker 기본 `fetch`, `protocol.token` | runtime secret 이름·64자리 대문자 hex 값; 로그에 실제 키를 붙이지 않는다. |
+| Discord 클릭이 오래된 상태로 거부 | `QueueQuery`, `QueueApply`, `PublishEditor`, `DiscordHost.BeforeRead` | session/revision/5초 freshness, 게임 수정창, 인게임 대기 초안 |
 | Discord ‘적시에 응답하지 않음’ | `ListingDiscordClient.Interaction`, `ListingDiscordSession.Process`, `Response.Defer` | Gateway 처리 분리와 ACK 성공이 game work보다 먼저인지 |
 | 재시작마다 토큰/이모지를 다시 요구 | `RestoreDiscordConnection`, `PrepareDiscordConnection`, `ListingDiscordEmojiAssets.Sync` | 기억/자동 연결·DPAPI 복원, 기존 application emoji 목록 재사용 |
 | Discord 자리 이미지가 현재 직업과 다름 | `ListingDiscordIcons.ConditionKey/ForSlot` | 의도적으로 모집 제한 mask+참가 여부를 표시한다. 실시간 JobId로 대체하지 않는다. |
@@ -191,6 +184,8 @@ PIN은 `ExtraCriteria`나 외부 snapshot에 넣지 않는다. 수정창 passwor
 
 ## 검증과 문서 갱신
 
+0.3.57 웹 제거: 관리형529건·Python12건, native1,136항목/interop2항목 비교 차이0, 정식 `net10.0-windows` Release 빌드 경고·오류0. 기존 설정의 `$type`·암호화 토큰·명시 연결 끄기·채팅 경로/멘션·알림 목적지·AFK 옵션이 보존되고 ServerUrl만 제거되는 것을 검증했다. 실제 게임·Discord 접속 검증과 Actions는 사용자가 진행한다.
+
 0.3.52에서 관리형 테스트483개와 Python 배포 테스트12개를 통과했다. 점유 자리의 입장 직업 자동 축소와 실제 참가자/직업/빈자리 조건 변경을 구분하고 일반·연합·친선의 수정 전/수정창/결과 검증을 확인했다. 상시 채팅·종류별 수신/멘션 토글·동시 설정 저장·홈 서버 보완도 검사했다. 공개 채팅 이벤트 두 형태·일반/서버 초월 분류·원본 미변경·로그인/캐릭터/앱별 경로·저장 실패 보존·ACK/권한·큐 순서/취소/overflow·Unicode 분할 및 실제 SDK slash/색상 embed/allowed_mentions 직렬화를 검사했다. NuGet 캐시/WindowsDesktop 참조 팩이 없는 환경이므로 기존0.3.47 build의 의존 DLL을 직접 참조하는 별도 오프라인 프로젝트로 테스트 및 전체 C# 소스 컴파일을 수행했다. 소스 컴파일은 `net10.0`+Windows platform attribute에서 경고0/오류0이었으며, 정식 `net10.0-windows` 패키지 빌드/Actions 실행이나 인게임 검증을 대신하지 않는다. 이번 변경은 native ABI 계약을 추가하거나 변경하지 않는다.
 
 2026-10-27 CI 보정: [실패 실행](https://github.com/pressing7/PartyViewKR/actions/runs/40509674856)은 `Regression tests` 단계의 모의 Discord Message에서 content=null을 돌려줘 SDK `MessageHelper.ParseTags`가 예외를 던진 경우다. 기존 테스트는 POST 접수 직후 끝날 수 있어 SDK 응답 처리 실패를 놓쳤다. `Reply`는 빈 문자열을 반환하고 `WaitForDelivery`는 SDK 응답 처리 및 worker 성공 계수까지 기다린다. 실제 SDK에서 긴 채팅의 모든 분할 전송·첫 메시지만 멘션·멘션 미확인 실패의 비재시도를 추가 검증했다. 플러그인 소스/버전·native 계약·Actions 설정·배포 feed는 변경하지 않는다.
@@ -200,10 +195,8 @@ PIN은 `ExtraCriteria`나 외부 snapshot에 넣지 않는다. 수정창 passwor
 ```bash
 dotnet run --project tests/RefreshTests.csproj -c Release
 python -m unittest discover -s tests -p 'test_*.py' -v
-node --test tests/web-connection.test.cjs tests/web-editor.test.cjs
 ```
 
-relay 변경은 `relay` 디렉터리에서 의존성을 준비한 뒤 `npm run build`, `npm test`를 사용한다. 통합 테스트는 Miniflare와 .NET fixture를 사용한다. `tests/browser-smoke.cjs`는 빌드한 `RefreshTests.dll`, Playwright 및 Chromium이 필요하고 `PVKR_DOTNET`/`PVKR_BROWSER_ARTIFACTS`를 받을 수 있다. 현재 release workflow에는 관리형/Python 검사만 자동 등록돼 있다.
 
 native 변경은 고정 참조를 준비해 `python tools/release.py verify`와 Release build를 확인하고, 실제 한섭에서 UI/저장값/갱신 결과를 별도로 검증한다. baseline은 실제로 사용하는 구조/메서드를 검토한 경우에만 갱신한다. build/manifest/package 버전은 배포 변경 때 함께 맞춘다.
 
@@ -232,11 +225,11 @@ AFK의 `IAfkListingHost`에는 수정/제출 계약이 없다. 모집 완료 알
 
 조회 카드와 진행/busy 화면의 `수정창 닫기`는 `pvkr:close:<session>`을 사용한다. `ListingDiscordSession.Process`에서 owner/app 인증을 먼저 적용하고 일반 `handling` 잠금보다 앞서 독립 경로로 분기한다. `CloseEditor`는 session과 중복 interaction ID를 검사하고 ACK가 성공한 뒤에만 `QueueCloseEditor`를 호출한다.
 
-`ListingWebBridge.Recovery`는 query/apply가 busy여도 닫기를 접수한다. 기존 queued/running 작업은 중단 상태로 바꾸고 source·pendingWrite를 비운다. 닫기 접수 세대 번호가 바뀌므로 닫기 전에 생성된 `DiscordWork`의 ACK가 늦게 돌아와도 `QueueQuery/QueueApply` 내부 lock에서 거부된다. UI 요청에는 native 주소나 임의 창 이름을 받을 수 있는 입력이 없다.
+`ListingBridge.Recovery`는 query/apply가 busy여도 닫기를 접수한다. 기존 queued/running 작업은 중단 상태로 바꾸고 source·pendingWrite를 비운다. 닫기 접수 세대 번호가 바뀌므로 닫기 전에 생성된 `DiscordWork`의 ACK가 늦게 돌아와도 `QueueQuery/QueueApply` 내부 lock에서 거부된다. UI 요청에는 native 주소나 임의 창 이름을 받을 수 있는 입력이 없다.
 
 실제 중단은 `Plugin.OnUpdate`의 읽기/제출보다 앞선 `ProcessRecovery`에서 실행한다. query/refresh/trace·로컬 초안·변경 대기열을 중단한 뒤 두 모집 관련 창의 주소/PreFinalize revision을 내부 ticket으로 고정한다. 직업 선택창을 먼저1회 닫고 사라진 뒤 부모 수정창을1회 닫으며,5초 안에 둘 다 사라져야 성공이다. 다른 창으로 교체되거나 읽기 실패/예외/timeout이면 실패를 알리고 close를 반복하지 않는다. 이미 제출한 변경을 취소하거나 새 모집을 만들지 않으며 다른 확인 대화상자를 누르지 않는다.
 
-디버깅 시작점은 [공통 queue](code-map/web-relay.md#file-src-listingwebbridge-recovery-cs), [게임 창 연결](code-map/refresh.md#file-src-plugin-recovery-cs), [별도 interaction 경로](code-map/discord.md#file-src-listingdiscordsession-recovery-cs), [회귀 테스트](code-map/tests.md#file-tests-listingrecoverytests-cs)다. 이 단계의 닫기 버튼은 Discord에 제공하며 브라우저 HTTP 경로를 새로 추가한 것은 아니다.
+디버깅 시작점은 [공통 queue](code-map/bridge.md#file-src-listingbridge-recovery-cs), [게임 창 연결](code-map/refresh.md#file-src-plugin-recovery-cs), [별도 interaction 경로](code-map/discord.md#file-src-listingdiscordsession-recovery-cs), [회귀 테스트](code-map/tests.md#file-tests-listingrecoverytests-cs)다. 이 단계의 닫기 버튼은 Discord에 제공한다.
 
 ## AFK 모집 완료 everyone 알림 (0.3.50)
 

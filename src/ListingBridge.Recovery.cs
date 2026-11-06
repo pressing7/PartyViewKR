@@ -11,12 +11,12 @@ internal interface IListingRecoveryHost
     bool ReadRecoveryWindows(out RecruitmentWindows windows);
     bool CloseRecoveryWindow(RecruitmentWindow kind, RecruitmentWindowTicket ticket, out string error);
 }
-internal sealed record WebRecovery(string Id, string State, string Message);
+internal sealed record RemoteRecovery(string Id, string State, string Message);
 
-internal sealed partial class ListingWebBridge
+internal sealed partial class ListingBridge
 {
-    private readonly Dictionary<string, WebRecovery> recoveries = new(StringComparer.Ordinal);
-    private WebRecovery? recovery;
+    private readonly Dictionary<string, RemoteRecovery> recoveries = new(StringComparer.Ordinal);
+    private RemoteRecovery? recovery;
     private RecruitmentWindows? recoveryWindows;
     private long recoveryTick;
     private bool recoveryRoleSent, recoveryEditorSent;
@@ -24,7 +24,7 @@ internal sealed partial class ListingWebBridge
     internal long RecoveryRevision { get { lock (gate) return recoveryRevision; } }
     internal bool RecoveryActive { get { lock (gate) return recovery?.State is "queued" or "running"; } }
 
-    internal WebReply QueueCloseEditor(string id, string session, long now)
+    internal RemoteReply QueueCloseEditor(string id, string session, long now)
     {
         lock (gate)
         {
@@ -47,11 +47,11 @@ internal sealed partial class ListingWebBridge
             pendingWrite = null; source = null; sourceRevision = "";
             view = view with { CanQuery = false, CanRefresh = false, Editor = null,
                 Reason = recovery!.Message, RefreshReason = recovery.Message };
-            Serialize(); return new(202, recovery);
+            return new(202, recovery);
         }
     }
 
-    internal WebReply ReadRecovery(string id)
+    internal RemoteReply ReadRecovery(string id)
     {
         lock (gate) return recoveries.TryGetValue(id, out var result) ? new(200, result) : Error(404, "닫기 요청을 찾지 못했습니다.");
     }
@@ -107,6 +107,6 @@ internal sealed partial class ListingWebBridge
     }
 
     private void FinishRecovery(bool complete, string message) => SetRecovery(recovery! with { State = complete ? "complete" : "failed", Message = message });
-    private void SetRecovery(WebRecovery value) { recovery = value; recoveries[value.Id] = value; }
+    private void SetRecovery(RemoteRecovery value) { recovery = value; recoveries[value.Id] = value; }
     private void ClearRecovery() { recovery = null; recoveryWindows = null; recoveries.Clear(); }
 }

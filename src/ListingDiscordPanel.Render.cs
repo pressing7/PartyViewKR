@@ -64,10 +64,10 @@ internal sealed partial class ListingDiscordPanel
         return card.Build();
     }
 
-    private static void DrawActiveSettings(ListingDiscordCard card, WebListing listing)
+    private static void DrawActiveSettings(ListingDiscordCard card, RemoteListing listing)
     {
         string Tags(params string[] keys) => string.Join(" ", keys.Select(key => listing.Settings.FirstOrDefault(s => s.Key == key && s.Active))
-            .OfType<WebSetting>().Select(s => "[" + Escape(s.Key switch {
+            .OfType<RemoteSetting>().Select(s => "[" + Escape(s.Key switch {
                 "objective" or "completion" or "loot" => s.Value,
                 "itemLevel" => s.Label + " " + s.Value,
                 _ => s.Label
@@ -80,7 +80,7 @@ internal sealed partial class ListingDiscordPanel
         card.Divider(); card.Text(string.Join('\n', lines));
     }
 
-    private static string Remaining(WebListing listing)
+    private static string Remaining(RemoteListing listing)
     {
         // Anchor to the captured read, never render time. Navigating a card must
         // not restart the countdown, and an unreadable timer must not become 60m.

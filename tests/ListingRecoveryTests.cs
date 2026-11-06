@@ -4,9 +4,9 @@ using PartyViewKR;
 
 static class ListingRecoveryTests
 {
-    private static (ListingWebBridge b, RecoveryFakeHost h, string id, string session) Ready()
+    private static (ListingBridge b, RecoveryFakeHost h, string id, string session) Ready()
     {
-        var (b, native, view) = ListingWebEditTests.Ready(); var h = new RecoveryFakeHost(native);
+        var (b, native, view) = ListingEditContractTests.Ready(); var h = new RecoveryFakeHost(native);
         return (b, h, Guid.NewGuid().ToString("D"), view.Session);
     }
     internal static void Run(Action<string, Action> test, Action<bool, string> check)
@@ -16,14 +16,14 @@ static class ListingRecoveryTests
             check(b.QueueCloseEditor(id, session, 1100).Status == 202 && h.Cancels == 0, "off-framework close");
             b.BeforeReadRecovery(h, 1200); check(h.Cancels == 1 && h.Closes.SequenceEqual(new[] { RecruitmentWindow.Roles }), "wrong close order");
             b.BeforeReadRecovery(h, 1700); check(h.Closes.SequenceEqual(new[] { RecruitmentWindow.Roles, RecruitmentWindow.Editor }) && b.RecoveryActive, "no verification wait");
-            b.BeforeReadRecovery(h, 2200); check(b.ReadRecovery(id).Body is WebRecovery { State: "complete" } && !b.RecoveryActive, "close not verified");
+            b.BeforeReadRecovery(h, 2200); check(b.ReadRecovery(id).Body is RemoteRecovery { State: "complete" } && !b.RecoveryActive, "close not verified");
             check(h.Game.Native.SubmitCalls == 0, "recovery submitted");
         });
         test("recovery supersedes a queued refresh before it can dispatch", () => {
             var (b, h, id, session) = Ready(); var v = b.ReadView(); var apply = Guid.NewGuid().ToString("D");
             b.QueueApply(apply, session, JsonSerializer.SerializeToUtf8Bytes(new { revision = v.Editor!.Revision, changes = Array.Empty<object>() }), 1100);
             b.QueueCloseEditor(id, session, 1150); b.BeforeReadRecovery(h, 1200); b.Update(h, 1200); h.Game.Advance(2000);
-            check(h.Game.StartCalls == 0 && h.Game.Native.SubmitCalls == 0 && b.ReadOperation(apply).Body is WebOperation { State: "cancelled" }, "queued refresh survived recovery");
+            check(h.Game.StartCalls == 0 && h.Game.Native.SubmitCalls == 0 && b.ReadOperation(apply).Body is RemoteOperation { State: "cancelled" }, "queued refresh survived recovery");
         });
         test("recovery cancels an active refresh before the next submit step", () => {
             var (b, h, id, session) = Ready(); var v = b.ReadView();
@@ -37,7 +37,7 @@ static class ListingRecoveryTests
             var (b, h, id, session) = Ready(); h.Game.Live = false; h.Game.Blocked = "editor stuck"; h.Show(); b.Update(h, 1100);
             check(!b.ReadView().CanRefresh && b.QueueCloseEditor(id, session, 1200).Status == 202, "recovery used refresh preflight");
             b.BeforeReadRecovery(h, 1300); b.BeforeReadRecovery(h, 1800);
-            check(b.ReadRecovery(id).Body is WebRecovery { State: "complete" }, "failed listing blocked close");
+            check(b.ReadRecovery(id).Body is RemoteRecovery { State: "complete" }, "failed listing blocked close");
         });
         test("recovery request IDs are idempotent and concurrent closes are rejected", () => {
             var (b, h, id, session) = Ready(); h.Show();
@@ -50,7 +50,7 @@ static class ListingRecoveryTests
             var (b, h, id, session) = Ready(); h.Show();
             check(b.QueueCloseEditor(id, "old", 1100).Status == 409 && b.QueueCloseEditor(id, session, 7000).Status == 409, "stale request accepted");
             b.QueueCloseEditor(id, session, 1100); b.BeforeReadRecovery(h, 6101);
-            check(h.Cancels == 0 && h.Closes.Count == 0 && b.ReadRecovery(id).Body is WebRecovery { State: "failed" }, "expired request executed");
+            check(h.Cancels == 0 && h.Closes.Count == 0 && b.ReadRecovery(id).Body is RemoteRecovery { State: "failed" }, "expired request executed");
         });
         test("recovery character switches never close another character window", () => {
             var (b, h, id, session) = Ready(); h.Show(); b.QueueCloseEditor(id, session, 1100); h.Game.Native.SelfId = 99;
@@ -59,7 +59,7 @@ static class ListingRecoveryTests
         test("recovery respects native guards while still stopping the refresh", () => {
             var (b, h, id, session) = Ready(); h.Show(); h.Block = "native incompatible";
             b.QueueCloseEditor(id, session, 1100); b.BeforeReadRecovery(h, 1200);
-            check(h.Cancels == 1 && h.Closes.Count == 0 && b.ReadRecovery(id).Body is WebRecovery { State: "failed" }, "native guard bypassed");
+            check(h.Cancels == 1 && h.Closes.Count == 0 && b.ReadRecovery(id).Body is RemoteRecovery { State: "failed" }, "native guard bypassed");
         });
         test("recovery refuses replacement editors and never retries uncertain close calls", () => {
             foreach (var throws in new[] { false, true }) {
@@ -67,14 +67,14 @@ static class ListingRecoveryTests
                 b.QueueCloseEditor(id, session, 1100); b.BeforeReadRecovery(h, 1200);
                 h.Windows = h.Windows with { Editor = new(101, 1) };
                 b.BeforeReadRecovery(h, 1700); b.BeforeReadRecovery(h, 2200);
-                check(h.Closes.Count == 1 && b.ReadRecovery(id).Body is WebRecovery { State: "failed" }, "new/uncertain window closed again");
+                check(h.Closes.Count == 1 && b.ReadRecovery(id).Body is RemoteRecovery { State: "failed" }, "new/uncertain window closed again");
             }
         });
         test("recovery reports timeout instead of success if the window stays visible", () => {
             var (b, h, id, session) = Ready(); h.Show(true); h.HideOnClose = false;
             b.QueueCloseEditor(id, session, 1100);
             for (var t = 1200; t <= 6200; t += 500) b.BeforeReadRecovery(h, t);
-            check(h.Closes.Count == 1 && b.ReadRecovery(id).Body is WebRecovery { State: "failed" }, "timeout repeated close or claimed success");
+            check(h.Closes.Count == 1 && b.ReadRecovery(id).Body is RemoteRecovery { State: "failed" }, "timeout repeated close or claimed success");
         });
         test("recovery makes an old acknowledged Discord request unusable after completion", () => {
             var (b, h, id, session) = Ready(); var p = new ListingDiscordPanel(b, 500, 600);
@@ -116,9 +116,9 @@ static class ListingRecoveryTests
     }
 }
 
-sealed class RecoveryFakeHost(WebEditFakeHost game) : IListingWebEditHost, IListingRecoveryHost
+sealed class RecoveryFakeHost(EditContractFakeHost game) : IListingEditHost, IListingRecoveryHost
 {
-    internal WebEditFakeHost Game => game;
+    internal EditContractFakeHost Game => game;
     internal RecruitmentWindows Windows = new(new(0, 0), new(0, 0));
     internal int Cancels; internal bool HideOnClose = true, ThrowClose; internal string? Block;
     internal readonly List<RecruitmentWindow> Closes = [];
@@ -146,5 +146,5 @@ sealed class RecoveryFakeHost(WebEditFakeHost game) : IListingWebEditHost, IList
     public string? RefreshBlockReason => QueryBlockReason ?? game.RefreshBlockReason;
     public RefreshTarget? CaptureEditTarget() => Windows.Editor.Address != 0 ? null : game.CaptureEditTarget();
     public bool StartRefresh(RefreshTarget source, ListingChange[] changes, out string error) => game.StartRefresh(source, changes, out error);
-    public WebRefreshProgress? ReadRefresh() => game.ReadRefresh();
+    public RemoteRefreshProgress? ReadRefresh() => game.ReadRefresh();
 }

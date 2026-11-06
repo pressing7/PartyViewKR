@@ -76,7 +76,7 @@ static class AfkSettingsTests
             c.WriteAfkSettings(new(true, 55, false, 17, true));
             var json = JsonSerializer.Serialize(c); var restored = JsonSerializer.Deserialize<RelayConfiguration>(json)!;
             check(restored.ReadAfkSettings() == new AfkSettings(true, 55, false, 17, true) && restored.EncryptedDiscordToken == "ciphertext" &&
-                restored.ServerUrl == c.ServerUrl && !json.Contains("AfkEnabled"), "settings persistence altered unrelated state");
+                !json.Contains("ServerUrl") && !json.Contains("AfkEnabled"), "settings persistence altered unrelated state");
         });
     }
 }

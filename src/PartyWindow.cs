@@ -16,8 +16,6 @@ internal sealed class PartyWindow : Window
     private ListingCompletionDraft? shownCompletionDraft;
     private ListingItemLevelDraft? shownItemLevelDraft;
     private ListingRuleDraft? shownRuleDraft;
-    private string relayAddress = "", relayKey = "";
-    private bool relayAddressLoaded;
     private string discordToken = "";
     private bool discordSettingsLoaded, rememberDiscordToken;
     internal PartyWindow(Plugin plugin) : base("파티 모집 조회##PartyViewKR")
@@ -47,8 +45,6 @@ internal sealed class PartyWindow : Window
         if (ImGui.Button("진단 정보 복사")) ImGui.SetClipboardText(plugin.Diagnostic);
         DrawObjectiveTrace();
         ImGui.Separator();
-        DrawBrowser();
-        DrawRelay();
         DrawDiscord();
         if (ImGui.CollapsingHeader("현재 파티 상태 · 실시간 직업"))
             DrawCurrentParty();
@@ -106,54 +102,6 @@ internal sealed class PartyWindow : Window
         ImGui.Separator();
     }
 
-    private void DrawBrowser()
-    {
-        if (!ImGui.CollapsingHeader("브라우저 조회·수정")) return;
-        ImGui.TextWrapped(plugin.WebStatus);
-        if (plugin.WebEnabled)
-        {
-            ImGui.TextUnformatted(plugin.WebAddress);
-            if (ImGui.Button("접속 링크 복사")) ImGui.SetClipboardText(plugin.WebLink);
-            ImGui.SameLine();
-            if (ImGui.Button("브라우저 조회 끄기")) plugin.StopWeb();
-        }
-        else if (ImGui.Button("브라우저 조회 켜기")) plugin.StartWeb();
-        ImGui.TextWrapped("접속 링크를 같은 PC의 브라우저 주소창에 붙여넣으세요. 내 모집글을 조회하고 소개말·직업 제한·모집 조건을 한 번에 수정·갱신할 수 있습니다.");
-    }
-
-    private void DrawRelay()
-    {
-        if (!ImGui.CollapsingHeader("외부 접속 · 휴대폰 브라우저")) return;
-        if (!relayAddressLoaded) { relayAddress = plugin.RelaySavedAddress; relayAddressLoaded = true; }
-        ImGui.TextWrapped(plugin.RelayStatus);
-        if (plugin.RelayEnabled)
-        {
-            ImGui.TextUnformatted(relayAddress);
-            ImGui.BeginDisabled(!plugin.RelayConnected);
-            if (ImGui.Button("외부 접속 링크 복사")) ImGui.SetClipboardText(plugin.RelayLink);
-            ImGui.SameLine();
-            if (ImGui.Button("연결 코드 복사")) ImGui.SetClipboardText(plugin.RelayCode);
-            ImGui.EndDisabled();
-            if (ImGui.Button("외부 연결 끄기")) plugin.StopRelay();
-            ImGui.TextWrapped("휴대폰에서 링크를 열거나 서버 웹사이트에 연결 코드를 붙여넣으세요. 연결을 껐다 켜면 새 링크가 필요합니다.");
-        }
-        else
-        {
-            ImGui.SetNextItemWidth(-1);
-            ImGui.InputTextWithHint("##relay-address", "https://pvkr-relay.내주소.workers.dev", ref relayAddress, 512);
-            ImGui.SetNextItemWidth(-1);
-            ImGui.InputTextWithHint("##relay-key", "서버 연결 키 (PVKR_CONNECT_KEY)", ref relayKey, 65, ImGuiInputTextFlags.Password);
-            if (ImGui.Button("새 서버 연결 키 만들기")) relayKey = Plugin.GenerateRelayKey();
-            ImGui.SameLine();
-            ImGui.BeginDisabled(!ListingRelayProtocol.IsKey(relayKey.Trim().ToUpperInvariant()));
-            if (ImGui.Button("서버 연결 키 복사")) ImGui.SetClipboardText(relayKey.Trim().ToUpperInvariant());
-            ImGui.EndDisabled();
-            ImGui.TextWrapped("처음에는 서버 연결 키를 만들어 Cloudflare의 PVKR_CONNECT_KEY 비밀 값에 등록하세요. 이 키는 파일에 저장하지 않으므로 다음 실행에도 필요합니다.");
-            if (ImGui.Button("외부 연결 켜기") && plugin.StartRelay(relayAddress, relayKey)) relayKey = "";
-            ImGui.TextWrapped("같은 PC 브라우저·외부 브라우저·디스코드 연결 중 하나를 사용합니다. 게임과 PVKR이 실행되어 있어야 합니다.");
-        }
-    }
-
     private void DrawDiscord()
     {
         if (!ImGui.CollapsingHeader("외부 접속 · 개인 디스코드 봇")) return;
@@ -178,7 +126,7 @@ internal sealed class PartyWindow : Window
         }
         if (plugin.HasSavedDiscordToken && ImGui.Button("저장한 봇 토큰 삭제")) { plugin.ForgetDiscordToken(); rememberDiscordToken = false; }
         if (ImGui.Button("개인 봇 설정 가이드 링크 복사")) ImGui.SetClipboardText("https://github.com/pressing7/PartyViewKR/blob/main/docs/discord.md");
-        ImGui.TextWrapped("각자 만든 봇의 소유자만 조작할 수 있습니다. 게임과 PVKR이 켜져 있어야 하며 다른 원격 연결과 번갈아 사용합니다.");
+        ImGui.TextWrapped("각자 만든 봇의 소유자만 조작할 수 있습니다. 게임과 PVKR이 켜져 있어야 합니다.");
     }
 
     private void DrawDiscordChatControls()

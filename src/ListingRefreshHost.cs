@@ -48,7 +48,7 @@ internal sealed unsafe partial class ListingRefreshHost(Plugin plugin, ListingRe
     public void QueryOwn() => reader.RequestOwn();
     public void CancelQuery() => reader.FailRequest();
 
-    // Publishing an editable browser snapshot must not overwrite the most
+    // Publishing an editable Discord snapshot must not overwrite the most
     // recent refresh failure's diagnostic with a passive "own_verified" read.
     internal RefreshTarget? CaptureOwn()
     {

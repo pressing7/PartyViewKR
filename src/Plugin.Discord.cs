@@ -19,7 +19,7 @@ public sealed partial class Plugin
     {
         if (discordStartupChecked || disposed) return;
         discordStartupChecked = true;
-        if (AnyWebEnabled) return;
+        if (DiscordEnabled) return;
         try {
             var config = PluginInterface.GetPluginConfig() as RelayConfiguration;
             if (config?.ShouldAutoConnectDiscord == true) StartDiscord("", true);
@@ -41,11 +41,9 @@ public sealed partial class Plugin
             }
             stage = "연결 설정 저장";
             PluginInterface.SavePluginConfig(config);
-            stage = "기존 연결 종료";
-            StopWeb();
-            webHost ??= new WebHost(this);
+            discordHost ??= new DiscordHost(this);
             stage = "디스코드 클라이언트 생성";
-            discordClient = new(new ListingWebBridge(typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "unknown"), token,
+            discordClient = new(new ListingBridge(typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "unknown"), token,
                 notificationTarget: config.ReadNotificationTarget(), saveNotificationTarget: SaveDiscordNotificationTarget,
                 chatSettings: config.DiscordChat, saveChatSettings: SaveDiscordChatSettings);
             stage = "모집글 조회 시작";
@@ -114,7 +112,7 @@ public sealed partial class Plugin
     {
         var client = Interlocked.Exchange(ref discordClient, null);
         client?.Dispose();
-        if (client != null) { webHost?.CancelOwnedQuery(); webHost?.CancelOwnedRefresh(); }
+        if (client != null) { discordHost?.CancelOwnedQuery(); discordHost?.CancelOwnedRefresh(); }
         discordStatus = "디스코드 연결이 꺼져 있습니다.";
     }
 }

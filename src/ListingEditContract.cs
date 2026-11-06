@@ -3,37 +3,37 @@ using System.Text.Json;
 
 namespace PartyViewKR;
 
-internal sealed record WebJobChoice(uint Id, string Name);
-internal sealed record WebEditSlot(int NativeIndex, string Position, uint[] Jobs);
-internal sealed record WebEditModel(string Revision, Dictionary<string, object?> Values, string[] Supported,
-    WebJobChoice[] Jobs, WebEditSlot[] Slots);
-internal sealed record WebItemResult(string Key, string Title, bool? Applied, string Message);
-internal sealed record WebOperation(string Id, string State, string Stage, string Message, bool EditorStarted,
-    bool Submitted, WebItemResult[] Results);
-internal sealed record WebRefreshProgress(bool Busy, string Stage, string Message, bool EditorStarted,
-    bool Submitted, WebItemResult[] Results)
+internal sealed record RemoteJobChoice(uint Id, string Name);
+internal sealed record RemoteEditSlot(int NativeIndex, string Position, uint[] Jobs);
+internal sealed record RemoteEditModel(string Revision, Dictionary<string, object?> Values, string[] Supported,
+    RemoteJobChoice[] Jobs, RemoteEditSlot[] Slots);
+internal sealed record RemoteItemResult(string Key, string Title, bool? Applied, string Message);
+internal sealed record RemoteOperation(string Id, string State, string Stage, string Message, bool EditorStarted,
+    bool Submitted, RemoteItemResult[] Results);
+internal sealed record RemoteRefreshProgress(bool Busy, string Stage, string Message, bool EditorStarted,
+    bool Submitted, RemoteItemResult[] Results)
 {
-    internal static WebRefreshProgress From(ListingRefresh refresh) => new(refresh.Busy, refresh.Stage.ToString(), refresh.Status,
+    internal static RemoteRefreshProgress From(ListingRefresh refresh) => new(refresh.Busy, refresh.Stage.ToString(), refresh.Status,
         refresh.EditorStarted, refresh.Submitted, refresh.BatchResults.Select(r =>
-            new WebItemResult(r.Change.Key, r.Change.Title, r.Applied, r.Text)).ToArray());
+            new RemoteItemResult(r.Change.Key, r.Change.Title, r.Applied, r.Text)).ToArray());
 }
 
-internal interface IListingWebEditHost : IListingWebHost
+internal interface IListingEditHost : IListingQueryHost
 {
     string? RefreshBlockReason { get; }
     RefreshTarget? CaptureEditTarget();
     bool StartRefresh(RefreshTarget source, ListingChange[] changes, out string error);
-    WebRefreshProgress? ReadRefresh();
+    RemoteRefreshProgress? ReadRefresh();
 }
 
-internal static class ListingWebEdit
+internal static class ListingEditContract
 {
     internal const int MaxBodyBytes = 65536, MaxChanges = 59;
     internal static bool SameSource(RefreshTarget a, RefreshTarget b) => ListingPendingChanges.SameSource(a, b) &&
         a.JobEditingAllowed == b.JobEditingAllowed && a.Slots.JobRules.Complete == b.Slots.JobRules.Complete &&
         a.Slots.JobRules.Choices.SequenceEqual(b.Slots.JobRules.Choices);
 
-    internal static WebEditModel Model(RefreshTarget source, string revision)
+    internal static RemoteEditModel Model(RefreshTarget source, string revision)
     {
         var values = new Dictionary<string, object?> {
             ["description"] = source.Description,
@@ -60,12 +60,12 @@ internal static class ListingWebEdit
         var canEditJobs = ListingJobEdit.Supports(source) && jobs.Complete;
         if (canEditJobs) supported.Add("job");
         return new(revision, values, supported.ToArray(),
-            canEditJobs ? jobs.Choices.Select(j => new WebJobChoice(j.Id, j.Name)).ToArray() : [],
-            canEditJobs ? source.Slots.Slots.Where(s => !s.HasMember).Select(s => new WebEditSlot(s.NativeIndex,
+            canEditJobs ? jobs.Choices.Select(j => new RemoteJobChoice(j.Id, j.Name)).ToArray() : [],
+            canEditJobs ? source.Slots.Slots.Where(s => !s.HasMember).Select(s => new RemoteEditSlot(s.NativeIndex,
                 source.Slots.PositionLabel(s), jobs.Choices.Where(j => (s.SlotFlags & j.Flag) != 0).Select(j => j.Id).ToArray())).ToArray() : []);
     }
 
-    // A strict allowlist of managed changes. Browser data cannot name callbacks,
+    // A strict allowlist of managed changes. External input cannot name callbacks,
     // game nodes, raw bit masks, memory addresses, or occupied/unregistered slots.
     internal static bool Decode(ReadOnlyMemory<byte> body, RefreshTarget source, string revision,
         out ListingChange[] changes, out string error)

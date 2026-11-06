@@ -104,7 +104,7 @@ static class ListingDiscordNotificationTests
             check(t.LastSent == Target, "cancelled save redirected notification");
         });
         test("Discord notification channel controls reject wrong owner app stale session and failed ACK", () => {
-            var (b, _, view) = ListingWebEditTests.Ready(); var t = new NotificationFakeTransport(); var saves = 0;
+            var (b, _, view) = ListingEditContractTests.Ready(); var t = new NotificationFakeTransport(); var saves = 0;
             using var n = Service(t, save: (_, _) => { saves++; return Task.CompletedTask; });
             var s = new ListingDiscordSession(b, 500, 600, CancellationToken.None, notifications: n);
             DiscordInput Input(ulong id) => new(id, 500, 600, "", ListingDiscordPanel.NotificationPrefix + view.Session, [], []) { GuildId = 700, ChannelId = 800 };

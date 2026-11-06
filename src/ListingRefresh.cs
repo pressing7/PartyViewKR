@@ -199,7 +199,7 @@ internal sealed class ListingRefresh(IListingRefreshHost host)
                 { WaitForOwn(ownError, false); return; }
                 if (own.SelfId != self) { Stop("모집자가 변경되어 중단했습니다.", "owner_changed"); return; }
                 if (boundSource != null && !ListingPendingChanges.SameSource(boundSource, own))
-                { Stop("브라우저에서 확인한 뒤 모집글 또는 참가자가 바뀌었습니다. 새 모집글에서 다시 확인해 주세요.", "web_source_changed"); return; }
+                { Stop("조회한 뒤 모집글 또는 참가자가 바뀌었습니다. 새 모집글에서 다시 확인해 주세요.", "source_changed"); return; }
                 if (JobEdit != null && !JobEdit.MatchesOriginal(own))
                 { Stop("편집 중 참가자 또는 모집 조건이 바뀌었습니다. 새 모집글에서 다시 선택해 주세요.", "job_edit_stale"); return; }
                 if (DescriptionEdit != null && !DescriptionEdit.MatchesOriginal(own))

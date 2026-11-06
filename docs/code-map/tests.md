@@ -4,13 +4,12 @@
 
 이 문서는 테스트를 실행한 보고서가 아니라 현재 소스에 등록된 검증 범위의 지도다. 관리형 runner의 530개 등록 시나리오, Node 테스트와 Python 테스트를 source 위치에 연결한다. 실제 게임·Windows DPAPI·Discord live 검증은 fake 테스트와 별개다.
 
-기준: 0.3.56.0 소스. 기반 main `dec071d39f91fbf678bdbf22f4752facc735c2b2` 이후 AFK 선택형 주기 모집 갱신을 포함한다. 2026-11-03(Asia/Seoul) 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
+기준: 0.3.57.0 소스. main `58fba989007a1ca4e9286eae066422e4dc3134a6` 이후 웹 제거와 공통 브리지 이름 정리를 포함한다. 2026-11-06 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
 
-표에는 직접 선언한 메서드·생성자·로컬 함수·계산 속성·인터페이스 메서드를 각각 포함한다. 자동 생성 record 메서드/단순 auto-property accessor는 제외한다. 이름 없는 LINQ/타이머/콜백은 이를 소유한 함수 설명에 포함하며, 중요한 DOM 이벤트 handler와 명명된 테스트 시나리오는 별도로 표시한다.
+표에는 직접 선언한 메서드·생성자·로컬 함수·계산 속성·인터페이스 메서드를 각각 포함한다. 자동 생성 record 메서드/단순 auto-property accessor는 제외한다. 이름 없는 LINQ/타이머/콜백은 이를 소유한 함수 설명에 포함하며, 명명된 테스트 시나리오는 별도로 표시한다.
 
 ## 파일 탐색
 
-- [relay/test/relay.test.mjs](#file-relay-test-relay-test-mjs)
 - [tests/AfkCompletionTests.cs](#file-tests-afkcompletiontests-cs)
 - [tests/AfkListingMonitorTests.cs](#file-tests-afklistingmonitortests-cs)
 - [tests/AfkRefreshSchedulerTests.cs](#file-tests-afkrefreshschedulertests-cs)
@@ -45,7 +44,6 @@
 - [tests/ListingObjectiveUiTests.cs](#file-tests-listingobjectiveuitests-cs)
 - [tests/ListingPrivateEditTests.cs](#file-tests-listingprivateedittests-cs)
 - [tests/ListingRecoveryTests.cs](#file-tests-listingrecoverytests-cs)
-- [tests/ListingRelayTests.cs](#file-tests-listingrelaytests-cs)
 - [tests/ListingRoleButtonsTests.cs](#file-tests-listingrolebuttonstests-cs)
 - [tests/ListingRoleComparisonTests.cs](#file-tests-listingrolecomparisontests-cs)
 - [tests/ListingRoleNormalizationTests.cs](#file-tests-listingrolenormalizationtests-cs)
@@ -54,44 +52,11 @@
 - [tests/ListingSlotsTests.cs](#file-tests-listingslotstests-cs)
 - [tests/ListingSparseSlotsTests.cs](#file-tests-listingsparseslotstests-cs)
 - [tests/ListingUniqueJobsEditTests.cs](#file-tests-listinguniquejobsedittests-cs)
-- [tests/ListingWebEditTests.cs](#file-tests-listingwebedittests-cs)
-- [tests/ListingWebTests.cs](#file-tests-listingwebtests-cs)
+- [tests/ListingEditContractTests.cs](#file-tests-listingeditcontracttests-cs)
+- [tests/ListingBridgeTests.cs](#file-tests-listingbridgetests-cs)
 - [tests/NativePointerContractTests.cs](#file-tests-nativepointercontracttests-cs)
 - [tests/Program.cs](#file-tests-program-cs)
-- [tests/RelayFixture.cs](#file-tests-relayfixture-cs)
-- [tests/WebBrowserFixture.cs](#file-tests-webbrowserfixture-cs)
-- [tests/browser-smoke.cjs](#file-tests-browser-smoke-cjs)
 - [tests/test_release.py](#file-tests-test-release-py)
-- [tests/web-connection.test.cjs](#file-tests-web-connection-test-cjs)
-- [tests/web-editor.test.cjs](#file-tests-web-editor-test-cjs)
-
-<a id="file-relay-test-relay-test-mjs"></a>
-## relay/test/relay.test.mjs
-
-[소스 파일](../../relay/test/relay.test.mjs) · 명명된 항목/진입점 10개
-
-Miniflare 로컬 Worker와 fake WebSocket 및 실제 .NET relay fixture로 인증·host 교체·frame/timeout·apply를 통합 검증한다. Cloudflare 배포나 Wrangler dev 서버를 띄우는 테스트가 아니다.
-
-| 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
-|---|---|---|---|
-| <a id="symbol-relay-test-relay-test-mjs-1-65043f1a90"></a><code>&lt;module&gt;</code><br><code>&lt;module&gt;</code> | 진입점 | 로컬 Miniflare Worker와 fake/실제 .NET relay fixture의3개 통합 test를 등록한다. 외부 배포 없이 test별 정리 callback으로 런타임·소켓·process를 종료한다. | [L1](../../relay/test/relay.test.mjs#L1) |
-| <a id="symbol-relay-test-relay-test-mjs-12-f35203f3ac"></a><code>options</code><br><code>function options(extra = {})</code> | JS 함수/handler | Miniflare에 Worker/protocol 모듈, Durable Object·asset·테스트 secret binding을 제공할 설정을 만든다. | [L12](../../relay/test/relay.test.mjs#L12) |
-| <a id="symbol-relay-test-relay-test-mjs-19-13fb3e8b02"></a><code>auth</code><br><code>(key = browser, id = room) =&gt; (</code> | JS 함수/handler | browser bearer와 room 인증 header를 만든다. | [L19](../../relay/test/relay.test.mjs#L19) |
-| <a id="symbol-relay-test-relay-test-mjs-20-5e744b2406"></a><code>host</code><br><code>async function host(mf, key = secret, id = room, browserKey = browser)</code> | JS 함수/handler | Miniflare fetch에 host key/room/browser hash 및 Upgrade header를 넣어 fake host WebSocket을 연다. | [L20](../../relay/test/relay.test.mjs#L20) |
-| <a id="symbol-relay-test-relay-test-mjs-24-9b436093d8"></a><code>wait</code><br><code>ms =&gt;</code> | JS 함수/handler | socket의 지정 이벤트를 제한 시간 안에서 기다린다. | [L24](../../relay/test/relay.test.mjs#L24) |
-| <a id="symbol-relay-test-relay-test-mjs-42-44613048f7"></a><code>ws.on(message)</code><br><code>event =&gt;</code> | JS 함수/handler | fake host가 중계 request frame을 받았을 때 조건에 맞게 응답하거나 오류를 모사한다. | [L42](../../relay/test/relay.test.mjs#L42) |
-| <a id="symbol-relay-test-relay-test-mjs-81-f4d09ad010"></a><code>ws.on(message)</code><br><code>event =&gt;</code> | JS 함수/handler | fake host가 중계 request frame을 받았을 때 조건에 맞게 응답하거나 오류를 모사한다. | [L81](../../relay/test/relay.test.mjs#L81) |
-| <a id="symbol-relay-test-relay-test-mjs-116-cb0b318269"></a><code>until</code><br><code>async function until(fn, timeout = 15000)</code> | JS 함수/handler | 실제 .NET relay fixture와 Miniflare 연결이 원하는 상태가 될 때까지 제한 재확인한다. | [L116](../../relay/test/relay.test.mjs#L116) |
-| <a id="symbol-relay-test-relay-test-mjs-123-ca6c3a8317"></a><code>request</code><br><code>(path, init = {}) =&gt;</code> | JS 함수/handler | 실제 bridge fixture로 relay API를 요청한다. | [L123](../../relay/test/relay.test.mjs#L123) |
-| <a id="symbol-relay-test-relay-test-mjs-168-2c127b081c"></a><code>untilOffline</code><br><code>async function untilOffline(request)</code> | JS 함수/handler | host 종료 후 offline 응답이 나타날 때까지 관찰한다. | [L168](../../relay/test/relay.test.mjs#L168) |
-
-### 등록된 회귀 시나리오
-
-| 소스의 시나리오 이름 | 위치 |
-|---|---|
-| <code>external page navigation is public while relay APIs remain protected</code> | [L26](../../relay/test/relay.test.mjs#L26) |
-| <code>relay authentication, route boundaries, WebSocket forwarding, timeout and replacement</code> | [L65](../../relay/test/relay.test.mjs#L65) |
-| <code>real .NET relay executes existing batch once and retains results across a Worker restart</code> | [L105](../../relay/test/relay.test.mjs#L105) |
 
 <a id="file-tests-afkcompletiontests-cs"></a>
 ## tests/AfkCompletionTests.cs
@@ -291,14 +256,15 @@ AFK 주기·재시도 선택/경계·설정 저장를 검사한다. 아래 시�
 
 | 소스의 시나리오 이름 | 위치 |
 |---|---|
-| <code>discord fresh settings default to remembering but never auto-connect without a token</code> | [L43](../../tests/DiscordSettingsTests.cs#L43) |
-| <code>discord encrypted token survives a disk reload and reconnects without re-entry</code> | [L47](../../tests/DiscordSettingsTests.cs#L47) |
-| <code>discord 0.3.46 config gains auto-connect without losing the encrypted token</code> | [L63](../../tests/DiscordSettingsTests.cs#L63) |
-| <code>discord explicit disconnect survives restart and keeps token for manual reconnect</code> | [L71](../../tests/DiscordSettingsTests.cs#L71) |
-| <code>discord remember opt-out persists and clears a previously saved token</code> | [L79](../../tests/DiscordSettingsTests.cs#L79) |
-| <code>discord forget removes token and startup preference across restart</code> | [L88](../../tests/DiscordSettingsTests.cs#L88) |
-| <code>discord failed decryption preserves settings for recovery</code> | [L94](../../tests/DiscordSettingsTests.cs#L94) |
-| <code>discord invalid replacement and encryption failure never overwrite saved settings</code> | [L103](../../tests/DiscordSettingsTests.cs#L103) |
+| <code>web removal preserves typed saved Discord and AFK settings across restart</code> | [L43](../../tests/DiscordSettingsTests.cs#L43) |
+| <code>discord fresh settings default to remembering but never auto-connect without a token</code> | [L67](../../tests/DiscordSettingsTests.cs#L67) |
+| <code>discord encrypted token survives a disk reload and reconnects without re-entry</code> | [L71](../../tests/DiscordSettingsTests.cs#L71) |
+| <code>discord 0.3.46 config gains auto-connect without losing the encrypted token</code> | [L87](../../tests/DiscordSettingsTests.cs#L87) |
+| <code>discord explicit disconnect survives restart and keeps token for manual reconnect</code> | [L95](../../tests/DiscordSettingsTests.cs#L95) |
+| <code>discord remember opt-out persists and clears a previously saved token</code> | [L103](../../tests/DiscordSettingsTests.cs#L103) |
+| <code>discord forget removes token and startup preference across restart</code> | [L112](../../tests/DiscordSettingsTests.cs#L112) |
+| <code>discord failed decryption preserves settings for recovery</code> | [L118](../../tests/DiscordSettingsTests.cs#L118) |
+| <code>discord invalid replacement and encryption failure never overwrite saved settings</code> | [L127](../../tests/DiscordSettingsTests.cs#L127) |
 
 <a id="file-tests-gamechatcapturetests-cs"></a>
 ## tests/GameChatCaptureTests.cs
@@ -709,8 +675,8 @@ Dalamud 공개 채팅 이벤트의 두 delegate 형태·읽기 전용 수신·�
 | <a id="symbol-tests-listingdiscordemojitests-cs-6-8324f7e630"></a><code>ListingDiscordEmojiTests.Run</code><br><code>void Run(Action&lt;string, Action&gt; test, Action&lt;bool, string&gt; check)</code> | 메서드 | 80개 asset·이름·재사용/legacy rename/upload·slot 제한 및 join 이미지 선택 관련 시나리오를 실행한다. 개별 등록 조건은 아래 test 목록을 참조한다. | [L6](../../tests/ListingDiscordEmojiTests.cs#L6) |
 | <a id="symbol-tests-listingdiscordemojitests-cs-11-1e6333b8cf"></a><code>ListingDiscordEmojiTests.Run.Icon</code><br><code>string Icon(string key)</code> | 로컬 함수 | 지정 asset key의 표시 이모지를 조회해 검증한다. | [L11](../../tests/ListingDiscordEmojiTests.cs#L11) |
 | <a id="symbol-tests-listingdiscordemojitests-cs-12-6112ce05af"></a><code>ListingDiscordEmojiTests.Run.NoRename</code><br><code>Task&lt;Emote&gt; NoRename(ulong id, string name, CancellationToken ct)</code> | 로컬 함수 | 이 시나리오에서 rename이 불리지 않아야 함을 검증하는 대체 함수다. | [L12](../../tests/ListingDiscordEmojiTests.cs#L12) |
-| <a id="symbol-tests-listingdiscordemojitests-cs-13-db7ed1cea7"></a><code>ListingDiscordEmojiTests.Run.Slot</code><br><code>WebSlot Slot(bool member, bool anyone, params uint[] jobs)</code> | 로컬 함수 | 표시/점유/허용 직업을 가진 WebSlot fixture를 만든다. | [L13](../../tests/ListingDiscordEmojiTests.cs#L13) |
-| <a id="symbol-tests-listingdiscordemojitests-cs-41-e3122fa51a"></a><code>ListingDiscordEmojiTests.Run.Read</code><br><code>WebSlot Read(ulong flags, bool joined)</code> | 로컬 함수 | 테스트용 입력/asset/slot 결과를 읽는다. 해당 source 위치의 fixture 형태를 기준으로 사용한다. | [L41](../../tests/ListingDiscordEmojiTests.cs#L41) |
+| <a id="symbol-tests-listingdiscordemojitests-cs-13-db7ed1cea7"></a><code>ListingDiscordEmojiTests.Run.Slot</code><br><code>RemoteSlot Slot(bool member, bool anyone, params uint[] jobs)</code> | 로컬 함수 | 표시/점유/허용 직업을 가진 RemoteSlot fixture를 만든다. | [L13](../../tests/ListingDiscordEmojiTests.cs#L13) |
+| <a id="symbol-tests-listingdiscordemojitests-cs-41-e3122fa51a"></a><code>ListingDiscordEmojiTests.Run.Read</code><br><code>RemoteSlot Read(ulong flags, bool joined)</code> | 로컬 함수 | 테스트용 입력/asset/slot 결과를 읽는다. 해당 source 위치의 fixture 형태를 기준으로 사용한다. | [L41](../../tests/ListingDiscordEmojiTests.cs#L41) |
 | <a id="symbol-tests-listingdiscordemojitests-cs-84-789464adb0"></a><code>ListingDiscordEmojiTests.Run.List</code><br><code>Task&lt;IReadOnlyCollection&lt;Emote&gt;&gt; List(CancellationToken ct)</code> | 로컬 함수 | fake application emoji 목록을 돌려주고 목록 조회 횟수를 기록한다. | [L84](../../tests/ListingDiscordEmojiTests.cs#L84) |
 | <a id="symbol-tests-listingdiscordemojitests-cs-85-e26ad0a5ed"></a><code>ListingDiscordEmojiTests.Run.Create</code><br><code>Task&lt;Emote&gt; Create(string name, Stream stream, CancellationToken ct)</code> | 로컬 함수 | fake emoji 생성 요청과 이미지/name을 검사하고 생성 결과를 반환한다. | [L85](../../tests/ListingDiscordEmojiTests.cs#L85) |
 | <a id="symbol-tests-listingdiscordemojitests-cs-128-3d0467f489"></a><code>ListingDiscordEmojiTests.Run.List</code><br><code>Task&lt;IReadOnlyCollection&lt;Emote&gt;&gt; List(CancellationToken ct)</code> | 로컬 함수 | fake application emoji 목록을 돌려주고 목록 조회 횟수를 기록한다. | [L128](../../tests/ListingDiscordEmojiTests.cs#L128) |
@@ -1163,13 +1129,13 @@ dropdown open→click→select 순서와1회 동작·timeout를 검사한다. �
 
 | 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
 |---|---|---|---|
-| <a id="symbol-tests-listingrecoverytests-cs-7-0bbe0cc547"></a><code>ListingRecoveryTests.Ready</code><br><code>(ListingWebBridge b, RecoveryFakeHost h, string id, string session) Ready()</code> | 메서드 | 공통 bridge의 정상 자기 모집 snapshot과 복구용 fake host·UUID·session을 만든다. | [L7](../../tests/ListingRecoveryTests.cs#L7) |
+| <a id="symbol-tests-listingrecoverytests-cs-7-0bbe0cc547"></a><code>ListingRecoveryTests.Ready</code><br><code>(ListingBridge b, RecoveryFakeHost h, string id, string session) Ready()</code> | 메서드 | 공통 bridge의 정상 자기 모집 snapshot과 복구용 fake host·UUID·session을 만든다. | [L7](../../tests/ListingRecoveryTests.cs#L7) |
 | <a id="symbol-tests-listingrecoverytests-cs-12-f6d24880e0"></a><code>ListingRecoveryTests.Run</code><br><code>void Run(Action&lt;string, Action&gt; test, Action&lt;bool, string&gt; check)</code> | 메서드 | 수정창 닫기 우선 처리·ACK·세션·창 수명·중단 소유권 관련 시나리오를 실행한다. 개별 등록 조건은 아래 test 목록을 참조한다. | [L12](../../tests/ListingRecoveryTests.cs#L12) |
 | <a id="symbol-tests-listingrecoverytests-cs-112-4cd46be0b3"></a><code>ListingRecoveryTests.RecoveryResponse.Defer</code><br><code>Task Defer()</code> | 메서드 | 최초 Discord ACK의 횟수·순서와 테스트용 지연/실패를 기록한다. | [L112](../../tests/ListingRecoveryTests.cs#L112) |
 | <a id="symbol-tests-listingrecoverytests-cs-113-4931b289e3"></a><code>ListingRecoveryTests.RecoveryResponse.Modal</code><br><code>Task Modal(Modal modal)</code> | 메서드 | modal interaction 응답을 읽는다. | [L113](../../tests/ListingRecoveryTests.cs#L113) |
 | <a id="symbol-tests-listingrecoverytests-cs-114-5e6a8491e4"></a><code>ListingRecoveryTests.RecoveryResponse.Screen</code><br><code>Task Screen(DiscordScreen screen, bool replace, bool deferred)</code> | 메서드 | 보낸 카드와 update/응답 정보를 테스트 기록에 저장한다. | [L114](../../tests/ListingRecoveryTests.cs#L114) |
-| <a id="symbol-tests-listingrecoverytests-cs-119-18b7c03e95"></a><code>RecoveryFakeHost</code><br><code>RecoveryFakeHost(WebEditFakeHost game)</code> | 주 생성자/모델 | 이 파일의 검증에 사용할 fake host/transport/interaction 데이터를 초기화한다. 실제 게임 메모리에는 접근하지 않는다. | [L119](../../tests/ListingRecoveryTests.cs#L119) |
-| <a id="symbol-tests-listingrecoverytests-cs-121-ad82973b61"></a><code>RecoveryFakeHost.Game</code><br><code>WebEditFakeHost Game</code> | 계산 속성 | 복구 취소 전후 제출 횟수와 갱신 상태를 검사할 내부 fake game host를 반환한다. 계산식: <code>game</code>. | [L121](../../tests/ListingRecoveryTests.cs#L121) |
+| <a id="symbol-tests-listingrecoverytests-cs-119-18b7c03e95"></a><code>RecoveryFakeHost</code><br><code>RecoveryFakeHost(EditContractFakeHost game)</code> | 주 생성자/모델 | 이 파일의 검증에 사용할 fake host/transport/interaction 데이터를 초기화한다. 실제 게임 메모리에는 접근하지 않는다. | [L119](../../tests/ListingRecoveryTests.cs#L119) |
+| <a id="symbol-tests-listingrecoverytests-cs-121-ad82973b61"></a><code>RecoveryFakeHost.Game</code><br><code>EditContractFakeHost Game</code> | 계산 속성 | 복구 취소 전후 제출 횟수와 갱신 상태를 검사할 내부 fake game host를 반환한다. 계산식: <code>game</code>. | [L121](../../tests/ListingRecoveryTests.cs#L121) |
 | <a id="symbol-tests-listingrecoverytests-cs-125-2b4303d352"></a><code>RecoveryFakeHost.Show</code><br><code>void Show(bool role = false)</code> | 메서드 | 복구 테스트 대상인 부모와 선택적 자식창 ticket을 표시 상태로 만든다. | [L125](../../tests/ListingRecoveryTests.cs#L125) |
 | <a id="symbol-tests-listingrecoverytests-cs-126-db90ddddf1"></a><code>RecoveryFakeHost.SelfId</code><br><code>ulong SelfId</code> | 계산 속성 | 현재 로그인한 본인의 ContentId를 반환한다. 로그아웃/미준비는0이다. 계산식: <code>game.SelfId</code>. | [L126](../../tests/ListingRecoveryTests.cs#L126) |
 | <a id="symbol-tests-listingrecoverytests-cs-127-69c70640b8"></a><code>RecoveryFakeHost.RecoveryBlockReason</code><br><code>string? RecoveryBlockReason</code> | 계산 속성 | 테스트에서 주입한 native 호환/이동 차단 사유를 반환한다. 계산식: <code>Block</code>. | [L127](../../tests/ListingRecoveryTests.cs#L127) |
@@ -1185,7 +1151,7 @@ dropdown open→click→select 순서와1회 동작·timeout를 검사한다. �
 | <a id="symbol-tests-listingrecoverytests-cs-146-86d87aba69"></a><code>RecoveryFakeHost.RefreshBlockReason</code><br><code>string? RefreshBlockReason</code> | 계산 속성 | 공통 조회 차단에 인게임 대기 변경/cooldown 등을 더해 외부 갱신 거부 이유를 반환한다. 계산식: <code>QueryBlockReason ?? game.RefreshBlockReason</code>. | [L146](../../tests/ListingRecoveryTests.cs#L146) |
 | <a id="symbol-tests-listingrecoverytests-cs-147-7d5bf5049a"></a><code>RecoveryFakeHost.CaptureEditTarget</code><br><code>RefreshTarget? CaptureEditTarget()</code> | 메서드 | fake host가 보유한 source를 외부 편집 target으로 반환한다. | [L147](../../tests/ListingRecoveryTests.cs#L147) |
 | <a id="symbol-tests-listingrecoverytests-cs-148-59f591a9ef"></a><code>RecoveryFakeHost.StartRefresh</code><br><code>bool StartRefresh(RefreshTarget source, ListingChange[] changes, out string error)</code> | 메서드 | Bridge가 전달한 source/변경을 fake 갱신 흐름에 예약하고 호출 횟수를 기록한다. | [L148](../../tests/ListingRecoveryTests.cs#L148) |
-| <a id="symbol-tests-listingrecoverytests-cs-149-6040fcab17"></a><code>RecoveryFakeHost.ReadRefresh</code><br><code>WebRefreshProgress? ReadRefresh()</code> | 메서드 | fake 갱신 상태/결과를 외부 DTO로 반환한다. | [L149](../../tests/ListingRecoveryTests.cs#L149) |
+| <a id="symbol-tests-listingrecoverytests-cs-149-6040fcab17"></a><code>RecoveryFakeHost.ReadRefresh</code><br><code>RemoteRefreshProgress? ReadRefresh()</code> | 메서드 | fake 갱신 상태/결과를 외부 DTO로 반환한다. | [L149](../../tests/ListingRecoveryTests.cs#L149) |
 
 ### 등록된 회귀 시나리오
 
@@ -1204,30 +1170,6 @@ dropdown open→click→select 순서와1회 동작·timeout를 검사한다. �
 | <code>recovery makes an old acknowledged Discord request unusable after completion</code> | [L79](../../tests/ListingRecoveryTests.cs#L79) |
 | <code>discord recovery works during a blocked normal ACK and requires its own successful ACK</code> | [L85](../../tests/ListingRecoveryTests.cs#L85) |
 | <code>discord recovery rejects another owner app and stale card</code> | [L100](../../tests/ListingRecoveryTests.cs#L100) |
-
-<a id="file-tests-listingrelaytests-cs"></a>
-## tests/ListingRelayTests.cs
-
-[소스 파일](../../tests/ListingRelayTests.cs) · 명명된 항목/진입점 3개
-
-중계 URL/key/frame allowlist·session/만료·JSON/크기·Bridge 응답를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다.
-
-| 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
-|---|---|---|---|
-| <a id="symbol-tests-listingrelaytests-cs-7-90b5776ce3"></a><code>ListingRelayTests.Frame</code><br><code>byte[] Frame(string path, string method = "GET", string body = "", string requestId = "", string session = "", long expiresAt = 6000)</code> | 메서드 | 허용/거부 경계를 검사할 relay JSON frame을 만든다. | [L7](../../tests/ListingRelayTests.cs#L7) |
-| <a id="symbol-tests-listingrelaytests-cs-9-377a683268"></a><code>ListingRelayTests.Reply</code><br><code>JsonElement Reply(ListingWebBridge bridge, byte[] frame, long tick = 1100, long utc = 1000)</code> | 메서드 | relay protocol의 응답 JSON을 검사하기 쉬운 구조로 읽는다. | [L9](../../tests/ListingRelayTests.cs#L9) |
-| <a id="symbol-tests-listingrelaytests-cs-13-b68b0ff73b"></a><code>ListingRelayTests.Run</code><br><code>void Run(Action&lt;string, Action&gt; test, Action&lt;bool, string&gt; check)</code> | 메서드 | 중계 URL/key/frame allowlist·session/만료·JSON/크기·Bridge 응답 관련 시나리오를 실행한다. 개별 등록 조건은 아래 test 목록을 참조한다. | [L13](../../tests/ListingRelayTests.cs#L13) |
-
-### 등록된 회귀 시나리오
-
-| 소스의 시나리오 이름 | 위치 |
-|---|---|
-| <code>relay accepts only an HTTPS origin in production</code> | [L15](../../tests/ListingRelayTests.cs#L15) |
-| <code>relay read protocol exposes only managed state and whitelisted paths</code> | [L21](../../tests/ListingRelayTests.cs#L21) |
-| <code>relay expires delayed commands before queueing and rejects clock skew</code> | [L27](../../tests/ListingRelayTests.cs#L27) |
-| <code>relay duplicate delivery reuses the same operation and never calls game off-thread</code> | [L33](../../tests/ListingRelayTests.cs#L33) |
-| <code>relay rejects malformed envelopes, oversized bodies and unrecognized edits without echoing PIN</code> | [L43](../../tests/ListingRelayTests.cs#L43) |
-| <code>relay old sessions cannot mutate another character or a stopped bridge</code> | [L53](../../tests/ListingRelayTests.cs#L53) |
 
 <a id="file-tests-listingrolebuttonstests-cs"></a>
 ## tests/ListingRoleButtonsTests.cs
@@ -1435,108 +1377,101 @@ finder bit/loot mapping·컨트롤 상태 기계·다른 조건 보존를 검사
 | <code>unique jobs confirmation does not require the displayed sixty-minute timer to increase</code> | [L163](../../tests/ListingUniqueJobsEditTests.cs#L163) |
 | <code>unique jobs does not act on a new-party editor</code> | [L169](../../tests/ListingUniqueJobsEditTests.cs#L169) |
 
-<a id="file-tests-listingwebedittests-cs"></a>
-## tests/ListingWebEditTests.cs
+<a id="file-tests-listingeditcontracttests-cs"></a>
+## tests/ListingEditContractTests.cs
 
-[소스 파일](../../tests/ListingWebEditTests.cs) · 명명된 항목/진입점 21개
+[소스 파일](../../tests/ListingEditContractTests.cs) · 명명된 항목/진입점 20개
 
-apply decoder·revision/ID ledger·타임아웃·실제 HTTP의 엄격한 body/auth 경계를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다.
+관리형 변경 요청 decoder·revision/ID ledger·타임아웃·허용 필드와 값 경계를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다.
 
 | 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
 |---|---|---|---|
-| <a id="symbol-tests-listingwebedittests-cs-10-b7998d3bf0"></a><code>ListingWebEditTests.Body</code><br><code>byte[] Body(string revision, params object[] changes)</code> | 메서드 | 외부 apply API의 JSON body fixture를 만든다. | [L10](../../tests/ListingWebEditTests.cs#L10) |
-| <a id="symbol-tests-listingwebedittests-cs-11-7672aeed63"></a><code>ListingWebEditTests.Ready</code><br><code>(ListingWebBridge Bridge, WebEditFakeHost Host, WebView View) Ready(long now = 1000)</code> | 메서드 | fake source를 Bridge에 발행해 query/edit가 가능한 초기 상태를 만든다. | [L11](../../tests/ListingWebEditTests.cs#L11) |
-| <a id="symbol-tests-listingwebedittests-cs-16-95d136fe0e"></a><code>ListingWebEditTests.Step</code><br><code>void Step(ListingWebBridge b, WebEditFakeHost h, long tick)</code> | 메서드 | fake 시간 및 host/Bridge update를 한 단계 진행한다. | [L16](../../tests/ListingWebEditTests.cs#L16) |
-| <a id="symbol-tests-listingwebedittests-cs-17-f86f9f7f6f"></a><code>ListingWebEditTests.Finish</code><br><code>WebOperation Finish(ListingWebBridge b, WebEditFakeHost h, long tick = 1500)</code> | 메서드 | fake 조회 또는 편집 작업을 끝내고 다음 snapshot을 발행한다. | [L17](../../tests/ListingWebEditTests.cs#L17) |
-| <a id="symbol-tests-listingwebedittests-cs-25-ff49361744"></a><code>ListingWebEditTests.Run</code><br><code>void Run(Action&lt;string, Action&gt; test, Action&lt;bool, string&gt; check)</code> | 메서드 | apply decoder·revision/ID ledger·타임아웃·실제 HTTP의 엄격한 body/auth 경계 관련 시나리오를 실행한다. 개별 등록 조건은 아래 test 목록을 참조한다. | [L25](../../tests/ListingWebEditTests.cs#L25) |
-| <a id="symbol-tests-listingwebedittests-cs-185-edae60dc80"></a><code>ListingWebEditTests.Http</code><br><code>Task Http(Action&lt;bool, string&gt; check)</code> | 메서드 | loopback 서버에 raw HTTP fixture를 보내 응답을 읽는다. | [L185](../../tests/ListingWebEditTests.cs#L185) |
-| <a id="symbol-tests-listingwebedittests-cs-229-3821a910ce"></a><code>WebEditFakeHost.WebEditFakeHost</code><br><code>WebEditFakeHost()</code> | 생성자 | 이 파일의 검증에 사용할 fake host/transport/interaction 데이터를 초기화한다. 실제 게임 메모리에는 접근하지 않는다. | [L229](../../tests/ListingWebEditTests.cs#L229) |
-| <a id="symbol-tests-listingwebedittests-cs-230-0ee7f705a1"></a><code>WebEditFakeHost.SelfId</code><br><code>ulong SelfId</code> | 계산 속성 | 현재 로그인한 본인의 ContentId를 반환한다. 로그아웃/미준비는0이다. | [L230](../../tests/ListingWebEditTests.cs#L230) |
-| <a id="symbol-tests-listingwebedittests-cs-231-a2912b449f"></a><code>WebEditFakeHost.QueryBlockReason</code><br><code>string? QueryBlockReason</code> | 계산 속성 | 현재 플러그인의 공통 조회 차단 사유를 반환한다. | [L231](../../tests/ListingWebEditTests.cs#L231) |
-| <a id="symbol-tests-listingwebedittests-cs-232-8ad3a8acc0"></a><code>WebEditFakeHost.RefreshBlockReason</code><br><code>string? RefreshBlockReason</code> | 계산 속성 | 공통 조회 차단에 인게임 대기 변경/cooldown 등을 더해 외부 갱신 거부 이유를 반환한다. 계산식: <code>QueryBlockReason ?? (Flow.CoolingDown(Tick) ? "잠시 후 갱신" : null)</code>. | [L232](../../tests/ListingWebEditTests.cs#L232) |
-| <a id="symbol-tests-listingwebedittests-cs-233-adcfbcd193"></a><code>WebEditFakeHost.QueryBusy</code><br><code>bool QueryBusy</code> | 계산 속성 | ListingReader의 조회 진행 상태를 반환한다. 계산식: <code>Native.QueryBusy</code>. | [L233](../../tests/ListingWebEditTests.cs#L233) |
-| <a id="symbol-tests-listingwebedittests-cs-234-e7a0020825"></a><code>WebEditFakeHost.QuerySucceeded</code><br><code>bool QuerySucceeded</code> | 계산 속성 | 마지막 본인 조회가 검증까지 성공했는지 반환한다. 계산식: <code>Native.QuerySucceeded</code>. | [L234](../../tests/ListingWebEditTests.cs#L234) |
-| <a id="symbol-tests-listingwebedittests-cs-235-ba26324274"></a><code>WebEditFakeHost.DetailRevision</code><br><code>long DetailRevision</code> | 계산 속성 | 상세창 PostSetup/PostRefresh revision을 읽는다. 계산식: <code>Native.DetailRevision</code>. | [L235](../../tests/ListingWebEditTests.cs#L235) |
-| <a id="symbol-tests-listingwebedittests-cs-236-ec8ca7880e"></a><code>WebEditFakeHost.Listing</code><br><code>ListingSnapshot Listing</code> | 계산 속성 | 현재 관리형 ListingSnapshot을 반환한다. | [L236](../../tests/ListingWebEditTests.cs#L236) |
-| <a id="symbol-tests-listingwebedittests-cs-244-fb0fcdf8c9"></a><code>WebEditFakeHost.CaptureEditTarget</code><br><code>RefreshTarget? CaptureEditTarget()</code> | 메서드 | fake host가 보유한 source를 외부 편집 target으로 반환한다. | [L244](../../tests/ListingWebEditTests.cs#L244) |
-| <a id="symbol-tests-listingwebedittests-cs-245-5741c9ef72"></a><code>WebEditFakeHost.RequestQuery</code><br><code>bool RequestQuery(out string error)</code> | 메서드 | Bridge가 실행하는 조회를 fake host/guard에 기록한다. | [L245](../../tests/ListingWebEditTests.cs#L245) |
-| <a id="symbol-tests-listingwebedittests-cs-246-95cfd6732a"></a><code>WebEditFakeHost.StartRefresh</code><br><code>bool StartRefresh(RefreshTarget source, ListingChange[] changes, out string error)</code> | 메서드 | Bridge가 전달한 source/변경을 fake 갱신 흐름에 예약하고 호출 횟수를 기록한다. | [L246](../../tests/ListingWebEditTests.cs#L246) |
-| <a id="symbol-tests-listingwebedittests-cs-252-9dbccb9bbf"></a><code>WebEditFakeHost.ReadRefresh</code><br><code>WebRefreshProgress? ReadRefresh()</code> | 메서드 | fake 갱신 상태/결과를 외부 DTO로 반환한다. | [L252](../../tests/ListingWebEditTests.cs#L252) |
-| <a id="symbol-tests-listingwebedittests-cs-253-fd205d47f4"></a><code>WebEditFakeHost.Advance</code><br><code>void Advance(long now)</code> | 메서드 | fake 갱신 상태 기계를 지정 tick만큼 진행한다. | [L253](../../tests/ListingWebEditTests.cs#L253) |
-| <a id="symbol-tests-listingwebedittests-cs-262-7d45286618"></a><code>WebEditFakeHost.Guard</code><br><code>void Guard()</code> | 메서드 | 외부 요청 ownership/시간 경계를 fake host에서 검사한다. | [L262](../../tests/ListingWebEditTests.cs#L262) |
-| <a id="symbol-tests-listingwebedittests-cs-263-a4059b6829"></a><code>WebEditFakeHost.Target</code><br><code>RefreshTarget Target(int count = 8, bool friendly = false)</code> | 메서드 | 이 테스트가 필요한 조건/슬롯/멤버를 갖춘 RefreshTarget fixture를 만든다. | [L263](../../tests/ListingWebEditTests.cs#L263) |
+| <a id="symbol-tests-listingeditcontracttests-cs-10-b7998d3bf0"></a><code>ListingEditContractTests.Body</code><br><code>byte[] Body(string revision, params object[] changes)</code> | 메서드 | 외부 apply API의 JSON body fixture를 만든다. | [L8](../../tests/ListingEditContractTests.cs#L8) |
+| <a id="symbol-tests-listingeditcontracttests-cs-11-7672aeed63"></a><code>ListingEditContractTests.Ready</code><br><code>(ListingBridge Bridge, EditContractFakeHost Host, RemoteView View) Ready(long now = 1000)</code> | 메서드 | fake source를 Bridge에 발행해 query/edit가 가능한 초기 상태를 만든다. | [L9](../../tests/ListingEditContractTests.cs#L9) |
+| <a id="symbol-tests-listingeditcontracttests-cs-16-95d136fe0e"></a><code>ListingEditContractTests.Step</code><br><code>void Step(ListingBridge b, EditContractFakeHost h, long tick)</code> | 메서드 | fake 시간 및 host/Bridge update를 한 단계 진행한다. | [L14](../../tests/ListingEditContractTests.cs#L14) |
+| <a id="symbol-tests-listingeditcontracttests-cs-17-f86f9f7f6f"></a><code>ListingEditContractTests.Finish</code><br><code>RemoteOperation Finish(ListingBridge b, EditContractFakeHost h, long tick = 1500)</code> | 메서드 | fake 조회 또는 편집 작업을 끝내고 다음 snapshot을 발행한다. | [L15](../../tests/ListingEditContractTests.cs#L15) |
+| <a id="symbol-tests-listingeditcontracttests-cs-25-ff49361744"></a><code>ListingEditContractTests.Run</code><br><code>void Run(Action&lt;string, Action&gt; test, Action&lt;bool, string&gt; check)</code> | 메서드 | 관리형 변경 요청 decoder·revision/ID ledger·타임아웃·허용 필드와 값 경계 관련 시나리오를 실행한다. 개별 등록 조건은 아래 test 목록을 참조한다. | [L23](../../tests/ListingEditContractTests.cs#L23) |
+| <a id="symbol-tests-listingeditcontracttests-cs-229-3821a910ce"></a><code>EditContractFakeHost.EditContractFakeHost</code><br><code>EditContractFakeHost()</code> | 생성자 | 이 파일의 검증에 사용할 fake host/transport/interaction 데이터를 초기화한다. 실제 게임 메모리에는 접근하지 않는다. | [L194](../../tests/ListingEditContractTests.cs#L194) |
+| <a id="symbol-tests-listingeditcontracttests-cs-230-0ee7f705a1"></a><code>EditContractFakeHost.SelfId</code><br><code>ulong SelfId</code> | 계산 속성 | 현재 로그인한 본인의 ContentId를 반환한다. 로그아웃/미준비는0이다. | [L195](../../tests/ListingEditContractTests.cs#L195) |
+| <a id="symbol-tests-listingeditcontracttests-cs-231-a2912b449f"></a><code>EditContractFakeHost.QueryBlockReason</code><br><code>string? QueryBlockReason</code> | 계산 속성 | 현재 플러그인의 공통 조회 차단 사유를 반환한다. | [L196](../../tests/ListingEditContractTests.cs#L196) |
+| <a id="symbol-tests-listingeditcontracttests-cs-232-8ad3a8acc0"></a><code>EditContractFakeHost.RefreshBlockReason</code><br><code>string? RefreshBlockReason</code> | 계산 속성 | 공통 조회 차단에 인게임 대기 변경/cooldown 등을 더해 외부 갱신 거부 이유를 반환한다. 계산식: <code>QueryBlockReason ?? (Flow.CoolingDown(Tick) ? "잠시 후 갱신" : null)</code>. | [L197](../../tests/ListingEditContractTests.cs#L197) |
+| <a id="symbol-tests-listingeditcontracttests-cs-233-adcfbcd193"></a><code>EditContractFakeHost.QueryBusy</code><br><code>bool QueryBusy</code> | 계산 속성 | ListingReader의 조회 진행 상태를 반환한다. 계산식: <code>Native.QueryBusy</code>. | [L198](../../tests/ListingEditContractTests.cs#L198) |
+| <a id="symbol-tests-listingeditcontracttests-cs-234-e7a0020825"></a><code>EditContractFakeHost.QuerySucceeded</code><br><code>bool QuerySucceeded</code> | 계산 속성 | 마지막 본인 조회가 검증까지 성공했는지 반환한다. 계산식: <code>Native.QuerySucceeded</code>. | [L199](../../tests/ListingEditContractTests.cs#L199) |
+| <a id="symbol-tests-listingeditcontracttests-cs-235-ba26324274"></a><code>EditContractFakeHost.DetailRevision</code><br><code>long DetailRevision</code> | 계산 속성 | 상세창 PostSetup/PostRefresh revision을 읽는다. 계산식: <code>Native.DetailRevision</code>. | [L200](../../tests/ListingEditContractTests.cs#L200) |
+| <a id="symbol-tests-listingeditcontracttests-cs-236-ec8ca7880e"></a><code>EditContractFakeHost.Listing</code><br><code>ListingSnapshot Listing</code> | 계산 속성 | 현재 관리형 ListingSnapshot을 반환한다. | [L201](../../tests/ListingEditContractTests.cs#L201) |
+| <a id="symbol-tests-listingeditcontracttests-cs-244-fb0fcdf8c9"></a><code>EditContractFakeHost.CaptureEditTarget</code><br><code>RefreshTarget? CaptureEditTarget()</code> | 메서드 | fake host가 보유한 source를 외부 편집 target으로 반환한다. | [L209](../../tests/ListingEditContractTests.cs#L209) |
+| <a id="symbol-tests-listingeditcontracttests-cs-245-5741c9ef72"></a><code>EditContractFakeHost.RequestQuery</code><br><code>bool RequestQuery(out string error)</code> | 메서드 | Bridge가 실행하는 조회를 fake host/guard에 기록한다. | [L210](../../tests/ListingEditContractTests.cs#L210) |
+| <a id="symbol-tests-listingeditcontracttests-cs-246-95cfd6732a"></a><code>EditContractFakeHost.StartRefresh</code><br><code>bool StartRefresh(RefreshTarget source, ListingChange[] changes, out string error)</code> | 메서드 | Bridge가 전달한 source/변경을 fake 갱신 흐름에 예약하고 호출 횟수를 기록한다. | [L211](../../tests/ListingEditContractTests.cs#L211) |
+| <a id="symbol-tests-listingeditcontracttests-cs-252-9dbccb9bbf"></a><code>EditContractFakeHost.ReadRefresh</code><br><code>RemoteRefreshProgress? ReadRefresh()</code> | 메서드 | fake 갱신 상태/결과를 외부 DTO로 반환한다. | [L217](../../tests/ListingEditContractTests.cs#L217) |
+| <a id="symbol-tests-listingeditcontracttests-cs-253-fd205d47f4"></a><code>EditContractFakeHost.Advance</code><br><code>void Advance(long now)</code> | 메서드 | fake 갱신 상태 기계를 지정 tick만큼 진행한다. | [L218](../../tests/ListingEditContractTests.cs#L218) |
+| <a id="symbol-tests-listingeditcontracttests-cs-262-7d45286618"></a><code>EditContractFakeHost.Guard</code><br><code>void Guard()</code> | 메서드 | 외부 요청 ownership/시간 경계를 fake host에서 검사한다. | [L227](../../tests/ListingEditContractTests.cs#L227) |
+| <a id="symbol-tests-listingeditcontracttests-cs-263-a4059b6829"></a><code>EditContractFakeHost.Target</code><br><code>RefreshTarget Target(int count = 8, bool friendly = false)</code> | 메서드 | 이 테스트가 필요한 조건/슬롯/멤버를 갖춘 RefreshTarget fixture를 만든다. | [L228](../../tests/ListingEditContractTests.cs#L228) |
 
 ### 등록된 회귀 시나리오
 
 | 소스의 시나리오 이름 | 위치 |
 |---|---|
-| <code>web edit source revision ignores time but changes with members or conditions</code> | [L27](../../tests/ListingWebEditTests.cs#L27) |
-| <code>web edit models expose ordered job IDs only for empty registered slots including friendly spectators</code> | [L35](../../tests/ListingWebEditTests.cs#L35) |
-| <code>web decoder accepts all existing settings, leading-zero PIN and native slot IDs</code> | [L43](../../tests/ListingWebEditTests.cs#L43) |
-| <code>web decoder rejects unknown, duplicate, malformed or oversized changes atomically</code> | [L55](../../tests/ListingWebEditTests.cs#L55) |
-| <code>web friendly unregistered slots cannot be requested, unchanged fields become plain refresh</code> | [L76](../../tests/ListingWebEditTests.cs#L76) |
-| <code>web writes stay on framework thread, execute once and never consume local pending changes</code> | [L82](../../tests/ListingWebEditTests.cs#L82) |
-| <code>web batch skips an unsupported rule, applies other edits and reports partial result</code> | [L94](../../tests/ListingWebEditTests.cs#L94) |
-| <code>web plain refresh has one submit and is bound to the displayed source</code> | [L103](../../tests/ListingWebEditTests.cs#L103) |
-| <code>web batch rechecks source after its fresh query before editing</code> | [L112](../../tests/ListingWebEditTests.cs#L112) |
-| <code>web 48-person job batch keeps every native slot and still submits just once</code> | [L117](../../tests/ListingWebEditTests.cs#L117) |
-| <code>web simple refresh remains available when only job editing is unsupported</code> | [L125](../../tests/ListingWebEditTests.cs#L125) |
-| <code>web unavailable preflight, stale publication and expired request never start</code> | [L129](../../tests/ListingWebEditTests.cs#L129) |
-| <code>web character switch and shutdown discard queued bodies and credentials</code> | [L140](../../tests/ListingWebEditTests.cs#L140) |
-| <code>web PIN never appears in snapshots, progress, HTTP replies or completed results</code> | [L149](../../tests/ListingWebEditTests.cs#L149) |
-| <code>web terminal unconfirmed status remains honest even when fields match</code> | [L159](../../tests/ListingWebEditTests.cs#L159) |
-| <code>web history eviction does not make an old write executable again</code> | [L164](../../tests/ListingWebEditTests.cs#L164) |
-| <code>web refresh guard permits long batches, stops stalls, and never cancels newer local work</code> | [L174](../../tests/ListingWebEditTests.cs#L174) |
-| <code>web apply authenticates and handles a fragmented bounded JSON body with one execution</code> | [L182](../../tests/ListingWebEditTests.cs#L182) |
+| <code>bridge edit source revision ignores time but changes with members or conditions</code> | [L25](../../tests/ListingEditContractTests.cs#L25) |
+| <code>bridge edit models expose ordered job IDs only for empty registered slots including friendly spectators</code> | [L33](../../tests/ListingEditContractTests.cs#L33) |
+| <code>bridge decoder accepts all existing settings, leading-zero PIN and native slot IDs</code> | [L41](../../tests/ListingEditContractTests.cs#L41) |
+| <code>bridge decoder rejects unknown, duplicate, malformed or oversized changes atomically</code> | [L53](../../tests/ListingEditContractTests.cs#L53) |
+| <code>bridge friendly unregistered slots cannot be requested, unchanged fields become plain refresh</code> | [L74](../../tests/ListingEditContractTests.cs#L74) |
+| <code>bridge writes stay on framework thread, execute once and never consume local pending changes</code> | [L80](../../tests/ListingEditContractTests.cs#L80) |
+| <code>bridge batch skips an unsupported rule, applies other edits and reports partial result</code> | [L92](../../tests/ListingEditContractTests.cs#L92) |
+| <code>bridge plain refresh has one submit and is bound to the displayed source</code> | [L101](../../tests/ListingEditContractTests.cs#L101) |
+| <code>bridge batch rechecks source after its fresh query before editing</code> | [L110](../../tests/ListingEditContractTests.cs#L110) |
+| <code>bridge 48-person job batch keeps every native slot and still submits just once</code> | [L115](../../tests/ListingEditContractTests.cs#L115) |
+| <code>bridge simple refresh remains available when only job editing is unsupported</code> | [L123](../../tests/ListingEditContractTests.cs#L123) |
+| <code>bridge unavailable preflight, stale publication and expired request never start</code> | [L127](../../tests/ListingEditContractTests.cs#L127) |
+| <code>bridge character switch and shutdown discard queued bodies and credentials</code> | [L138](../../tests/ListingEditContractTests.cs#L138) |
+| <code>bridge PIN never appears in snapshots, progress, request replies or completed results</code> | [L147](../../tests/ListingEditContractTests.cs#L147) |
+| <code>bridge terminal unconfirmed status remains honest even when fields match</code> | [L157](../../tests/ListingEditContractTests.cs#L157) |
+| <code>bridge history eviction does not make an old write executable again</code> | [L162](../../tests/ListingEditContractTests.cs#L162) |
+| <code>bridge refresh guard permits long batches, stops stalls, and never cancels newer local work</code> | [L172](../../tests/ListingEditContractTests.cs#L172) |
 
-<a id="file-tests-listingwebtests-cs"></a>
-## tests/ListingWebTests.cs
+<a id="file-tests-listingbridgetests-cs"></a>
+## tests/ListingBridgeTests.cs
 
-[소스 파일](../../tests/ListingWebTests.cs) · 명명된 항목/진입점 11개
+[소스 파일](../../tests/ListingBridgeTests.cs) · 명명된 항목/진입점 9개
 
-snapshot 최소 노출·query queue·Host/Origin/Bearer·HTTP 종료와 소유권를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다.
+snapshot 최소 노출·query queue·캐릭터/요청 소유권·연결 종료를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다.
 
 | 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
 |---|---|---|---|
-| <a id="symbol-tests-listingwebtests-cs-11-5cae6cb33e"></a><code>ListingWebTests.View</code><br><code>WebView View(ListingWebBridge bridge)</code> | 메서드 | Bridge의 JSON 응답을 WebView로 읽어 테스트 assertion에 제공한다. | [L11](../../tests/ListingWebTests.cs#L11) |
-| <a id="symbol-tests-listingwebtests-cs-12-41971193a0"></a><code>ListingWebTests.Sample</code><br><code>ListingSnapshot Sample(int count = 8, bool friendly = false)</code> | 메서드 | WebView 변환용 모집글 snapshot fixture를 만든다. | [L12](../../tests/ListingWebTests.cs#L12) |
-| <a id="symbol-tests-listingwebtests-cs-31-a4b51e1941"></a><code>ListingWebTests.Ready</code><br><code>(ListingWebBridge Bridge, WebFakeHost Host, string Session) Ready(long now = 1000)</code> | 메서드 | fake source를 Bridge에 발행해 query/edit가 가능한 초기 상태를 만든다. | [L31](../../tests/ListingWebTests.cs#L31) |
-| <a id="symbol-tests-listingwebtests-cs-36-0af8c63888"></a><code>ListingWebTests.Run</code><br><code>void Run(Action&lt;string, Action&gt; test, Action&lt;bool, string&gt; check)</code> | 메서드 | snapshot 최소 노출·query queue·Host/Origin/Bearer·HTTP 종료와 소유권 관련 시나리오를 실행한다. 개별 등록 조건은 아래 test 목록을 참조한다. | [L36](../../tests/ListingWebTests.cs#L36) |
-| <a id="symbol-tests-listingwebtests-cs-186-87294e036e"></a><code>ListingWebTests.HttpChecks</code><br><code>Task HttpChecks(Action&lt;bool, string&gt; check)</code> | 메서드 | 실제 loopback TCP 서버에 인증/Origin/HTTP 형식 경계 요청을 보내 검사한다. | [L186](../../tests/ListingWebTests.cs#L186) |
-| <a id="symbol-tests-listingwebtests-cs-216-32de8a353f"></a><code>ListingWebTests.StopChecks</code><br><code>Task StopChecks(Action&lt;bool, string&gt; check)</code> | 메서드 | listener/연결/진행 요청 종료가 기다림 없이 정리되는지 검사한다. | [L216](../../tests/ListingWebTests.cs#L216) |
-| <a id="symbol-tests-listingwebtests-cs-234-e7076a37c6"></a><code>WebFakeHost.SelfId</code><br><code>ulong SelfId</code> | 계산 속성 | 현재 로그인한 본인의 ContentId를 반환한다. 로그아웃/미준비는0이다. | [L234](../../tests/ListingWebTests.cs#L234) |
-| <a id="symbol-tests-listingwebtests-cs-236-5f06f4758c"></a><code>WebFakeHost.QueryBlockReason</code><br><code>string? QueryBlockReason</code> | 계산 속성 | 현재 플러그인의 공통 조회 차단 사유를 반환한다. | [L236](../../tests/ListingWebTests.cs#L236) |
-| <a id="symbol-tests-listingwebtests-cs-243-9ee1b9252e"></a><code>WebFakeHost.Guard</code><br><code>void Guard()</code> | 메서드 | 외부 요청 ownership/시간 경계를 fake host에서 검사한다. | [L243](../../tests/ListingWebTests.cs#L243) |
-| <a id="symbol-tests-listingwebtests-cs-244-82300f6649"></a><code>WebFakeHost.RequestQuery</code><br><code>bool RequestQuery(out string error)</code> | 메서드 | Bridge가 실행하는 조회를 fake host/guard에 기록한다. | [L244](../../tests/ListingWebTests.cs#L244) |
-| <a id="symbol-tests-listingwebtests-cs-250-2c2e5714c5"></a><code>WebFakeHost.Finish</code><br><code>void Finish()</code> | 메서드 | fake 조회 또는 편집 작업을 끝내고 다음 snapshot을 발행한다. | [L250](../../tests/ListingWebTests.cs#L250) |
+| <a id="symbol-tests-listingbridgetests-cs-11-5cae6cb33e"></a><code>ListingBridgeTests.View</code><br><code>RemoteView View(ListingBridge bridge)</code> | 메서드 | Bridge의 JSON 응답을 RemoteView로 읽어 테스트 assertion에 제공한다. | [L8](../../tests/ListingBridgeTests.cs#L8) |
+| <a id="symbol-tests-listingbridgetests-cs-12-41971193a0"></a><code>ListingBridgeTests.Sample</code><br><code>ListingSnapshot Sample(int count = 8, bool friendly = false)</code> | 메서드 | RemoteView 변환용 모집글 snapshot fixture를 만든다. | [L9](../../tests/ListingBridgeTests.cs#L9) |
+| <a id="symbol-tests-listingbridgetests-cs-31-a4b51e1941"></a><code>ListingBridgeTests.Ready</code><br><code>(ListingBridge Bridge, BridgeFakeHost Host, string Session) Ready(long now = 1000)</code> | 메서드 | fake source를 Bridge에 발행해 query/edit가 가능한 초기 상태를 만든다. | [L28](../../tests/ListingBridgeTests.cs#L28) |
+| <a id="symbol-tests-listingbridgetests-cs-36-0af8c63888"></a><code>ListingBridgeTests.Run</code><br><code>void Run(Action&lt;string, Action&gt; test, Action&lt;bool, string&gt; check)</code> | 메서드 | snapshot 최소 노출·query queue·캐릭터/요청 소유권·연결 종료 관련 시나리오를 실행한다. 개별 등록 조건은 아래 test 목록을 참조한다. | [L33](../../tests/ListingBridgeTests.cs#L33) |
+| <a id="symbol-tests-listingbridgetests-cs-234-e7076a37c6"></a><code>BridgeFakeHost.SelfId</code><br><code>ulong SelfId</code> | 계산 속성 | 현재 로그인한 본인의 ContentId를 반환한다. 로그아웃/미준비는0이다. | [L178](../../tests/ListingBridgeTests.cs#L178) |
+| <a id="symbol-tests-listingbridgetests-cs-236-5f06f4758c"></a><code>BridgeFakeHost.QueryBlockReason</code><br><code>string? QueryBlockReason</code> | 계산 속성 | 현재 플러그인의 공통 조회 차단 사유를 반환한다. | [L180](../../tests/ListingBridgeTests.cs#L180) |
+| <a id="symbol-tests-listingbridgetests-cs-243-9ee1b9252e"></a><code>BridgeFakeHost.Guard</code><br><code>void Guard()</code> | 메서드 | 외부 요청 ownership/시간 경계를 fake host에서 검사한다. | [L187](../../tests/ListingBridgeTests.cs#L187) |
+| <a id="symbol-tests-listingbridgetests-cs-244-82300f6649"></a><code>BridgeFakeHost.RequestQuery</code><br><code>bool RequestQuery(out string error)</code> | 메서드 | Bridge가 실행하는 조회를 fake host/guard에 기록한다. | [L188](../../tests/ListingBridgeTests.cs#L188) |
+| <a id="symbol-tests-listingbridgetests-cs-250-2c2e5714c5"></a><code>BridgeFakeHost.Finish</code><br><code>void Finish()</code> | 메서드 | fake 조회 또는 편집 작업을 끝내고 다음 snapshot을 발행한다. | [L194](../../tests/ListingBridgeTests.cs#L194) |
 
 ### 등록된 회귀 시나리오
 
 | 소스의 시나리오 이름 | 위치 |
 |---|---|
-| <code>web DTO shows registered jobs and preserves native slots for 4, 8, 24 and 48</code> | [L38](../../tests/ListingWebTests.cs#L38) |
-| <code>web DTO friendly match has 5, 5, 8 rows and all spectators</code> | [L46](../../tests/ListingWebTests.cs#L46) |
-| <code>web DTO excludes sparse unregistered tails while keeping group numbers</code> | [L53](../../tests/ListingWebTests.cs#L53) |
-| <code>web DTO lists allowed jobs in existing order and requires complete anyone rules</code> | [L60](../../tests/ListingWebTests.cs#L60) |
-| <code>web DTO never serializes content IDs, diagnostic notes or draft credentials</code> | [L68](../../tests/ListingWebTests.cs#L68) |
-| <code>web hides foreign and unverified listings and labels cached results</code> | [L75](../../tests/ListingWebTests.cs#L75) |
-| <code>web marks missing and inconsistent slot data without guessing positions</code> | [L81](../../tests/ListingWebTests.cs#L81) |
-| <code>web HTTP thread can only queue/read managed data and never call game host</code> | [L88](../../tests/ListingWebTests.cs#L88) |
-| <code>web completion requires a fresh own live detail response</code> | [L94](../../tests/ListingWebTests.cs#L94) |
-| <code>web duplicate ID is idempotent and second concurrent request is rejected</code> | [L103](../../tests/ListingWebTests.cs#L103) |
-| <code>web request shape, old session, stale publication and rapid repeat are rejected</code> | [L110](../../tests/ListingWebTests.cs#L110) |
-| <code>web rechecks game editing and other work immediately before executing</code> | [L117](../../tests/ListingWebTests.cs#L117) |
-| <code>web queued requests expire and never replay after a game stall</code> | [L121](../../tests/ListingWebTests.cs#L121) |
-| <code>web logout or character change clears requests and cannot expose old cached data</code> | [L125](../../tests/ListingWebTests.cs#L125) |
-| <code>web stop discards pending work and publication failures remove data</code> | [L133](../../tests/ListingWebTests.cs#L133) |
-| <code>web query errors and timeout are reported without retry</code> | [L138](../../tests/ListingWebTests.cs#L138) |
-| <code>web request history is bounded</code> | [L146](../../tests/ListingWebTests.cs#L146) |
-| <code>web native dispatch is cancelled when character, editor or enabled state changes in the next frame</code> | [L154](../../tests/ListingWebTests.cs#L154) |
-| <code>web cancellation ownership never cancels a later local query or refresh</code> | [L160](../../tests/ListingWebTests.cs#L160) |
-| <code>web request flag expires before first native dispatch and bounds already started queries</code> | [L166](../../tests/ListingWebTests.cs#L166) |
-| <code>web HTTP parser rejects ambiguous framing, duplicate headers and control bytes</code> | [L173](../../tests/ListingWebTests.cs#L173) |
-| <code>web real listener authenticates queries, rejects other origins and serves embedded assets</code> | [L182](../../tests/ListingWebTests.cs#L182) |
-| <code>web listener stop interrupts unfinished connections and restart rotates its key</code> | [L183](../../tests/ListingWebTests.cs#L183) |
+| <code>bridge DTO shows registered jobs and preserves native slots for 4, 8, 24 and 48</code> | [L35](../../tests/ListingBridgeTests.cs#L35) |
+| <code>bridge DTO friendly match has 5, 5, 8 rows and all spectators</code> | [L43](../../tests/ListingBridgeTests.cs#L43) |
+| <code>bridge DTO excludes sparse unregistered tails while keeping group numbers</code> | [L50](../../tests/ListingBridgeTests.cs#L50) |
+| <code>bridge DTO lists allowed jobs in existing order and requires complete anyone rules</code> | [L57](../../tests/ListingBridgeTests.cs#L57) |
+| <code>bridge DTO never serializes content IDs, diagnostic notes or draft credentials</code> | [L65](../../tests/ListingBridgeTests.cs#L65) |
+| <code>bridge hides foreign and unverified listings and labels cached results</code> | [L72](../../tests/ListingBridgeTests.cs#L72) |
+| <code>bridge marks missing and inconsistent slot data without guessing positions</code> | [L78](../../tests/ListingBridgeTests.cs#L78) |
+| <code>bridge Discord callback thread can only queue/read managed data and never call game host</code> | [L85](../../tests/ListingBridgeTests.cs#L85) |
+| <code>bridge completion requires a fresh own live detail response</code> | [L91](../../tests/ListingBridgeTests.cs#L91) |
+| <code>bridge duplicate ID is idempotent and second concurrent request is rejected</code> | [L100](../../tests/ListingBridgeTests.cs#L100) |
+| <code>bridge request shape, old session, stale publication and rapid repeat are rejected</code> | [L107](../../tests/ListingBridgeTests.cs#L107) |
+| <code>bridge rechecks game editing and other work immediately before executing</code> | [L114](../../tests/ListingBridgeTests.cs#L114) |
+| <code>bridge queued requests expire and never replay after a game stall</code> | [L118](../../tests/ListingBridgeTests.cs#L118) |
+| <code>bridge logout or character change clears requests and cannot expose old cached data</code> | [L122](../../tests/ListingBridgeTests.cs#L122) |
+| <code>bridge stop discards pending work and publication failures remove data</code> | [L130](../../tests/ListingBridgeTests.cs#L130) |
+| <code>bridge query errors and timeout are reported without retry</code> | [L135](../../tests/ListingBridgeTests.cs#L135) |
+| <code>bridge request history is bounded</code> | [L143](../../tests/ListingBridgeTests.cs#L143) |
+| <code>bridge native dispatch is cancelled when character, editor or enabled state changes in the next frame</code> | [L151](../../tests/ListingBridgeTests.cs#L151) |
+| <code>bridge cancellation ownership never cancels a later local query or refresh</code> | [L157](../../tests/ListingBridgeTests.cs#L157) |
+| <code>bridge request flag expires before first native dispatch and bounds already started queries</code> | [L163](../../tests/ListingBridgeTests.cs#L163) |
 
 <a id="file-tests-nativepointercontracttests-cs"></a>
 ## tests/NativePointerContractTests.cs
@@ -1570,113 +1505,79 @@ snapshot 최소 노출·query queue·Host/Origin/Bearer·HTTP 종료와 소유�
 
 | 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
 |---|---|---|---|
-| <a id="symbol-tests-program-cs-1-072369dd2c"></a><code>&lt;top-level&gt;</code><br><code>&lt;top-level&gt;</code> | 진입점 | 전체 회귀 test를 등록·실행하고 --web-fixture/--relay-fixture이면 해당 통합 fixture 모드로 분기한다. | [L1](../../tests/Program.cs#L1) |
-| <a id="symbol-tests-program-cs-7-255f99a9bb"></a><code>Check</code><br><code>void Check(bool value, string label)</code> | 로컬 함수 | 조건이 false이면 label을 가진 예외를 발생시키는 assertion helper다. | [L7](../../tests/Program.cs#L7) |
-| <a id="symbol-tests-program-cs-8-423ce5a35d"></a><code>Test</code><br><code>void Test(string name, Action body)</code> | 로컬 함수 | 등록된 test body를 실행하고 성공 횟수와 PASS 이름을 출력한다. | [L8](../../tests/Program.cs#L8) |
-| <a id="symbol-tests-program-cs-9-38aec8dfb2"></a><code>StartToEditor</code><br><code>(FakeHost h, ListingRefresh flow) StartToEditor()</code> | 로컬 함수 | 기본 갱신 요청과 조회 완료를 시뮬레이션해 OpeningEditor 상태를 만든다. | [L9](../../tests/Program.cs#L9) |
-| <a id="symbol-tests-program-cs-16-24c4d6a476"></a><code>StartToVerify</code><br><code>(FakeHost h, ListingRefresh flow) StartToVerify()</code> | 로컬 함수 | 기본 편집/제출을 진행해 제출 후 Verifying 상태를 만든다. | [L16](../../tests/Program.cs#L16) |
-| <a id="symbol-tests-program-cs-323-07e1d163f5"></a><code>FakeHost.QueryOwn</code><br><code>void QueryOwn()</code> | 메서드 | 실제 네이티브 조회 대신 요청 횟수와 query busy 상태를 기록한다. | [L323](../../tests/Program.cs#L323) |
-| <a id="symbol-tests-program-cs-324-8179daac75"></a><code>FakeHost.FinishQuery</code><br><code>void FinishQuery()</code> | 메서드 | 새 상세 revision/성공 여부를 지정하여 fake 조회 응답을 완료한다. | [L324](../../tests/Program.cs#L324) |
-| <a id="symbol-tests-program-cs-325-1f1e8476a0"></a><code>FakeHost.CancelQuery</code><br><code>void CancelQuery()</code> | 메서드 | fake 조회의 취소 횟수와 busy 상태를 갱신한다. | [L325](../../tests/Program.cs#L325) |
-| <a id="symbol-tests-program-cs-326-84354e3731"></a><code>FakeHost.TryGetOwn</code><br><code>bool TryGetOwn(out RefreshTarget target, out string error)</code> | 메서드 | 설정된 source와 OwnVerified/오류 상태로 본인 상세 읽기를 모사한다. | [L326](../../tests/Program.cs#L326) |
-| <a id="symbol-tests-program-cs-327-436064f9fc"></a><code>FakeHost.OpenEditor</code><br><code>bool OpenEditor(RefreshTarget target, out string error)</code> | 메서드 | fake 수정창 표시/수명 revision을 갱신하고 열기 횟수·실패/예외를 모사한다. | [L327](../../tests/Program.cs#L327) |
-| <a id="symbol-tests-program-cs-333-7757af74b3"></a><code>FakeHost.Submit</code><br><code>bool Submit(RefreshTarget target, string? description, out string error)</code> | 메서드 | 테스트 fixture에서는 modal 제출 또는 fake 네이티브 갱신 제출을 모사하며 호출 횟수/허용 여부/예외를 기록한다. | [L333](../../tests/Program.cs#L333) |
-| <a id="symbol-tests-program-cs-341-ebf4b27432"></a><code>FakeHost.BeginSlotEdit</code><br><code>bool BeginSlotEdit(RefreshTarget target, ListingJobEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L341](../../tests/Program.cs#L341) |
-| <a id="symbol-tests-program-cs-348-7a9608b125"></a><code>FakeHost.UpdateSlotEdit</code><br><code>SlotEditProgress UpdateSlotEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L348](../../tests/Program.cs#L348) |
-| <a id="symbol-tests-program-cs-353-93bacd97bb"></a><code>FakeHost.BeginDescriptionEdit</code><br><code>bool BeginDescriptionEdit(RefreshTarget target, ListingDescriptionEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L353](../../tests/Program.cs#L353) |
-| <a id="symbol-tests-program-cs-360-472b5ee9d6"></a><code>FakeHost.UpdateDescriptionEdit</code><br><code>SlotEditProgress UpdateDescriptionEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L360](../../tests/Program.cs#L360) |
-| <a id="symbol-tests-program-cs-365-872a2ce5c4"></a><code>FakeHost.BeginObjectiveEdit</code><br><code>bool BeginObjectiveEdit(RefreshTarget target, ListingObjectiveEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L365](../../tests/Program.cs#L365) |
-| <a id="symbol-tests-program-cs-374-c8a4c77d78"></a><code>FakeHost.UpdateObjectiveEdit</code><br><code>SlotEditProgress UpdateObjectiveEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L374](../../tests/Program.cs#L374) |
-| <a id="symbol-tests-program-cs-379-a0f5801063"></a><code>FakeHost.BeginBeginnerEdit</code><br><code>bool BeginBeginnerEdit(RefreshTarget target, ListingBeginnerEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L379](../../tests/Program.cs#L379) |
-| <a id="symbol-tests-program-cs-387-6c1553430b"></a><code>FakeHost.UpdateBeginnerEdit</code><br><code>SlotEditProgress UpdateBeginnerEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L387](../../tests/Program.cs#L387) |
-| <a id="symbol-tests-program-cs-392-a8fbfbb14e"></a><code>FakeHost.BeginUniqueJobsEdit</code><br><code>bool BeginUniqueJobsEdit(RefreshTarget target, ListingUniqueJobsEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L392](../../tests/Program.cs#L392) |
-| <a id="symbol-tests-program-cs-400-ab11cf71c4"></a><code>FakeHost.UpdateUniqueJobsEdit</code><br><code>SlotEditProgress UpdateUniqueJobsEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L400](../../tests/Program.cs#L400) |
-| <a id="symbol-tests-program-cs-405-112c7e2a0b"></a><code>FakeHost.BeginPrivateEdit</code><br><code>bool BeginPrivateEdit(RefreshTarget target, ListingPrivateEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L405](../../tests/Program.cs#L405) |
-| <a id="symbol-tests-program-cs-413-0a64d0e7eb"></a><code>FakeHost.UpdatePrivateEdit</code><br><code>SlotEditProgress UpdatePrivateEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L413](../../tests/Program.cs#L413) |
-| <a id="symbol-tests-program-cs-418-e68bdcb6a6"></a><code>FakeHost.BeginCompletionEdit</code><br><code>bool BeginCompletionEdit(RefreshTarget target, ListingCompletionEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L418](../../tests/Program.cs#L418) |
-| <a id="symbol-tests-program-cs-426-16b76cbfe0"></a><code>FakeHost.UpdateCompletionEdit</code><br><code>SlotEditProgress UpdateCompletionEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L426](../../tests/Program.cs#L426) |
-| <a id="symbol-tests-program-cs-431-d60d7a9a68"></a><code>FakeHost.BeginItemLevelEdit</code><br><code>bool BeginItemLevelEdit(RefreshTarget target, ListingItemLevelEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L431](../../tests/Program.cs#L431) |
-| <a id="symbol-tests-program-cs-439-a97e9c0d5d"></a><code>FakeHost.UpdateItemLevelEdit</code><br><code>SlotEditProgress UpdateItemLevelEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L439](../../tests/Program.cs#L439) |
-| <a id="symbol-tests-program-cs-444-faf03b5367"></a><code>FakeHost.BeginRuleEdit</code><br><code>bool BeginRuleEdit(RefreshTarget target, ListingRuleEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L444](../../tests/Program.cs#L444) |
-| <a id="symbol-tests-program-cs-451-c3d387619b"></a><code>FakeHost.UpdateRuleEdit</code><br><code>SlotEditProgress UpdateRuleEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L451](../../tests/Program.cs#L451) |
+| <a id="symbol-tests-program-cs-1-072369dd2c"></a><code>&lt;top-level&gt;</code><br><code>&lt;top-level&gt;</code> | 진입점 | 전체 회귀 test를 등록·실행하고 실패 시 종료 코드로 알린다. | [L1](../../tests/Program.cs#L1) |
+| <a id="symbol-tests-program-cs-7-255f99a9bb"></a><code>Check</code><br><code>void Check(bool value, string label)</code> | 로컬 함수 | 조건이 false이면 label을 가진 예외를 발생시키는 assertion helper다. | [L5](../../tests/Program.cs#L5) |
+| <a id="symbol-tests-program-cs-8-423ce5a35d"></a><code>Test</code><br><code>void Test(string name, Action body)</code> | 로컬 함수 | 등록된 test body를 실행하고 성공 횟수와 PASS 이름을 출력한다. | [L6](../../tests/Program.cs#L6) |
+| <a id="symbol-tests-program-cs-9-38aec8dfb2"></a><code>StartToEditor</code><br><code>(FakeHost h, ListingRefresh flow) StartToEditor()</code> | 로컬 함수 | 기본 갱신 요청과 조회 완료를 시뮬레이션해 OpeningEditor 상태를 만든다. | [L7](../../tests/Program.cs#L7) |
+| <a id="symbol-tests-program-cs-16-24c4d6a476"></a><code>StartToVerify</code><br><code>(FakeHost h, ListingRefresh flow) StartToVerify()</code> | 로컬 함수 | 기본 편집/제출을 진행해 제출 후 Verifying 상태를 만든다. | [L14](../../tests/Program.cs#L14) |
+| <a id="symbol-tests-program-cs-323-07e1d163f5"></a><code>FakeHost.QueryOwn</code><br><code>void QueryOwn()</code> | 메서드 | 실제 네이티브 조회 대신 요청 횟수와 query busy 상태를 기록한다. | [L320](../../tests/Program.cs#L320) |
+| <a id="symbol-tests-program-cs-324-8179daac75"></a><code>FakeHost.FinishQuery</code><br><code>void FinishQuery()</code> | 메서드 | 새 상세 revision/성공 여부를 지정하여 fake 조회 응답을 완료한다. | [L321](../../tests/Program.cs#L321) |
+| <a id="symbol-tests-program-cs-325-1f1e8476a0"></a><code>FakeHost.CancelQuery</code><br><code>void CancelQuery()</code> | 메서드 | fake 조회의 취소 횟수와 busy 상태를 갱신한다. | [L322](../../tests/Program.cs#L322) |
+| <a id="symbol-tests-program-cs-326-84354e3731"></a><code>FakeHost.TryGetOwn</code><br><code>bool TryGetOwn(out RefreshTarget target, out string error)</code> | 메서드 | 설정된 source와 OwnVerified/오류 상태로 본인 상세 읽기를 모사한다. | [L323](../../tests/Program.cs#L323) |
+| <a id="symbol-tests-program-cs-327-436064f9fc"></a><code>FakeHost.OpenEditor</code><br><code>bool OpenEditor(RefreshTarget target, out string error)</code> | 메서드 | fake 수정창 표시/수명 revision을 갱신하고 열기 횟수·실패/예외를 모사한다. | [L324](../../tests/Program.cs#L324) |
+| <a id="symbol-tests-program-cs-333-7757af74b3"></a><code>FakeHost.Submit</code><br><code>bool Submit(RefreshTarget target, string? description, out string error)</code> | 메서드 | 테스트 fixture에서는 modal 제출 또는 fake 네이티브 갱신 제출을 모사하며 호출 횟수/허용 여부/예외를 기록한다. | [L330](../../tests/Program.cs#L330) |
+| <a id="symbol-tests-program-cs-341-ebf4b27432"></a><code>FakeHost.BeginSlotEdit</code><br><code>bool BeginSlotEdit(RefreshTarget target, ListingJobEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L338](../../tests/Program.cs#L338) |
+| <a id="symbol-tests-program-cs-348-7a9608b125"></a><code>FakeHost.UpdateSlotEdit</code><br><code>SlotEditProgress UpdateSlotEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L345](../../tests/Program.cs#L345) |
+| <a id="symbol-tests-program-cs-353-93bacd97bb"></a><code>FakeHost.BeginDescriptionEdit</code><br><code>bool BeginDescriptionEdit(RefreshTarget target, ListingDescriptionEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L350](../../tests/Program.cs#L350) |
+| <a id="symbol-tests-program-cs-360-472b5ee9d6"></a><code>FakeHost.UpdateDescriptionEdit</code><br><code>SlotEditProgress UpdateDescriptionEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L357](../../tests/Program.cs#L357) |
+| <a id="symbol-tests-program-cs-365-872a2ce5c4"></a><code>FakeHost.BeginObjectiveEdit</code><br><code>bool BeginObjectiveEdit(RefreshTarget target, ListingObjectiveEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L362](../../tests/Program.cs#L362) |
+| <a id="symbol-tests-program-cs-374-c8a4c77d78"></a><code>FakeHost.UpdateObjectiveEdit</code><br><code>SlotEditProgress UpdateObjectiveEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L371](../../tests/Program.cs#L371) |
+| <a id="symbol-tests-program-cs-379-a0f5801063"></a><code>FakeHost.BeginBeginnerEdit</code><br><code>bool BeginBeginnerEdit(RefreshTarget target, ListingBeginnerEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L376](../../tests/Program.cs#L376) |
+| <a id="symbol-tests-program-cs-387-6c1553430b"></a><code>FakeHost.UpdateBeginnerEdit</code><br><code>SlotEditProgress UpdateBeginnerEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L384](../../tests/Program.cs#L384) |
+| <a id="symbol-tests-program-cs-392-a8fbfbb14e"></a><code>FakeHost.BeginUniqueJobsEdit</code><br><code>bool BeginUniqueJobsEdit(RefreshTarget target, ListingUniqueJobsEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L389](../../tests/Program.cs#L389) |
+| <a id="symbol-tests-program-cs-400-ab11cf71c4"></a><code>FakeHost.UpdateUniqueJobsEdit</code><br><code>SlotEditProgress UpdateUniqueJobsEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L397](../../tests/Program.cs#L397) |
+| <a id="symbol-tests-program-cs-405-112c7e2a0b"></a><code>FakeHost.BeginPrivateEdit</code><br><code>bool BeginPrivateEdit(RefreshTarget target, ListingPrivateEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L402](../../tests/Program.cs#L402) |
+| <a id="symbol-tests-program-cs-413-0a64d0e7eb"></a><code>FakeHost.UpdatePrivateEdit</code><br><code>SlotEditProgress UpdatePrivateEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L410](../../tests/Program.cs#L410) |
+| <a id="symbol-tests-program-cs-418-e68bdcb6a6"></a><code>FakeHost.BeginCompletionEdit</code><br><code>bool BeginCompletionEdit(RefreshTarget target, ListingCompletionEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L415](../../tests/Program.cs#L415) |
+| <a id="symbol-tests-program-cs-426-16b76cbfe0"></a><code>FakeHost.UpdateCompletionEdit</code><br><code>SlotEditProgress UpdateCompletionEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L423](../../tests/Program.cs#L423) |
+| <a id="symbol-tests-program-cs-431-d60d7a9a68"></a><code>FakeHost.BeginItemLevelEdit</code><br><code>bool BeginItemLevelEdit(RefreshTarget target, ListingItemLevelEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L428](../../tests/Program.cs#L428) |
+| <a id="symbol-tests-program-cs-439-a97e9c0d5d"></a><code>FakeHost.UpdateItemLevelEdit</code><br><code>SlotEditProgress UpdateItemLevelEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L436](../../tests/Program.cs#L436) |
+| <a id="symbol-tests-program-cs-444-faf03b5367"></a><code>FakeHost.BeginRuleEdit</code><br><code>bool BeginRuleEdit(RefreshTarget target, ListingRuleEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L441](../../tests/Program.cs#L441) |
+| <a id="symbol-tests-program-cs-451-c3d387619b"></a><code>FakeHost.UpdateRuleEdit</code><br><code>SlotEditProgress UpdateRuleEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L448](../../tests/Program.cs#L448) |
 
 ### 등록된 회귀 시나리오
 
 | 소스의 시나리오 이름 | 위치 |
 |---|---|
-| <code>detail event before visible own data waits instead of stopping</code> | [L23](../../tests/Program.cs#L23) |
-| <code>idle never acts</code> | [L31](../../tests/Program.cs#L31) |
-| <code>cancel while waiting for own data never continues later</code> | [L35](../../tests/Program.cs#L35) |
-| <code>new-party editor never submits</code> | [L41](../../tests/Program.cs#L41) |
-| <code>editor label can finish loading before one refresh</code> | [L47](../../tests/Program.cs#L47) |
-| <code>editor pause does not require an active own listing</code> | [L53](../../tests/Program.cs#L53) |
-| <code>stopping during edit keeps the window and explains how to resume</code> | [L58](../../tests/Program.cs#L58) |
-| <code>post-refresh owner data may become ready after its event</code> | [L63](../../tests/Program.cs#L63) |
-| <code>refresh action label is distinct from create and unknown actions</code> | [L69](../../tests/Program.cs#L69) |
-| <code>one click, one submit, fresh timer confirms</code> | [L76](../../tests/Program.cs#L76) |
-| <code>old response without a new revision cannot open editor</code> | [L85](../../tests/Program.cs#L85) |
-| <code>other or unverified owner cannot open editor</code> | [L90](../../tests/Program.cs#L90) |
-| <code>preexisting editor is never submitted</code> | [L97](../../tests/Program.cs#L97) |
-| <code>character switch aborts</code> | [L101](../../tests/Program.cs#L101) |
-| <code>cancel prevents subsequent registration</code> | [L105](../../tests/Program.cs#L105) |
-| <code>closing and reopening editor aborts</code> | [L109](../../tests/Program.cs#L109) |
-| <code>editor must have a fresh lifecycle event</code> | [L113](../../tests/Program.cs#L113) |
-| <code>zone transition blocks remaining actions</code> | [L117](../../tests/Program.cs#L117) |
-| <code>validation failure never retries</code> | [L121](../../tests/Program.cs#L121) |
-| <code>throwing native call never retries</code> | [L125](../../tests/Program.cs#L125) |
-| <code>server timeout is unconfirmed without retry</code> | [L131](../../tests/Program.cs#L131) |
-| <code>unchanged timer is not success</code> | [L135](../../tests/Program.cs#L135) |
-| <code>new listing identity confirms after fresh response</code> | [L139](../../tests/Program.cs#L139) |
-| <code>post-submit query failure is not success</code> | [L143](../../tests/Program.cs#L143) |
-| <code>changed recruitment settings are not success</code> | [L147](../../tests/Program.cs#L147) |
-| <code>post-submit cooldown prevents immediate rerun</code> | [L152](../../tests/Program.cs#L152) |
-| <code>countdown parsing and unknown formats</code> | [L157](../../tests/Program.cs#L157) |
-| <code>ownership remains conservative</code> | [L165](../../tests/Program.cs#L165) |
-| <code>reported Korean placeholder in both UI sources resolves to an empty comment</code> | [L171](../../tests/Program.cs#L171) |
-| <code>literal Korean placeholder text remains a nonempty authored comment</code> | [L177](../../tests/Program.cs#L177) |
-| <code>Korean empty placeholder recognition requires exact agreeing UI text</code> | [L182](../../tests/Program.cs#L182) |
-| <code>an empty addon buffer still confirms an empty native comment</code> | [L188](../../tests/Program.cs#L188) |
-| <code>empty comment does not grant ownership to another character</code> | [L193](../../tests/Program.cs#L193) |
-| <code>unreadable native text cannot be mistaken for an empty comment</code> | [L198](../../tests/Program.cs#L198) |
-| <code>an empty native comment alone cannot override visible content</code> | [L202](../../tests/Program.cs#L202) |
-| <code>nonempty comments must still agree and are never normalized to empty</code> | [L206](../../tests/Program.cs#L206) |
-| <code>normal empty node and existing buffer fallback remain valid</code> | [L212](../../tests/Program.cs#L212) |
-| <code>empty listing refreshes once without copying the placeholder into the editor</code> | [L218](../../tests/Program.cs#L218) |
-| <code>adding text during an empty-comment refresh is detected</code> | [L232](../../tests/Program.cs#L232) |
-
-<a id="file-tests-relayfixture-cs"></a>
-## tests/RelayFixture.cs
-
-[소스 파일](../../tests/RelayFixture.cs) · 명명된 항목/진입점 1개
-
-로컬 Worker와 붙일 살아 있는 fake host/Bridge 중계 통합 fixture를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다.
-
-| 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
-|---|---|---|---|
-| <a id="symbol-tests-relayfixture-cs-9-77dd9e3958"></a><code>RelayFixture.Run</code><br><code>Task Run(string[] args)</code> | 메서드 | Miniflare 주소와 테스트 key로 실제 .NET relay client·fake game host를 연결한다. stdin의 상태 변경 명령을 처리하면서 50ms 간격으로 host/Bridge를 진행하고 quit에서 정리한다. | [L9](../../tests/RelayFixture.cs#L9) |
-
-<a id="file-tests-webbrowserfixture-cs"></a>
-## tests/WebBrowserFixture.cs
-
-[소스 파일](../../tests/WebBrowserFixture.cs) · 명명된 항목/진입점 1개
-
-실제 loopback server에 fake source를 제공하는 브라우저 smoke fixture를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다.
-
-| 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
-|---|---|---|---|
-| <a id="symbol-tests-webbrowserfixture-cs-8-38274e55df"></a><code>WebBrowserFixture.Run</code><br><code>Task Run()</code> | 메서드 | 브라우저 통합 검사에 사용할 fake game host·Bridge·loopback server를 실행한다. stdin으로 시나리오를 바꾸며 Framework update를 모사하고 종료 시 연결을 정리한다. | [L8](../../tests/WebBrowserFixture.cs#L8) |
-
-<a id="file-tests-browser-smoke-cjs"></a>
-## tests/browser-smoke.cjs
-
-[소스 파일](../../tests/browser-smoke.cjs) · 명명된 항목/진입점 2개
-
-Playwright와 WebBrowserFixture의 실제 loopback UI로 조회·slot 표시·편집/결과를 검사한다.
-
-| 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
-|---|---|---|---|
-| <a id="symbol-tests-browser-smoke-cjs-1-463dee39c7"></a><code>&lt;module&gt;</code><br><code>&lt;module&gt;</code> | 진입점 | fixture process와 Chromium을 시작하고 DOM 기반 smoke 시나리오를 실행한 뒤 browser/process를 정리한다. | [L1](../../tests/browser-smoke.cjs#L1) |
-| <a id="symbol-tests-browser-smoke-cjs-12-1cbcf497d2"></a><code>send</code><br><code>command =&gt;</code> | JS 함수/handler | fixture stdin에 테스트 제어 명령을 보내고 화면 상태 전환을 유도한다. | [L12](../../tests/browser-smoke.cjs#L12) |
+| <code>detail event before visible own data waits instead of stopping</code> | [L21](../../tests/Program.cs#L21) |
+| <code>idle never acts</code> | [L29](../../tests/Program.cs#L29) |
+| <code>cancel while waiting for own data never continues later</code> | [L33](../../tests/Program.cs#L33) |
+| <code>new-party editor never submits</code> | [L39](../../tests/Program.cs#L39) |
+| <code>editor label can finish loading before one refresh</code> | [L45](../../tests/Program.cs#L45) |
+| <code>editor pause does not require an active own listing</code> | [L51](../../tests/Program.cs#L51) |
+| <code>stopping during edit keeps the window and explains how to resume</code> | [L56](../../tests/Program.cs#L56) |
+| <code>post-refresh owner data may become ready after its event</code> | [L61](../../tests/Program.cs#L61) |
+| <code>refresh action label is distinct from create and unknown actions</code> | [L67](../../tests/Program.cs#L67) |
+| <code>one click, one submit, fresh timer confirms</code> | [L74](../../tests/Program.cs#L74) |
+| <code>old response without a new revision cannot open editor</code> | [L83](../../tests/Program.cs#L83) |
+| <code>other or unverified owner cannot open editor</code> | [L88](../../tests/Program.cs#L88) |
+| <code>preexisting editor is never submitted</code> | [L95](../../tests/Program.cs#L95) |
+| <code>character switch aborts</code> | [L99](../../tests/Program.cs#L99) |
+| <code>cancel prevents subsequent registration</code> | [L103](../../tests/Program.cs#L103) |
+| <code>closing and reopening editor aborts</code> | [L107](../../tests/Program.cs#L107) |
+| <code>editor must have a fresh lifecycle event</code> | [L111](../../tests/Program.cs#L111) |
+| <code>zone transition blocks remaining actions</code> | [L115](../../tests/Program.cs#L115) |
+| <code>validation failure never retries</code> | [L119](../../tests/Program.cs#L119) |
+| <code>throwing native call never retries</code> | [L123](../../tests/Program.cs#L123) |
+| <code>server timeout is unconfirmed without retry</code> | [L129](../../tests/Program.cs#L129) |
+| <code>unchanged timer is not success</code> | [L133](../../tests/Program.cs#L133) |
+| <code>new listing identity confirms after fresh response</code> | [L137](../../tests/Program.cs#L137) |
+| <code>post-submit query failure is not success</code> | [L141](../../tests/Program.cs#L141) |
+| <code>changed recruitment settings are not success</code> | [L145](../../tests/Program.cs#L145) |
+| <code>post-submit cooldown prevents immediate rerun</code> | [L150](../../tests/Program.cs#L150) |
+| <code>countdown parsing and unknown formats</code> | [L155](../../tests/Program.cs#L155) |
+| <code>ownership remains conservative</code> | [L163](../../tests/Program.cs#L163) |
+| <code>reported Korean placeholder in both UI sources resolves to an empty comment</code> | [L169](../../tests/Program.cs#L169) |
+| <code>literal Korean placeholder text remains a nonempty authored comment</code> | [L175](../../tests/Program.cs#L175) |
+| <code>Korean empty placeholder recognition requires exact agreeing UI text</code> | [L180](../../tests/Program.cs#L180) |
+| <code>an empty addon buffer still confirms an empty native comment</code> | [L186](../../tests/Program.cs#L186) |
+| <code>empty comment does not grant ownership to another character</code> | [L191](../../tests/Program.cs#L191) |
+| <code>unreadable native text cannot be mistaken for an empty comment</code> | [L196](../../tests/Program.cs#L196) |
+| <code>an empty native comment alone cannot override visible content</code> | [L200](../../tests/Program.cs#L200) |
+| <code>nonempty comments must still agree and are never normalized to empty</code> | [L204](../../tests/Program.cs#L204) |
+| <code>normal empty node and existing buffer fallback remain valid</code> | [L210](../../tests/Program.cs#L210) |
+| <code>empty listing refreshes once without copying the placeholder into the editor</code> | [L216](../../tests/Program.cs#L216) |
+| <code>adding text during an empty-comment refresh is detected</code> | [L230](../../tests/Program.cs#L230) |
 
 <a id="file-tests-test-release-py"></a>
 ## tests/test_release.py
@@ -1687,7 +1588,7 @@ unittest/mock으로 배포 URL·버전·의존성 allowlist·해시·공개 다�
 
 | 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
 |---|---|---|---|
-| <a id="symbol-tests-test-release-py-1-8d10909ef5"></a><code>&lt;module&gt;</code><br><code>&lt;module&gt;</code> | 진입점 | 전체 회귀 test를 등록·실행하고 --web-fixture/--relay-fixture이면 해당 통합 fixture 모드로 분기한다. | [L1](../../tests/test_release.py#L1) |
+| <a id="symbol-tests-test-release-py-1-8d10909ef5"></a><code>&lt;module&gt;</code><br><code>&lt;module&gt;</code> | 진입점 | Python unittest를 위한 배포 도구 검증 모듈을 로드한다. | [L1](../../tests/test_release.py#L1) |
 | <a id="symbol-tests-test-release-py-17-5f81f48351"></a><code>ReleaseTests.test_repository_api_url_has_no_trailing_slash</code><br><code>test_repository_api_url_has_no_trailing_slash(self)</code> | Python 함수 | 배포 회귀 검사: repository api url has no trailing slash. 외부 API/파일 부작용은 fixture와 mock으로 통제한다. | [L17](../../tests/test_release.py#L17) |
 | <a id="symbol-tests-test-release-py-23-c469d4374d"></a><code>ReleaseTests.test_actual_tag_is_used_with_or_without_v</code><br><code>test_actual_tag_is_used_with_or_without_v(self)</code> | Python 함수 | 배포 회귀 검사: actual tag is used with or without v. 외부 API/파일 부작용은 fixture와 mock으로 통제한다. | [L23](../../tests/test_release.py#L23) |
 | <a id="symbol-tests-test-release-py-29-7e00c8bfc4"></a><code>ReleaseTests.test_mismatched_or_malformed_tag_is_rejected</code><br><code>test_mismatched_or_malformed_tag_is_rejected(self)</code> | Python 함수 | 배포 회귀 검사: mismatched or malformed tag is rejected. 외부 API/파일 부작용은 fixture와 mock으로 통제한다. | [L29](../../tests/test_release.py#L29) |
@@ -1701,53 +1602,3 @@ unittest/mock으로 배포 URL·버전·의존성 allowlist·해시·공개 다�
 | <a id="symbol-tests-test-release-py-90-0ae8ee6237"></a><code>ReleaseTests.test_no_non_https_downloads</code><br><code>test_no_non_https_downloads(self)</code> | Python 함수 | 배포 회귀 검사: no non https downloads. 외부 API/파일 부작용은 fixture와 mock으로 통제한다. | [L90](../../tests/test_release.py#L90) |
 | <a id="symbol-tests-test-release-py-94-f95dcfc0a4"></a><code>ReleaseTests.test_failed_public_download_never_updates_feed</code><br><code>test_failed_public_download_never_updates_feed(self)</code> | Python 함수 | 배포 회귀 검사: failed public download never updates feed. 외부 API/파일 부작용은 fixture와 mock으로 통제한다. | [L94](../../tests/test_release.py#L94) |
 | <a id="symbol-tests-test-release-py-104-0009de0c0b"></a><code>ReleaseTests.test_failed_public_download_never_updates_feed.fake_api</code><br><code>fake_api(repo, path, method='GET', data=None, raw=False)</code> | Python 함수 | publish 경로가 기대한 GitHub GET만 호출하는지 기록하고 feed write나 다른 API 호출은 assertion으로 차단한다. | [L104](../../tests/test_release.py#L104) |
-
-<a id="file-tests-web-connection-test-cjs"></a>
-## tests/web-connection.test.cjs
-
-[소스 파일](../../tests/web-connection.test.cjs) · 명명된 항목/진입점 6개
-
-연결 링크/직접 코드·cross-origin 거부·hash 제거·sessionStorage 실패와 미결 요청의 확정 실패 분류를 검사한다.
-
-| 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
-|---|---|---|---|
-| <a id="symbol-tests-web-connection-test-cjs-1-b23b6d3375"></a><code>&lt;module&gt;</code><br><code>&lt;module&gt;</code> | 진입점 | Node assertion으로 connection helper의 연결값 파싱/복원과 거절 분류 시나리오를 실행한다. | [L1](../../tests/web-connection.test.cjs#L1) |
-| <a id="symbol-tests-web-connection-test-cjs-13-ae8ac13d15"></a><code>getItem</code><br><code>k =&gt;</code> | JS 함수/handler | 테스트용 sessionStorage map에서 값을 반환한다. | [L13](../../tests/web-connection.test.cjs#L13) |
-| <a id="symbol-tests-web-connection-test-cjs-13-1c039e763e"></a><code>removeItem</code><br><code>k =&gt;</code> | JS 함수/handler | 테스트용 sessionStorage key를 제거한다. | [L13](../../tests/web-connection.test.cjs#L13) |
-| <a id="symbol-tests-web-connection-test-cjs-13-9b1636d742"></a><code>setItem</code><br><code>(k, v) =&gt;</code> | JS 함수/handler | 테스트용 sessionStorage map에 값을 저장한다. | [L13](../../tests/web-connection.test.cjs#L13) |
-| <a id="symbol-tests-web-connection-test-cjs-15-ec45ac64b6"></a><code>replaceState</code><br><code>(_, __, path) =&gt;</code> | JS 함수/handler | 테스트용 history.replaceState 호출을 기록하거나 실패를 모사하여 hash 제거 경로를 검증한다. | [L15](../../tests/web-connection.test.cjs#L15) |
-| <a id="symbol-tests-web-connection-test-cjs-19-0238255129"></a><code>replaceState</code><br><code>()</code> | JS 함수/handler | 테스트용 history.replaceState 호출을 기록하거나 실패를 모사하여 hash 제거 경로를 검증한다. | [L19](../../tests/web-connection.test.cjs#L19) |
-
-### 등록된 회귀 시나리오
-
-| 소스의 시나리오 이름 | 위치 |
-|---|---|
-| <code>connection accepts same-origin links and opaque room codes, not foreign URLs</code> | [L5](../../tests/web-connection.test.cjs#L5) |
-| <code>fresh connection link clears previous room and pending operation</code> | [L11](../../tests/web-connection.test.cjs#L11) |
-| <code>valid fragment works even when browser storage is blocked</code> | [L18](../../tests/web-connection.test.cjs#L18) |
-| <code>relay/network uncertainty retains the original operation ID</code> | [L21](../../tests/web-connection.test.cjs#L21) |
-
-<a id="file-tests-web-editor-test-cjs"></a>
-## tests/web-editor.test.cjs
-
-[소스 파일](../../tests/web-editor.test.cjs) · 명명된 항목/진입점 2개
-
-브라우저와 같은 collect/draft 순수 로직의 no-op·필드 검증·PIN·직업 선택·아이템 레벨 경계를 검사한다.
-
-| 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
-|---|---|---|---|
-| <a id="symbol-tests-web-editor-test-cjs-1-8a56c9f4c9"></a><code>&lt;module&gt;</code><br><code>&lt;module&gt;</code> | 진입점 | Node assertion으로 입력 수집과 validation 결과를 검사한다. | [L1](../../tests/web-editor.test.cjs#L1) |
-| <a id="symbol-tests-web-editor-test-cjs-5-bd13cc949c"></a><code>model</code><br><code>() =&gt; (</code> | JS 함수/handler | 전체 지원 필드와 슬롯/직업을 포함한 editor model fixture를 만든다. | [L5](../../tests/web-editor.test.cjs#L5) |
-
-### 등록된 회귀 시나리오
-
-| 소스의 시나리오 이름 | 위치 |
-|---|---|
-| <code>a fresh draft sends nothing and does not mutate its source</code> | [L10](../../tests/web-editor.test.cjs#L10) |
-| <code>batch contains only changed fields with physical friendly-match positions</code> | [L15](../../tests/web-editor.test.cjs#L15) |
-| <code>job ordering alone is not a change; no jobs is invalid</code> | [L22](../../tests/web-editor.test.cjs#L22) |
-| <code>0000 and leading zeros are retained and PIN is only sent when explicitly changed</code> | [L27](../../tests/web-editor.test.cjs#L27) |
-| <code>enabling private requires four ASCII digits</code> | [L36](../../tests/web-editor.test.cjs#L36) |
-| <code>item-level accepts 1 and 999, rejects empty/noninteger/out-of-range, off sends zero</code> | [L42](../../tests/web-editor.test.cjs#L42) |
-| <code>Korean description counts UTF-8 bytes and empty description remains an explicit change</code> | [L50](../../tests/web-editor.test.cjs#L50) |
-| <code>unsupported fields are omitted, boolean rules and enum values keep correct types</code> | [L57](../../tests/web-editor.test.cjs#L57) |

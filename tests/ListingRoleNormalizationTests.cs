@@ -33,7 +33,7 @@ static class ListingRoleNormalizationTests
         test("occupied entry job normalization works for normal alliance and friendly listings without changing displayed source", () => {
             foreach (var (count, friendly) in new[] { (4, false), (8, false), (24, false), (48, false), (24, true) }) {
                 var t = Target(count, friendly); var after = Narrow(t); var groups = count <= 8 ? 1 : count / 8;
-                check(ListingPendingChanges.SameSource(t, after) && ListingWebEdit.SameSource(t, after), "normalization looked stale");
+                check(ListingPendingChanges.SameSource(t, after) && ListingEditContract.SameSource(t, after), "normalization looked stale");
                 check(ListingEditorCriteria.Matches(t, after.Criteria, groups, friendly ? 5 : Math.Min(count, 8), out var padding, out var occupied) &&
                     padding.Length == 0 && occupied.SequenceEqual(new[] { 0, 1 }), "entry-job masks blocked editor");
                 check(t.Slots.Slots[0].SlotFlags == t.Slots.JobRules.AllFlags && t.Slots.Slots[0].JobId == 19, "comparison rewrote recruitment data");

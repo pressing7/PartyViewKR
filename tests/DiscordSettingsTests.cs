@@ -34,12 +34,36 @@ static class DiscordSettingsTests
         JsonConvert.DeserializeObject<RelayConfiguration>(JsonConvert.SerializeObject(config))!;
     private static RelayConfiguration Saved()
     {
-        var config = new RelayConfiguration { ServerUrl = "https://relay.example.test" };
+        var config = new RelayConfiguration { DiscordNotificationChannelId = 456 };
         if (!config.PrepareDiscordConnection(FakeToken, true, Protect, Unprotect, out _)) throw new Exception("fixture token rejected");
         return config;
     }
     internal static void Run(Action<string, Action> test, Action<bool, string> check)
     {
+        test("web removal preserves typed saved Discord and AFK settings across restart", () => {
+            var saved = Saved();
+            saved.DiscordAutoConnect = false;
+            saved.WriteNotificationTarget(new(500, 600, 700));
+            saved.DiscordChat = new() { ApplicationId = 500, Routes = [
+                new() { Kind = "party", GuildId = 600, ChannelId = 701, Enabled = true, MentionOnSound = true },
+                new() { Kind = "tell", GuildId = 600, ChannelId = 702, Enabled = false, MentionEveryone = true },
+                new() { Kind = "alliance", GuildId = 600, ChannelId = 703, Enabled = true, MentionEveryone = true }
+            ] };
+            saved.WriteAfkSettings(new(true, 55, true, 17, true, true, 30));
+            var serializer = new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.Objects };
+            var legacy = Newtonsoft.Json.Linq.JObject.Parse(JsonConvert.SerializeObject(saved, serializer));
+            legacy["ServerUrl"] = "https://retired-relay.example.test";
+            var restored = (RelayConfiguration)JsonConvert.DeserializeObject(legacy.ToString(), serializer)!;
+            var resaved = JsonConvert.SerializeObject(restored, serializer);
+            check(restored.EncryptedDiscordToken == saved.EncryptedDiscordToken && restored.HasSavedDiscordToken &&
+                restored.RememberDiscordToken && !restored.ShouldAutoConnectDiscord, "token or explicit disconnect lost");
+            check(restored.ReadNotificationTarget() == saved.ReadNotificationTarget() &&
+                JsonConvert.SerializeObject(restored.DiscordChat) == JsonConvert.SerializeObject(saved.DiscordChat), "channels or mentions lost");
+            check(restored.ReadAfkSettings() == saved.ReadAfkSettings() && !resaved.Contains("AfkEnabled"), "automation preferences or runtime state changed");
+            check(!resaved.Contains("ServerUrl") && !resaved.Contains(FakeToken), "retired address or plaintext token persisted");
+            check(restored.PrepareDiscordConnection("", true, Protect, Unprotect, out var token) && token == FakeToken,
+                "saved token cannot reconnect after web removal");
+        });
         test("discord fresh settings default to remembering but never auto-connect without a token", () => {
             var config = Reload(new());
             check(config.RememberDiscordToken && !config.ShouldAutoConnectDiscord, "bad initial connection preference");
@@ -55,14 +79,14 @@ static class DiscordSettingsTests
                 check(restored.ShouldAutoConnectDiscord && restored.RememberDiscordToken, "restart lost auto-connect");
                 check(restored.PrepareDiscordConnection("", true, _ => throw new Exception("saved token re-encrypted"), Unprotect, out var token)
                     && token == FakeToken, "saved token not restored");
-                check(restored.EncryptedDiscordToken == saved.EncryptedDiscordToken && restored.ServerUrl == saved.ServerUrl,
-                    "restart changed saved ciphertext or relay settings");
+                check(restored.EncryptedDiscordToken == saved.EncryptedDiscordToken && restored.DiscordNotificationChannelId == saved.DiscordNotificationChannelId,
+                    "restart changed saved ciphertext or notification settings");
             }
             finally { File.Delete(path); }
         });
         test("discord 0.3.46 config gains auto-connect without losing the encrypted token", () => {
             var saved = Saved();
-            var json = JsonConvert.SerializeObject(new { Version = 1, saved.ServerUrl, saved.EncryptedDiscordToken });
+            var json = JsonConvert.SerializeObject(new { Version = 1, ServerUrl = "https://relay.example.test", saved.EncryptedDiscordToken });
             var restored = JsonConvert.DeserializeObject<RelayConfiguration>(json)!;
             check(restored.ShouldAutoConnectDiscord && restored.RememberDiscordToken, "legacy token not migrated");
             check(restored.PrepareDiscordConnection("", true, Protect, Unprotect, out var token) && token == FakeToken,

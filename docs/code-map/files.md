@@ -2,12 +2,12 @@
 
 [전체 지도](../CODE_MAP.md)
 
-현재 문서와 신규 AFK 갱신/회귀 검증 파일을 포함한 git tracked 파일 전체를 분류했다. 생성물(bin/obj/node_modules/relay/assets), 사용자 설정/토큰, 로컬 분석 도구는 문서 범위에서 제외한다. 이 문서 묶음 자체는 아래 안내와 연결되어 있다.
+현재 구조 계획과 코드 지도를 포함한 git tracked 파일 전체를 분류했다. 생성물(bin/obj), 사용자 설정/토큰, 로컬 분석 도구는 문서 범위에서 제외한다. 이 문서 묶음 자체는 아래 안내와 연결되어 있다.
 
 | 경로 | 역할 / 연결 문서 |
 |---|---|
-| [.github/workflows/release.yml](../../.github/workflows/release.yml) | workflow_dispatch 전용. 고정 참조/ABI→관리형·Python 테스트→build/package→artifact 순서. publish=true인 main 수동 실행만 release/feed 게시한다. Node/Miniflare/Playwright는 이 workflow에 자동 포함돼 있지 않다. |
-| [.gitignore](../../.gitignore) | build/reference/node_modules/relay generated assets·로컬 secret·release output 등 재생성물/로컬 파일 제외 규칙. |
+| [.github/workflows/release.yml](../../.github/workflows/release.yml) | workflow_dispatch 전용. 고정 참조/ABI→관리형·Python 테스트→build/package→artifact 순서. publish=true인 main 수동 실행만 release/feed 게시한다. |
+| [.gitignore](../../.gitignore) | build/reference·release output 등 재생성물/로컬 파일 제외 규칙. |
 | [PartyViewKR.deps.json](../../PartyViewKR.deps.json) | 루트 이전 수동 배포 DLL에 동반된 의존성 manifest. 현재 패키지는 src build output의 deps를 사용한다. |
 | [PartyViewKR.dll](../../PartyViewKR.dll) | 루트에 남은 이전 수동 업로드 DLL. 최신 build/release의 입력 또는 설치 대상이 아니다. |
 | [PartyViewKR.json](../../PartyViewKR.json) | 루트에 남은0.3.1.0 수동 manifest. 현재 기준 src/PartyViewKR.json과 혼동하지 않는다. |
@@ -16,16 +16,9 @@
 | [compatibility/interop-contract.json](../../compatibility/interop-contract.json) | InteropGenerator.Runtime의 CStringPointer ABI baseline. |
 | [compatibility/native-contract.json](../../compatibility/native-contract.json) | 검토된 FFXIVClientStructs ABI baseline. 빌드와 runtime 검사에서 shared NativeContract와 함께 사용한다. 임의 재캡처로 불일치를 숨기지 않는다. |
 | [compatibility/reference-lock.json](../../compatibility/reference-lock.json) | 참조 DLL archive URL·SHA-256·기록 버전. release.references가 무결성을 검증한다. |
+| [docs/ARCHITECTURE_PLAN.md](../../docs/ARCHITECTURE_PLAN.md) | 웹 제거 후 인게임·Discord 중심의 화면·책임 분리 제안. 구조 개편은 합의 전 계획이다. |
 | [docs/discord.md](../../docs/discord.md) | 개인 Discord 봇 토큰/owner·설치/연결/카드 조작 안내. |
 | [pluginmaster.json](../../pluginmaster.json) | Dalamud 사용자 저장소 feed. 검증된 공개 release ZIP을 가리킨다. publish 도구가 마지막 단계에서 갱신한다. |
-| [relay/README.md](../../relay/README.md) | Cloudflare 설정/secret·빌드 root·주소 연결·로컬 테스트/운영 설명. |
-| [relay/build.mjs](../../relay/build.mjs) | 플러그인 embedded Web UI와 중계 UI의 단일 소스를 유지하는 빌드 단계. [함수 목록](web-relay.md#file-relay-build-mjs) |
-| [relay/package-lock.json](../../relay/package-lock.json) | relay npm 의존성 lock; CI npm ci가 사용한다. |
-| [relay/package.json](../../relay/package.json) | relay npm scripts와 Wrangler/Miniflare 개발 의존성. package version0.3.33은 plugin AssemblyVersion과 별개다. |
-| [relay/src/protocol.mjs](../../relay/src/protocol.mjs) | Worker 공통 HTTP/인증/route/body helper. 호스트와 브라우저의 허용 경계를 정한다. [함수 목록](web-relay.md#file-relay-src-protocol-mjs) |
-| [relay/src/worker.mjs](../../relay/src/worker.mjs) | Cloudflare Worker 라우터와 PvkrRoom Durable Object. 연결/대기 응답은 메모리에 두며 게임 명령은 영구 저장/재전송하지 않는다. [함수 목록](web-relay.md#file-relay-src-worker-mjs) |
-| [relay/test/relay.test.mjs](../../relay/test/relay.test.mjs) | Miniflare 로컬 Worker와 fake WebSocket 및 실제 .NET relay fixture로 인증·host 교체·frame/timeout·apply를 통합 검증한다. Cloudflare 배포나 Wrangler dev 서버를 띄우는 테스트가 아니다. [함수 목록](tests.md#file-relay-test-relay-test-mjs) |
-| [relay/wrangler.jsonc](../../relay/wrangler.jsonc) | Worker entry·ASSETS·ROOM(PvkrRoom) binding·SQLite migration v1·compatibility date·run_worker_first를 선언한다. PVKR_CONNECT_KEY 실제 값은 여기 저장하지 않는다. |
 | [shared/NativeContract.cs](../../shared/NativeContract.cs) | 실행/Assembly.Load 없이 PE metadata를 읽는 ABI 계약 도구. 플러그인 runtime 검사와 CompatibilityTool이 같은 코드를 공유한다. [함수 목록](compat-release.md#file-shared-nativecontract-cs) |
 | [src/AfkListingMonitor.cs](../../src/AfkListingMonitor.cs) | AFK 감시의 순수 상태 기계. CID 명단 변화와 선택한 주기로 내 모집글을 조회하고 실패한 필요 상태를 보존한다. host 계약에는 수정/제출 기능이 없다. [함수 목록](core.md#file-src-afklistingmonitor-cs) |
 | [src/AfkRefreshScheduler.cs](../../src/AfkRefreshScheduler.cs) | Framework tick에서 선택형 자동 갱신 주기와 요청 소유권을 관리한다. 매 회 기존 ListingRefresh로 새 본인 모집글을 읽고 조건을 유지해 갱신하며 직접 native 호출·백그라운드 타이머·빠른 재시도를 만들지 않는다. [함수 목록](core.md#file-src-afkrefreshscheduler-cs) |
@@ -162,8 +155,6 @@
 | [src/ListingReader.cs](../../src/ListingReader.cs) | 본인 모집글 조회 예약과 상세창 읽기. 상세창 수명 revision, UI 문자열, LastViewedListing의 소유자·직업·조건을 교차 확인한다. [함수 목록](core.md#file-src-listingreader-cs) |
 | [src/ListingRefresh.cs](../../src/ListingRefresh.cs) | 단일 갱신 상태 기계와 배치 façade, IListingRefreshHost 계약, 갱신 증거 판정. 상태는 네이티브 호출 전에 진행시켜 재발송을 방지한다. [함수 목록](refresh.md#file-src-listingrefresh-cs) |
 | [src/ListingRefreshHost.cs](../../src/ListingRefreshHost.cs) | 게임 스레드에서 상세창/수정창과 AgentLookingForGroup을 다루는 네이티브 경계. 여러 partial 파일이 동일 클래스 상태를 공유한다. [함수 목록](refresh.md#file-src-listingrefreshhost-cs) |
-| [src/ListingRelayClient.cs](../../src/ListingRelayClient.cs) | 게임 PC에서 Cloudflare로 나가는 WSS client. browser key/room을 발급하고 연결 실패 시 transport만 재연결한다. [함수 목록](web-relay.md#file-src-listingrelayclient-cs) |
-| [src/ListingRelayProtocol.cs](../../src/ListingRelayProtocol.cs) | 중계 URL/key 검증 및 Worker→plugin WebSocket frame의 허용된 API 매핑. frame v1과 browser API v2는 서로 다른 버전이다. [함수 목록](web-relay.md#file-src-listingrelayprotocol-cs) |
 | [src/ListingRoleButtons.cs](../../src/ListingRoleButtons.cs) | 검증된 KR 직업 node ID 표와 클릭 계획. 신규 직업이 생기면 catalog/asset/contract와 함께 검토해야 한다. [함수 목록](edits.md#file-src-listingrolebuttons-cs) |
 | [src/ListingRoleComparison.cs](../../src/ListingRoleComparison.cs) | 직업 mask 불일치의 상세 진단 생성. 비교 허용 여부와 별개로 raw 차이를 남긴다. [함수 목록](core.md#file-src-listingrolecomparison-cs) |
 | [src/ListingRoleNormalization.cs](../../src/ListingRoleNormalization.cs) | 모집글에 등록된 참가자의 입장 직업으로 허용 mask가 좁아지는 게임 자동 변경만 판별한다. 현재 파티 직업은 읽지 않으며 원본 슬롯/아이콘 데이터를 덮어쓰지 않는다. [함수 목록](core.md#file-src-listingrolenormalization-cs) |
@@ -175,37 +166,30 @@
 | [src/ListingSnapshot.cs](../../src/ListingSnapshot.cs) | 마지막 모집글의 관리형 표시 모델. 본인 CID, 소유자, Live/ReadAt, 조건·직업 슬롯·진단을 보관한다. [함수 목록](core.md#file-src-listingsnapshot-cs) |
 | [src/ListingUniqueJobsEdit.cs](../../src/ListingUniqueJobsEdit.cs) | 잡 중복 없음의 관리형 초안·요청·원본/결과 비교 모델. Supports는 snapshot을 편집 모델로 해석할 수 있다는 뜻이며 게임 컨트롤이 실제로 enabled인지는 Host가 확인한다. [함수 목록](edits.md#file-src-listinguniquejobsedit-cs) |
 | [src/ListingUniqueJobsEditHost.cs](../../src/ListingUniqueJobsEditHost.cs) | 잡 중복 없음의 실제 게임 UI 조작. 시작 시 컴포넌트 주소·수명·불변식을 고정하고 수정 중 재검증하며 UI와 저장값이 모두 일치해야 완료한다. [함수 목록](refresh.md#file-src-listinguniquejobsedithost-cs) |
-| [src/ListingWebBridge.Edit.cs](../../src/ListingWebBridge.Edit.cs) | 외부 수정/갱신 큐와 결과 ledger. session당 write ID는 최대 1024개 유지하고 edit revision은 접수할 때 소비한다. [함수 목록](web-relay.md#file-src-listingwebbridge-edit-cs) |
-| [src/ListingWebBridge.Recovery.cs](../../src/ListingWebBridge.Recovery.cs) | 명시적인 디스코드 수정창 닫기의 공통 queue. 기존 query/apply busy와 무관하게 접수하고 게임 스레드에서 먼저 중단한다. 닫기 ticket의 native 주소는 외부에 직렬화하지 않는다. [함수 목록](web-relay.md#file-src-listingwebbridge-recovery-cs) |
-| [src/ListingWebBridge.cs](../../src/ListingWebBridge.cs) | 네트워크와 Framework 사이의 lock 기반 관리형 경계. 네트워크는 JSON snapshot을 읽고 요청을 큐에 넣으며 실제 게임 실행은 Update에서만 한다. [함수 목록](web-relay.md#file-src-listingwebbridge-cs) |
-| [src/ListingWebEdit.cs](../../src/ListingWebEdit.cs) | 외부 editor DTO와 strict JSON decoder. 비밀번호는 모델/상태 응답에 포함하지 않는다. 최대 body64KiB, 변경59개(48자리+11필드)다. [함수 목록](web-relay.md#file-src-listingwebedit-cs) |
-| [src/ListingWebRequestGuard.cs](../../src/ListingWebRequestGuard.cs) | 외부 연결이 소유한 조회/갱신 serial만 취소할 수 있게 한다. 다른 수동 요청을 잘못 취소하지 않도록 source identity와 update 간격을 검사한다. [함수 목록](web-relay.md#file-src-listingwebrequestguard-cs) |
-| [src/ListingWebServer.cs](../../src/ListingWebServer.cs) | 127.0.0.1 임의 포트의 제한된 HTTP 서버. 같은 PC 웹 UI용이며 inbound 공용 서버가 아니다. static resource와 인증된 API를 제공한다. [함수 목록](web-relay.md#file-src-listingwebserver-cs) |
-| [src/ListingWebView.cs](../../src/ListingWebView.cs) | 외부에 노출하는 최소 관리형 표시 모델. 원시 CID/flag/PIN/상세 진단을 제외하고 전체 그룹과 등록 직업·허용 직업 ID를 포함한다. [함수 목록](web-relay.md#file-src-listingwebview-cs) |
+| [src/ListingBridge.Edit.cs](../../src/ListingBridge.Edit.cs) | 외부 수정/갱신 큐와 결과 ledger. session당 write ID는 최대 1024개 유지하고 edit revision은 접수할 때 소비한다. [함수 목록](bridge.md#file-src-listingbridge-edit-cs) |
+| [src/ListingBridge.Recovery.cs](../../src/ListingBridge.Recovery.cs) | 명시적인 디스코드 수정창 닫기의 공통 queue. 기존 query/apply busy와 무관하게 접수하고 게임 스레드에서 먼저 중단한다. 닫기 ticket의 native 주소는 외부에 직렬화하지 않는다. [함수 목록](bridge.md#file-src-listingbridge-recovery-cs) |
+| [src/ListingBridge.cs](../../src/ListingBridge.cs) | 네트워크와 Framework 사이의 lock 기반 관리형 경계. Discord 콜백은 관리형 snapshot을 읽고 요청을 큐에 넣으며 실제 게임 실행은 Update에서만 한다. [함수 목록](bridge.md#file-src-listingbridge-cs) |
+| [src/ListingEditContract.cs](../../src/ListingEditContract.cs) | 외부 editor DTO와 strict JSON decoder. 비밀번호는 모델/상태 응답에 포함하지 않는다. 최대 body64KiB, 변경59개(48자리+11필드)다. [함수 목록](bridge.md#file-src-listingeditcontract-cs) |
+| [src/ListingRequestGuard.cs](../../src/ListingRequestGuard.cs) | 외부 연결이 소유한 조회/갱신 serial만 취소할 수 있게 한다. 다른 수동 요청을 잘못 취소하지 않도록 source identity와 update 간격을 검사한다. [함수 목록](bridge.md#file-src-listingrequestguard-cs) |
+| [src/ListingViewProjection.cs](../../src/ListingViewProjection.cs) | 외부에 노출하는 최소 관리형 표시 모델. 원시 CID/flag/PIN/상세 진단을 제외하고 전체 그룹과 등록 직업·허용 직업 ID를 포함한다. [함수 목록](bridge.md#file-src-listingviewprojection-cs) |
 | [src/NativeCompatibility.cs](../../src/NativeCompatibility.cs) | 빌드에 embedded한 ABI 계약과 현재 로드된 native/interop DLL의 PE metadata를 비교한다. 버전/MVID 차이만으로는 차단하지 않는다. [함수 목록](compat-release.md#file-src-nativecompatibility-cs) |
 | [src/NativeReadGuard.cs](../../src/NativeReadGuard.cs) | 네이티브 포인터와 SeString 읽기의 범위/페이지 검사. 호환 계약 통과와 포인터 유효성 검사는 별개다. [함수 목록](compat-release.md#file-src-nativereadguard-cs) |
 | [src/ObjectiveTraceBuffer.cs](../../src/ObjectiveTraceBuffer.cs) | lock으로 보호하는 최대1024줄/120초 메모리 기록. 중단은 기록을 보존하고 새 시작은 이전 기록을 교체한다. [함수 목록](compat-release.md#file-src-objectivetracebuffer-cs) |
 | [src/PartyReader.cs](../../src/PartyReader.cs) | 현재 파티의 관찰용 스냅샷. 일반 파티 목록, 서버 초월의 로컬 그룹, 본인 정보 순으로 읽는다. 모집 등록 직업/빈자리 규칙의 기준으로 사용하면 안 된다. [함수 목록](core.md#file-src-partyreader-cs) |
 | [src/PartyRoster.cs](../../src/PartyRoster.cs) | AFK 비교 전용 불변 CID 명단. 직업·이름·레벨·정렬 순서·그룹 내 위치는 비교에 넣지 않는다. [함수 목록](core.md#file-src-partyroster-cs) |
 | [src/PartyRosterReader.cs](../../src/PartyRosterReader.cs) | AFK가 켜진 동안만 현재 전체 파티 CID를 읽는다. 기존 PartyReader의 실시간 직업 표시와 별개이며 서버 초월은 최대6개 그룹 전체를 순회한다. [함수 목록](core.md#file-src-partyrosterreader-cs) |
-| [src/PartyViewKR.csproj](../../src/PartyViewKR.csproj) | net10.0-windows/x64/unsafe, 버전0.3.56/0.3.56.0, Discord.Net3.20.2·DPAPI 의존성 및 Web/PNG/contracts embedded resource, native references 지정. |
-| [src/PartyViewKR.json](../../src/PartyViewKR.json) | 현재 플러그인 manifest/API15/AssemblyVersion0.3.56.0. package 검증의 기준이며 csproj와 반드시 맞아야 한다. |
+| [src/PartyViewKR.csproj](../../src/PartyViewKR.csproj) | net10.0-windows/x64/unsafe, 버전0.3.57/0.3.57.0, Discord.Net3.20.2·DPAPI 의존성 및 Discord PNG/contracts embedded resource, native references 지정. |
+| [src/PartyViewKR.json](../../src/PartyViewKR.json) | 현재 플러그인 manifest/API15/AssemblyVersion0.3.57.0. package 검증의 기준이며 csproj와 반드시 맞아야 한다. |
 | [src/PartyWindow.cs](../../src/PartyWindow.cs) | 인게임 ImGui 화면. 현재 파티/모집글/외부 연결/수정 초안/대기 변경/진단을 표시하고 Plugin에 의도만 전달한다. [함수 목록](core.md#file-src-partywindow-cs) |
 | [src/Plugin.Afk.cs](../../src/Plugin.Afk.cs) | 인게임 AFK 토글과 순수 monitor를 실제 Reader/기존 조회 guard에 연결한다. 별도의 지역 이동 상태 기계나 자동 갱신/알림 전송 경로를 만들지 않는다. [함수 목록](core.md#file-src-plugin-afk-cs) |
 | [src/Plugin.Chat.cs](../../src/Plugin.Chat.cs) | 공개 채팅 이벤트와 Discord 큐를 로그인/CID 기반으로 연결한다. 인게임의 종류별 수신/멘션 토글과 홈 서버 보완을 제공하며 AFK 상태에 의존하지 않는다. [함수 목록](core.md#file-src-plugin-chat-cs) |
 | [src/Plugin.ChatSend.cs](../../src/Plugin.ChatSend.cs) | 게임 전송 native 경계. 호환/접속/지역 이동과 실제 최근 귓속말 이력을 검사하고 UIModule 채팅 입력을 호출한다. [함수 목록](core.md#file-src-plugin-chatsend-cs) |
 | [src/Plugin.Discord.cs](../../src/Plugin.Discord.cs) | 사용자 설정과 Discord client 수명 연결. 재시작 복원은 한 번, 명시 끄기는 자동 연결도 끄며 Dispose는 저장 토큰을 지우지 않는다. [함수 목록](discord.md#file-src-plugin-discord-cs) |
 | [src/Plugin.Recovery.cs](../../src/Plugin.Recovery.cs) | 디스코드 닫기 queue를 실제 게임 창에 연결한다. 반복 중단/제출 기능이 아니라 사용자가 명시적으로 요청한 모집 수정창 닫기만 수행한다. [함수 목록](refresh.md#file-src-plugin-recovery-cs) |
-| [src/Plugin.Relay.cs](../../src/Plugin.Relay.cs) | PVKR 설정/UI와 중계 client 생성·종료를 연결한다. 서버 주소만 영구 저장하고 연결 키는 런타임에 사용한다. [함수 목록](web-relay.md#file-src-plugin-relay-cs) |
-| [src/Plugin.Web.cs](../../src/Plugin.Web.cs) | Plugin에서 loopback/relay/Discord 중 하나의 Bridge를 Framework에 연결하는 façade와 작업 소유권 어댑터. [함수 목록](web-relay.md#file-src-plugin-web-cs) |
+| [src/Plugin.Bridge.cs](../../src/Plugin.Bridge.cs) | Plugin에서 Discord의 모집 요청 브리지를 Framework에 연결하고 요청 소유권을 관리한다. [함수 목록](bridge.md#file-src-plugin-bridge-cs) |
 | [src/Plugin.cs](../../src/Plugin.cs) | Dalamud 진입점. 서비스 주입, UI·명령·Addon 수명 이벤트 등록, 500ms 읽기/갱신 진행, 관리형 편집 초안과 대기 변경을 소유한다. 게임 상태 접근의 중심은 OnUpdate다. [함수 목록](core.md#file-src-plugin-cs) |
-| [src/RelayConfiguration.cs](../../src/RelayConfiguration.cs) | 기존 설정 type identity를 유지하는 Version=1 설정 모델. 서버 주소, DPAPI ciphertext, 토큰 기억/자동 연결만 저장한다. PIN/모집글/relay 연결 키는 저장하지 않는다. [함수 목록](discord.md#file-src-relayconfiguration-cs) |
+| [src/RelayConfiguration.cs](../../src/RelayConfiguration.cs) | 기존 설정 type identity를 유지하는 Version=1 모델. 암호화 토큰·자동 연결·알림 채널·채팅·AFK 설정을 저장한다. 웹 주소는 제거했으며 PIN·모집글·평문 토큰은 저장하지 않는다. [함수 목록](discord.md#file-src-relayconfiguration-cs) |
 | [src/RuntimeRows.cs](../../src/RuntimeRows.cs) | 한섭/공개판 Lumina 어셈블리 차이를 피하도록 런타임 RowRef와 ExcelSheet 공개 API를 reflection으로 읽는다. 이름 캐시와 모집 직업 카탈로그를 제공한다. [함수 목록](core.md#file-src-runtimerows-cs) |
-| [src/Web/app.js](../../src/Web/app.js) | 웹 화면 상태/폴링·조회·수정/갱신 요청. GET state 폴링은 서버 모집글 조회를 매번 발생시키지 않는다. [함수 목록](web-relay.md#file-src-web-app-js) |
-| [src/Web/connection.js](../../src/Web/connection.js) | 연결 링크/room.key 파싱, sessionStorage와 URL fragment 정리, 불명확한 요청 결과 분류. 브라우저와 Node 테스트가 같은 순수 로직을 사용한다. [함수 목록](web-relay.md#file-src-web-connection-js) |
-| [src/Web/editor.js](../../src/Web/editor.js) | 외부 편집 초안 검증과 DOM editor. 입력 자체는 게임에 반영하지 않고 collect한 변경을 submit callback으로 넘긴다. [함수 목록](web-relay.md#file-src-web-editor-js) |
-| [src/Web/index.html](../../src/Web/index.html) | 웹 조회/연결/editor/결과 영역과 DOM ID·외부 script 로드 순서. app/editor가 의존하는 ID 계약. |
-| [src/Web/style.css](../../src/Web/style.css) | 모바일/desktop의 조회·그룹·자리·편집·상태/오류 표시 스타일. |
 | [src/packages.lock.json](../../src/packages.lock.json) | 플러그인의 NuGet 전이 의존성 버전/해시 lock. |
 | [tests/AfkCompletionTests.cs](../../tests/AfkCompletionTests.cs) | 모집 자동 종료 뒤 현재 명단과 기억한 등록 정원으로 완료 감지·중복 억제를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-afkcompletiontests-cs) |
 | [tests/AfkListingMonitorTests.cs](../../tests/AfkListingMonitorTests.cs) | AFK CID 명단 정규화, 가입/탈퇴 변경 보존,60초 보완 조회, 실패 backoff, 요청 revision 소유권과 캐릭터 수명를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-afklistingmonitortests-cs) |
@@ -242,7 +226,6 @@
 | [tests/ListingObjectiveUiTests.cs](../../tests/ListingObjectiveUiTests.cs) | dropdown open→click→select 순서와1회 동작·timeout를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingobjectiveuitests-cs) |
 | [tests/ListingPrivateEditTests.cs](../../tests/ListingPrivateEditTests.cs) | 공개 sentinel10000·0000 포함 PIN·체크/입력 순서·비밀값 비노출를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingprivateedittests-cs) |
 | [tests/ListingRecoveryTests.cs](../../tests/ListingRecoveryTests.cs) | 수정창 닫기 우선 처리·ACK·세션·창 수명·중단 소유권를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingrecoverytests-cs) |
-| [tests/ListingRelayTests.cs](../../tests/ListingRelayTests.cs) | 중계 URL/key/frame allowlist·session/만료·JSON/크기·Bridge 응답를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingrelaytests-cs) |
 | [tests/ListingRoleButtonsTests.cs](../../tests/ListingRoleButtonsTests.cs) | KR 직업 node mapping·Anyone 계획·친선 차이 토글·batch pacing를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingrolebuttonstests-cs) |
 | [tests/ListingRoleComparisonTests.cs](../../tests/ListingRoleComparisonTests.cs) | raw flags 차이/자리 위치·추가/제거 직업 진단를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingrolecomparisontests-cs) |
 | [tests/ListingRoleNormalizationTests.cs](../../tests/ListingRoleNormalizationTests.cs) | 점유 자리의 입장 직업 자동 정규화와 일반·연합·친선의 원본/수정창/결과 검증를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingrolenormalizationtests-cs) |
@@ -251,18 +234,13 @@
 | [tests/ListingSlotsTests.cs](../../tests/ListingSlotsTests.cs) | 참가 직업/허용 직업·소유 물리 인덱스·인원수 일치를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingslotstests-cs) |
 | [tests/ListingSparseSlotsTests.cs](../../tests/ListingSparseSlotsTests.cs) | 24/48인 미등록 제외·display/native 위치 보존·편집 결과를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingsparseslotstests-cs) |
 | [tests/ListingUniqueJobsEditTests.cs](../../tests/ListingUniqueJobsEditTests.cs) | 잡 중복 없음 flag·원본/결과·checkbox 지연를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listinguniquejobsedittests-cs) |
-| [tests/ListingWebEditTests.cs](../../tests/ListingWebEditTests.cs) | apply decoder·revision/ID ledger·타임아웃·실제 HTTP의 엄격한 body/auth 경계를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingwebedittests-cs) |
-| [tests/ListingWebTests.cs](../../tests/ListingWebTests.cs) | snapshot 최소 노출·query queue·Host/Origin/Bearer·HTTP 종료와 소유권를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingwebtests-cs) |
+| [tests/ListingEditContractTests.cs](../../tests/ListingEditContractTests.cs) | 관리형 변경 요청 decoder·revision/ID ledger·타임아웃·허용 필드와 값 경계를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingeditcontracttests-cs) |
+| [tests/ListingBridgeTests.cs](../../tests/ListingBridgeTests.cs) | snapshot 최소 노출·query queue·캐릭터/요청 소유권·연결 종료를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-listingbridgetests-cs) |
 | [tests/NativePointerContractTests.cs](../../tests/NativePointerContractTests.cs) | 포인터 전용 UIModule의 실제 PE 구조 변경·호출 필드/함수 보존·직접 접근 구조 검사를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-nativepointercontracttests-cs) |
 | [tests/Program.cs](../../tests/Program.cs) | 전체 관리형 test runner 및 기본 갱신/소유자/빈 소개말/trace buffer 회귀를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-program-cs) |
 | [tests/RefreshTests.csproj](../../tests/RefreshTests.csproj) | 게임 없이 실행할 net10.0 console test runner. 순수 모델/Bridge/Discord SDK 코드를 링크하고 PNG/Web 리소스를 포함한다. Dalamud/native UI host는 fake 경계로 대체한다. |
-| [tests/RelayFixture.cs](../../tests/RelayFixture.cs) | 로컬 Worker와 붙일 살아 있는 fake host/Bridge 중계 통합 fixture를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-relayfixture-cs) |
-| [tests/WebBrowserFixture.cs](../../tests/WebBrowserFixture.cs) | 실제 loopback server에 fake source를 제공하는 브라우저 smoke fixture를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다. [함수 목록](tests.md#file-tests-webbrowserfixture-cs) |
-| [tests/browser-smoke.cjs](../../tests/browser-smoke.cjs) | Playwright와 WebBrowserFixture의 실제 loopback UI로 조회·slot 표시·편집/결과를 검사한다. [함수 목록](tests.md#file-tests-browser-smoke-cjs) |
 | [tests/packages.lock.json](../../tests/packages.lock.json) | 관리형 회귀 runner의 NuGet lock. |
 | [tests/test_release.py](../../tests/test_release.py) | unittest/mock으로 배포 URL·버전·의존성 allowlist·해시·공개 다운로드 실패 시 feed 보존을 검사한다. 실제 릴리스를 만들지 않는다. [함수 목록](tests.md#file-tests-test-release-py) |
-| [tests/web-connection.test.cjs](../../tests/web-connection.test.cjs) | 연결 링크/직접 코드·cross-origin 거부·hash 제거·sessionStorage 실패와 미결 요청의 확정 실패 분류를 검사한다. [함수 목록](tests.md#file-tests-web-connection-test-cjs) |
-| [tests/web-editor.test.cjs](../../tests/web-editor.test.cjs) | 브라우저와 같은 collect/draft 순수 로직의 no-op·필드 검증·PIN·직업 선택·아이템 레벨 경계를 검사한다. [함수 목록](tests.md#file-tests-web-editor-test-cjs) |
 | [tools/CompatibilityTool/CompatibilityTool.csproj](../../tools/CompatibilityTool/CompatibilityTool.csproj) | net10.0 CLI 프로젝트. shared/NativeContract.cs를 링크해 runtime과 같은 ABI 비교 로직을 쓴다. |
 | [tools/CompatibilityTool/Program.cs](../../tools/CompatibilityTool/Program.cs) | PE metadata CLI: inspect는 assembly 이름/버전, capture/capture-runtime은 계약 baseline 생성, verify는 현재 DLL과 저장 계약을 비교한다. [함수 목록](compat-release.md#file-tools-compatibilitytool-program-cs) |
 | [tools/release.py](../../tools/release.py) | 고정 reference 다운로드→ABI 확인→버전/런타임 의존성 검증 ZIP→release 검증 후 feed 업데이트. 명시 실행하는 배포 도구다. [함수 목록](compat-release.md#file-tools-release-py) |
@@ -276,7 +254,7 @@
 | [docs/code-map/edits.md](edits.md) | 편집 모델·대기 변경·순수 UI 상태 기계: 해당 파일의 함수/속성/생성자별 책임과 소스 위치 |
 | [docs/code-map/refresh.md](refresh.md) | 갱신 흐름·네이티브 UI 호스트: 해당 파일의 함수/속성/생성자별 책임과 소스 위치 |
 | [docs/code-map/discord.md](discord.md) | Discord 연결·카드·폼·이모지·토큰·채팅: 해당 파일의 함수/속성/생성자별 책임과 소스 위치 |
-| [docs/code-map/web-relay.md](web-relay.md) | 공통 외부 브리지·웹·Cloudflare 중계: 해당 파일의 함수/속성/생성자별 책임과 소스 위치 |
+| [docs/code-map/bridge.md](bridge.md) | 공통 모집 요청 브리지: 해당 파일의 함수/속성/생성자별 책임과 소스 위치 |
 | [docs/code-map/compat-release.md](compat-release.md) | 호환 검사·진단·배포 도구: 해당 파일의 함수/속성/생성자별 책임과 소스 위치 |
 | [docs/code-map/tests.md](tests.md) | 테스트 함수·시나리오 지도: 해당 파일의 함수/속성/생성자별 책임과 소스 위치 |
 | [docs/code-map/files.md](files.md) | 추적된 전체 코드·설정·자산·배포 파일의 책임 |

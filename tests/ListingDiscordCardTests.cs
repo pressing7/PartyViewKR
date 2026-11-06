@@ -6,8 +6,8 @@ static partial class ListingDiscordTests
     private static void RunCardFlow(Action<string, Action> test, Action<bool, string> check)
     {
         test("discord separate editor preserves drafts while viewing all parties and navigating details", () => {
-            var (b, h, _) = ListingWebEditTests.Ready();
-            h.Native.Target = WebEditFakeHost.Target(24); b.Update(h, 1001);
+            var (b, h, _) = ListingEditContractTests.Ready();
+            h.Native.Target = EditContractFakeHost.Target(24); b.Update(h, 1001);
             var p = new ListingDiscordPanel(b, App, Owner);
             var overview = p.Complete(1001).Screen!;
             var opened = p.Handle(Input(Id(overview, "settings")), 1100);
@@ -28,7 +28,7 @@ static partial class ListingDiscordTests
             check(body.RootElement.GetProperty("changes").GetArrayLength() == 1 && h.StartCalls == 0, "navigation submitted or lost changes");
         });
         test("discord grouped modal rejects malformed fields atomically and explicit empty checks turn options off", () => {
-            var (b, _, _) = ListingWebEditTests.Ready(); var p = new ListingDiscordPanel(b, App, Owner);
+            var (b, _, _) = ListingEditContractTests.Ready(); var p = new ListingDiscordPanel(b, App, Owner);
             var draft = Field(p, p.Complete(1000).Screen!, "beginner", "1");
             var modal = p.Handle(Input(Id(draft, "form:settings")), 1100).Modal!;
             var input = FormInput(modal);
@@ -50,7 +50,7 @@ static partial class ListingDiscordTests
         });
         test("discord private modal keeps an existing draft PIN without echoing it and removes it when disabled", () => {
             foreach (var keep in new[] { true, false }) {
-                var (b, _, _) = ListingWebEditTests.Ready(); var p = new ListingDiscordPanel(b, App, Owner);
+                var (b, _, _) = ListingEditContractTests.Ready(); var p = new ListingDiscordPanel(b, App, Owner);
                 var draft = Text(p, p.Complete(1000).Screen!, "private", "0017");
                 var modal = p.Handle(Input(Id(draft, "form:private")), 1100).Modal!;
                 var input = FormInput(modal);

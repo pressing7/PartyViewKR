@@ -12,14 +12,14 @@ internal sealed class ListingDiscordIcons(IReadOnlyDictionary<string, ulong>? ap
     internal string Private => Resolve("private", "🔒");
     internal string Beginner => Resolve("beginner", "🌱");
 
-    internal string ForSlot(WebSlot slot)
+    internal string ForSlot(RemoteSlot slot)
     {
         var fallback = slot.HasMember ? "🟦" : !slot.RulesComplete ? "⬛" : slot.Anyone ? "⬜" : "🟨";
         var key = ConditionKey(slot);
         return key == null ? fallback : Resolve((slot.HasMember ? "checked_" : "") + key, fallback);
     }
 
-    internal static string? ConditionKey(WebSlot slot)
+    internal static string? ConditionKey(RemoteSlot slot)
     {
         if (!slot.RulesComplete) return null;
         if (slot.Anyone) return "anyone";
@@ -46,7 +46,7 @@ internal sealed class ListingDiscordIcons(IReadOnlyDictionary<string, ulong>? ap
             ? $"<:{ListingDiscordEmojiAssets.NameFor(key)}:{id}>" : fallback;
 
     // Only the fallback symbols in use need explaining once real icons exist.
-    internal string Legend(IEnumerable<WebSlot> slots)
+    internal string Legend(IEnumerable<RemoteSlot> slots)
     {
         var used = slots.Select(ForSlot).ToHashSet();
         (string Icon, string Label)[] states = [("🟦", "참가"), ("⬜", "누구나 가능"), ("🟨", "직업 제한"), ("⬛", "확인 불가")];

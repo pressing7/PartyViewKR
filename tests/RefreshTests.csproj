@@ -22,7 +22,7 @@
     <Compile Include="../src/ListingDiscordChat.cs" Link="ListingDiscordChat.cs" />
     <Compile Include="../src/ListingDiscordClient.Chat.cs" Link="ListingDiscordClient.Chat.cs" />
     <Compile Include="../src/ListingDiscordSession.Chat.cs" Link="ListingDiscordSession.Chat.cs" />
-    <Compile Include="../src/ListingWebBridge.Recovery.cs" Link="ListingWebBridge.Recovery.cs" />
+    <Compile Include="../src/ListingBridge.Recovery.cs" Link="ListingBridge.Recovery.cs" />
     <Compile Include="../src/ListingDiscordSession.Recovery.cs" Link="ListingDiscordSession.Recovery.cs" />
     <PackageReference Include="Discord.Net.WebSocket" Version="3.20.2" />
     <Compile Include="../src/RelayConfiguration.cs" Link="RelayConfiguration.cs" />
@@ -36,15 +36,11 @@
     <Compile Include="../src/ListingDiscordSession.cs" Link="ListingDiscordSession.cs" />
     <Compile Include="../src/ListingDiscordClient.cs" Link="ListingDiscordClient.cs" />
     <Compile Include="../src/ListingSnapshot.cs" Link="ListingSnapshot.cs" />
-    <Compile Include="../src/ListingWebView.cs" Link="ListingWebView.cs" />
-    <Compile Include="../src/ListingWebBridge.cs" Link="ListingWebBridge.cs" />
-    <Compile Include="../src/ListingWebServer.cs" Link="ListingWebServer.cs" />
-    <Compile Include="../src/ListingWebRequestGuard.cs" Link="ListingWebRequestGuard.cs" />
-    <Compile Include="../src/ListingWebEdit.cs" Link="ListingWebEdit.cs" />
-    <Compile Include="../src/ListingWebBridge.Edit.cs" Link="ListingWebBridge.Edit.cs" />
-    <Compile Include="../src/ListingRelayProtocol.cs" Link="ListingRelayProtocol.cs" />
-    <Compile Include="../src/ListingRelayClient.cs" Link="ListingRelayClient.cs" />
-    <EmbeddedResource Include="../src/Web/*" LogicalName="PartyViewKR.Web.%(Filename)%(Extension)" />
+    <Compile Include="../src/ListingViewProjection.cs" Link="ListingViewProjection.cs" />
+    <Compile Include="../src/ListingBridge.cs" Link="ListingBridge.cs" />
+    <Compile Include="../src/ListingRequestGuard.cs" Link="ListingRequestGuard.cs" />
+    <Compile Include="../src/ListingEditContract.cs" Link="ListingEditContract.cs" />
+    <Compile Include="../src/ListingBridge.Edit.cs" Link="ListingBridge.Edit.cs" />
     <Compile Include="../shared/NativeContract.cs" Link="NativeContract.cs" />
     <None Include="../compatibility/native-contract.json" Link="native-contract.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="../src/ListingIdentity.cs" Link="ListingIdentity.cs" />

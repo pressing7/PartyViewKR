@@ -4,9 +4,9 @@
 
 게임 상태 읽기는 `Plugin.OnUpdate`에서 한다. `PartySnapshot`은 현재 파티, `ListingSnapshot`/`RefreshTarget`은 모집글이다. 직업 수정과 표시의 기준은 후자다.
 
-기준: 0.3.56.0 소스. 기반 main `dec071d39f91fbf678bdbf22f4752facc735c2b2` 이후 AFK 선택형 주기 모집 갱신을 포함한다. 2026-11-03(Asia/Seoul) 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
+기준: 0.3.57.0 소스. main `58fba989007a1ca4e9286eae066422e4dc3134a6` 이후 웹 제거와 공통 브리지 이름 정리를 포함한다. 2026-11-06 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
 
-표에는 직접 선언한 메서드·생성자·로컬 함수·계산 속성·인터페이스 메서드를 각각 포함한다. 자동 생성 record 메서드/단순 auto-property accessor는 제외한다. 이름 없는 LINQ/타이머/콜백은 이를 소유한 함수 설명에 포함하며, 중요한 DOM 이벤트 handler와 명명된 테스트 시나리오는 별도로 표시한다.
+표에는 직접 선언한 메서드·생성자·로컬 함수·계산 속성·인터페이스 메서드를 각각 포함한다. 자동 생성 record 메서드/단순 auto-property accessor는 제외한다. 이름 없는 LINQ/타이머/콜백은 이를 소유한 함수 설명에 포함하며, 명명된 테스트 시나리오는 별도로 표시한다.
 
 ## 파일 탐색
 
@@ -411,42 +411,40 @@ AFK가 켜진 동안만 현재 전체 파티 CID를 읽는다. 기존 PartyReade
 <a id="file-src-partywindow-cs"></a>
 ## src/PartyWindow.cs
 
-[소스 파일](../../src/PartyWindow.cs) · 명명된 항목/진입점 30개
+[소스 파일](../../src/PartyWindow.cs) · 명명된 항목/진입점 28개
 
 인게임 ImGui 화면. 현재 파티/모집글/외부 연결/수정 초안/대기 변경/진단을 표시하고 Plugin에 의도만 전달한다.
 
 | 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
 |---|---|---|---|
-| <a id="symbol-src-partywindow-cs-23-68a6556cbf"></a><code>PartyWindow.PartyWindow</code><br><code>PartyWindow(Plugin plugin)</code> | 생성자 | Plugin 참조와 창 크기·제약 등 ImGui window 설정을 초기화한다. | [L23](../../src/PartyWindow.cs#L23) |
-| <a id="symbol-src-partywindow-cs-31-84955a83d8"></a><code>PartyWindow.Draw</code><br><code>void Draw()</code> | 메서드 | 전체 창의 조회·갱신·대기 변경 버튼, 파티/모집글/연결 패널과 편집창을 그린다. | [L31](../../src/PartyWindow.cs#L31) |
-| <a id="symbol-src-partywindow-cs-57-7c8ea2c278"></a><code>PartyWindow.DrawAfk</code><br><code>void DrawAfk()</code> | 메서드 | AFK 모드·조회/재시도·단일 직업 완료 알림과 독립된 주기 갱신 옵션/1~55분 입력을 그린다. 카운트다운·진행/최근 결과·저장 오류를 표시한다. AFK 활성 자체는 세션 선택이다. | [L57](../../src/PartyWindow.cs#L57) |
-| <a id="symbol-src-partywindow-cs-109-bae247adef"></a><code>PartyWindow.DrawBrowser</code><br><code>void DrawBrowser()</code> | 메서드 | 같은 PC 웹 연결의 켜기/끄기, 주소·인증 링크와 복사 UI를 표시한다. | [L109](../../src/PartyWindow.cs#L109) |
-| <a id="symbol-src-partywindow-cs-124-c6ce202fa8"></a><code>PartyWindow.DrawRelay</code><br><code>void DrawRelay()</code> | 메서드 | 중계 서버 주소·연결 키·외부 링크와 연결 상태를 표시하고 relay 시작/종료를 요청한다. | [L124](../../src/PartyWindow.cs#L124) |
-| <a id="symbol-src-partywindow-cs-157-04664c1ee8"></a><code>PartyWindow.DrawDiscord</code><br><code>void DrawDiscord()</code> | 메서드 | 토큰 연결/저장, 초대 링크, 알림·채팅 상태와 종류별 인게임 수신/멘션 토글을 표시한다. | [L157](../../src/PartyWindow.cs#L157) |
-| <a id="symbol-src-partywindow-cs-184-c1d0d8b9a7"></a><code>PartyWindow.DrawDiscordChatControls</code><br><code>void DrawDiscordChatControls()</code> | 메서드 | 각 종류의 수신 체크박스와 멘션 끄기/항상/효과음만 선택·저장 채널을 표시한다. 귓속말은 효과음만 선택지를 제공하지 않는다. 준비/저장 상태를 확인하고 Plugin으로 선택을 넘긴다. | [L184](../../src/PartyWindow.cs#L184) |
-| <a id="symbol-src-partywindow-cs-220-37f78ed25a"></a><code>PartyWindow.DrawCurrentParty</code><br><code>void DrawCurrentParty()</code> | 메서드 | PartySnapshot의 현재 멤버·직업·월드·stale 상태를 표시한다. 모집 등록 직업 화면과 별개다. | [L220](../../src/PartyWindow.cs#L220) |
-| <a id="symbol-src-partywindow-cs-251-d711d04efc"></a><code>PartyWindow.DrawListing</code><br><code>void DrawListing()</code> | 메서드 | 상세 모집의 소유자·임무·시간·조건·소개말·등록 자리를 표시하고 개별 편집 진입 UI를 연결한다. | [L251](../../src/PartyWindow.cs#L251) |
-| <a id="symbol-src-partywindow-cs-330-7b49ef4f14"></a><code>PartyWindow.DrawDescription</code><br><code>void DrawDescription(ListingSnapshot listing)</code> | 메서드 | 조회된 소개말의 표시값과 편집 진입 버튼을 그린다. | [L330](../../src/PartyWindow.cs#L330) |
-| <a id="symbol-src-partywindow-cs-352-673fdd3317"></a><code>PartyWindow.DrawDescriptionEditor</code><br><code>void DrawDescriptionEditor()</code> | 메서드 | 소개말 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyDescriptionDraft에 대기 변경을 전달한다. | [L352](../../src/PartyWindow.cs#L352) |
-| <a id="symbol-src-partywindow-cs-393-47d89d3bc7"></a><code>PartyWindow.DrawListingSlots</code><br><code>void DrawListingSlots(ListingSnapshot listing)</code> | 메서드 | 등록된 자리만 순회하고 인원수·그룹/멤버 위치·미등록 매핑 진단을 표시한다. | [L393](../../src/PartyWindow.cs#L393) |
-| <a id="symbol-src-partywindow-cs-436-ba069c3fe9"></a><code>PartyWindow.DrawObjective</code><br><code>void DrawObjective(ListingSnapshot listing)</code> | 메서드 | 조회된 모집 목적의 표시값과 편집 진입 버튼을 그린다. | [L436](../../src/PartyWindow.cs#L436) |
-| <a id="symbol-src-partywindow-cs-448-938c84b5d0"></a><code>PartyWindow.DrawBeginner</code><br><code>void DrawBeginner(ListingSnapshot listing)</code> | 메서드 | 조회된 초행 및 초보자 환영의 표시값과 편집 진입 버튼을 그린다. | [L448](../../src/PartyWindow.cs#L448) |
-| <a id="symbol-src-partywindow-cs-460-8ab78e96a9"></a><code>PartyWindow.DrawBeginnerEditor</code><br><code>void DrawBeginnerEditor()</code> | 메서드 | 초행 및 초보자 환영 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyBeginnerDraft에 대기 변경을 전달한다. | [L460](../../src/PartyWindow.cs#L460) |
-| <a id="symbol-src-partywindow-cs-493-63c62bcad7"></a><code>PartyWindow.DrawUniqueJobs</code><br><code>void DrawUniqueJobs(ListingSnapshot listing)</code> | 메서드 | 조회된 잡 중복 없음의 표시값과 편집 진입 버튼을 그린다. | [L493](../../src/PartyWindow.cs#L493) |
-| <a id="symbol-src-partywindow-cs-505-8351e2403e"></a><code>PartyWindow.DrawUniqueJobsEditor</code><br><code>void DrawUniqueJobsEditor()</code> | 메서드 | 잡 중복 없음 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyUniqueJobsDraft에 대기 변경을 전달한다. | [L505](../../src/PartyWindow.cs#L505) |
-| <a id="symbol-src-partywindow-cs-538-27cb2c0a55"></a><code>PartyWindow.DrawPrivate</code><br><code>void DrawPrivate(ListingSnapshot listing)</code> | 메서드 | 조회된 비공개/PIN의 표시값과 편집 진입 버튼을 그린다. | [L538](../../src/PartyWindow.cs#L538) |
-| <a id="symbol-src-partywindow-cs-551-2550d5d702"></a><code>PartyWindow.DrawPrivateEditor</code><br><code>void DrawPrivateEditor()</code> | 메서드 | 비공개/PIN 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyPrivateDraft에 대기 변경을 전달한다. | [L551](../../src/PartyWindow.cs#L551) |
-| <a id="symbol-src-partywindow-cs-595-af545f1315"></a><code>PartyWindow.DrawCompletion</code><br><code>void DrawCompletion(ListingSnapshot listing)</code> | 메서드 | 조회된 완료조건의 표시값과 편집 진입 버튼을 그린다. | [L595](../../src/PartyWindow.cs#L595) |
-| <a id="symbol-src-partywindow-cs-608-85f95c861d"></a><code>PartyWindow.DrawCompletionEditor</code><br><code>void DrawCompletionEditor()</code> | 메서드 | 완료조건 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyCompletionDraft에 대기 변경을 전달한다. | [L608](../../src/PartyWindow.cs#L608) |
-| <a id="symbol-src-partywindow-cs-655-8319d1e9ea"></a><code>PartyWindow.DrawItemLevel</code><br><code>void DrawItemLevel(ListingSnapshot listing)</code> | 메서드 | 조회된 평균 아이템 레벨의 표시값과 편집 진입 버튼을 그린다. | [L655](../../src/PartyWindow.cs#L655) |
-| <a id="symbol-src-partywindow-cs-668-1ae7925da3"></a><code>PartyWindow.DrawItemLevelEditor</code><br><code>void DrawItemLevelEditor()</code> | 메서드 | 평균 아이템 레벨 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyItemLevelDraft에 대기 변경을 전달한다. | [L668](../../src/PartyWindow.cs#L668) |
-| <a id="symbol-src-partywindow-cs-710-7d4026e687"></a><code>PartyWindow.DrawRule</code><br><code>void DrawRule(ListingSnapshot listing, ListingRuleKind kind)</code> | 메서드 | 조회된 임무 찾기/전리품 규칙의 표시값과 편집 진입 버튼을 그린다. | [L710](../../src/PartyWindow.cs#L710) |
-| <a id="symbol-src-partywindow-cs-724-04ee5d3efd"></a><code>PartyWindow.DrawRuleEditor</code><br><code>void DrawRuleEditor()</code> | 메서드 | 임무 찾기/전리품 규칙 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyRuleDraft에 대기 변경을 전달한다. | [L724](../../src/PartyWindow.cs#L724) |
-| <a id="symbol-src-partywindow-cs-768-2d53529341"></a><code>PartyWindow.DrawObjectiveTrace</code><br><code>void DrawObjectiveTrace()</code> | 메서드 | 수동 이벤트 기록의 시작/종료 및 진단 복사 UI를 그린다. | [L768](../../src/PartyWindow.cs#L768) |
-| <a id="symbol-src-partywindow-cs-787-6af1a84a67"></a><code>PartyWindow.DrawObjectiveEditor</code><br><code>void DrawObjectiveEditor()</code> | 메서드 | 모집 목적 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyObjectiveDraft에 대기 변경을 전달한다. | [L787](../../src/PartyWindow.cs#L787) |
-| <a id="symbol-src-partywindow-cs-829-288d743b2a"></a><code>PartyWindow.DrawListingSlotJob</code><br><code>void DrawListingSlotJob(ListingSlot slot, ListingSnapshot listing)</code> | 메서드 | 입장 직업/직업 제한 라벨과 마우스오버 허용 직업 목록을 표시한다. | [L829](../../src/PartyWindow.cs#L829) |
-| <a id="symbol-src-partywindow-cs-867-9f3f92e373"></a><code>PartyWindow.DrawJobEditor</code><br><code>void DrawJobEditor()</code> | 메서드 | 직업 초안 선택 UI와 적용 가능 여부를 표시하고 대기 변경으로 추가한다. | [L867](../../src/PartyWindow.cs#L867) |
-| <a id="symbol-src-partywindow-cs-916-287063d854"></a><code>PartyWindow.Cell</code><br><code>void Cell(string text)</code> | 메서드 | 표 셀을 이동하고 지정 문자열을 출력하는 공통 그리기 helper다. | [L916](../../src/PartyWindow.cs#L916) |
+| <a id="symbol-src-partywindow-cs-23-68a6556cbf"></a><code>PartyWindow.PartyWindow</code><br><code>PartyWindow(Plugin plugin)</code> | 생성자 | Plugin 참조와 창 크기·제약 등 ImGui window 설정을 초기화한다. | [L21](../../src/PartyWindow.cs#L21) |
+| <a id="symbol-src-partywindow-cs-31-84955a83d8"></a><code>PartyWindow.Draw</code><br><code>void Draw()</code> | 메서드 | 전체 창의 조회·갱신·대기 변경 버튼, 파티/모집글/연결 패널과 편집창을 그린다. | [L29](../../src/PartyWindow.cs#L29) |
+| <a id="symbol-src-partywindow-cs-57-7c8ea2c278"></a><code>PartyWindow.DrawAfk</code><br><code>void DrawAfk()</code> | 메서드 | AFK 모드·조회/재시도·단일 직업 완료 알림과 독립된 주기 갱신 옵션/1~55분 입력을 그린다. 카운트다운·진행/최근 결과·저장 오류를 표시한다. AFK 활성 자체는 세션 선택이다. | [L53](../../src/PartyWindow.cs#L53) |
+| <a id="symbol-src-partywindow-cs-157-04664c1ee8"></a><code>PartyWindow.DrawDiscord</code><br><code>void DrawDiscord()</code> | 메서드 | 토큰 연결/저장, 초대 링크, 알림·채팅 상태와 종류별 인게임 수신/멘션 토글을 표시한다. | [L105](../../src/PartyWindow.cs#L105) |
+| <a id="symbol-src-partywindow-cs-184-c1d0d8b9a7"></a><code>PartyWindow.DrawDiscordChatControls</code><br><code>void DrawDiscordChatControls()</code> | 메서드 | 각 종류의 수신 체크박스와 멘션 끄기/항상/효과음만 선택·저장 채널을 표시한다. 귓속말은 효과음만 선택지를 제공하지 않는다. 준비/저장 상태를 확인하고 Plugin으로 선택을 넘긴다. | [L132](../../src/PartyWindow.cs#L132) |
+| <a id="symbol-src-partywindow-cs-220-37f78ed25a"></a><code>PartyWindow.DrawCurrentParty</code><br><code>void DrawCurrentParty()</code> | 메서드 | PartySnapshot의 현재 멤버·직업·월드·stale 상태를 표시한다. 모집 등록 직업 화면과 별개다. | [L168](../../src/PartyWindow.cs#L168) |
+| <a id="symbol-src-partywindow-cs-251-d711d04efc"></a><code>PartyWindow.DrawListing</code><br><code>void DrawListing()</code> | 메서드 | 상세 모집의 소유자·임무·시간·조건·소개말·등록 자리를 표시하고 개별 편집 진입 UI를 연결한다. | [L199](../../src/PartyWindow.cs#L199) |
+| <a id="symbol-src-partywindow-cs-330-7b49ef4f14"></a><code>PartyWindow.DrawDescription</code><br><code>void DrawDescription(ListingSnapshot listing)</code> | 메서드 | 조회된 소개말의 표시값과 편집 진입 버튼을 그린다. | [L278](../../src/PartyWindow.cs#L278) |
+| <a id="symbol-src-partywindow-cs-352-673fdd3317"></a><code>PartyWindow.DrawDescriptionEditor</code><br><code>void DrawDescriptionEditor()</code> | 메서드 | 소개말 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyDescriptionDraft에 대기 변경을 전달한다. | [L300](../../src/PartyWindow.cs#L300) |
+| <a id="symbol-src-partywindow-cs-393-47d89d3bc7"></a><code>PartyWindow.DrawListingSlots</code><br><code>void DrawListingSlots(ListingSnapshot listing)</code> | 메서드 | 등록된 자리만 순회하고 인원수·그룹/멤버 위치·미등록 매핑 진단을 표시한다. | [L341](../../src/PartyWindow.cs#L341) |
+| <a id="symbol-src-partywindow-cs-436-ba069c3fe9"></a><code>PartyWindow.DrawObjective</code><br><code>void DrawObjective(ListingSnapshot listing)</code> | 메서드 | 조회된 모집 목적의 표시값과 편집 진입 버튼을 그린다. | [L384](../../src/PartyWindow.cs#L384) |
+| <a id="symbol-src-partywindow-cs-448-938c84b5d0"></a><code>PartyWindow.DrawBeginner</code><br><code>void DrawBeginner(ListingSnapshot listing)</code> | 메서드 | 조회된 초행 및 초보자 환영의 표시값과 편집 진입 버튼을 그린다. | [L396](../../src/PartyWindow.cs#L396) |
+| <a id="symbol-src-partywindow-cs-460-8ab78e96a9"></a><code>PartyWindow.DrawBeginnerEditor</code><br><code>void DrawBeginnerEditor()</code> | 메서드 | 초행 및 초보자 환영 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyBeginnerDraft에 대기 변경을 전달한다. | [L408](../../src/PartyWindow.cs#L408) |
+| <a id="symbol-src-partywindow-cs-493-63c62bcad7"></a><code>PartyWindow.DrawUniqueJobs</code><br><code>void DrawUniqueJobs(ListingSnapshot listing)</code> | 메서드 | 조회된 잡 중복 없음의 표시값과 편집 진입 버튼을 그린다. | [L441](../../src/PartyWindow.cs#L441) |
+| <a id="symbol-src-partywindow-cs-505-8351e2403e"></a><code>PartyWindow.DrawUniqueJobsEditor</code><br><code>void DrawUniqueJobsEditor()</code> | 메서드 | 잡 중복 없음 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyUniqueJobsDraft에 대기 변경을 전달한다. | [L453](../../src/PartyWindow.cs#L453) |
+| <a id="symbol-src-partywindow-cs-538-27cb2c0a55"></a><code>PartyWindow.DrawPrivate</code><br><code>void DrawPrivate(ListingSnapshot listing)</code> | 메서드 | 조회된 비공개/PIN의 표시값과 편집 진입 버튼을 그린다. | [L486](../../src/PartyWindow.cs#L486) |
+| <a id="symbol-src-partywindow-cs-551-2550d5d702"></a><code>PartyWindow.DrawPrivateEditor</code><br><code>void DrawPrivateEditor()</code> | 메서드 | 비공개/PIN 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyPrivateDraft에 대기 변경을 전달한다. | [L499](../../src/PartyWindow.cs#L499) |
+| <a id="symbol-src-partywindow-cs-595-af545f1315"></a><code>PartyWindow.DrawCompletion</code><br><code>void DrawCompletion(ListingSnapshot listing)</code> | 메서드 | 조회된 완료조건의 표시값과 편집 진입 버튼을 그린다. | [L543](../../src/PartyWindow.cs#L543) |
+| <a id="symbol-src-partywindow-cs-608-85f95c861d"></a><code>PartyWindow.DrawCompletionEditor</code><br><code>void DrawCompletionEditor()</code> | 메서드 | 완료조건 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyCompletionDraft에 대기 변경을 전달한다. | [L556](../../src/PartyWindow.cs#L556) |
+| <a id="symbol-src-partywindow-cs-655-8319d1e9ea"></a><code>PartyWindow.DrawItemLevel</code><br><code>void DrawItemLevel(ListingSnapshot listing)</code> | 메서드 | 조회된 평균 아이템 레벨의 표시값과 편집 진입 버튼을 그린다. | [L603](../../src/PartyWindow.cs#L603) |
+| <a id="symbol-src-partywindow-cs-668-1ae7925da3"></a><code>PartyWindow.DrawItemLevelEditor</code><br><code>void DrawItemLevelEditor()</code> | 메서드 | 평균 아이템 레벨 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyItemLevelDraft에 대기 변경을 전달한다. | [L616](../../src/PartyWindow.cs#L616) |
+| <a id="symbol-src-partywindow-cs-710-7d4026e687"></a><code>PartyWindow.DrawRule</code><br><code>void DrawRule(ListingSnapshot listing, ListingRuleKind kind)</code> | 메서드 | 조회된 임무 찾기/전리품 규칙의 표시값과 편집 진입 버튼을 그린다. | [L658](../../src/PartyWindow.cs#L658) |
+| <a id="symbol-src-partywindow-cs-724-04ee5d3efd"></a><code>PartyWindow.DrawRuleEditor</code><br><code>void DrawRuleEditor()</code> | 메서드 | 임무 찾기/전리품 규칙 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyRuleDraft에 대기 변경을 전달한다. | [L672](../../src/PartyWindow.cs#L672) |
+| <a id="symbol-src-partywindow-cs-768-2d53529341"></a><code>PartyWindow.DrawObjectiveTrace</code><br><code>void DrawObjectiveTrace()</code> | 메서드 | 수동 이벤트 기록의 시작/종료 및 진단 복사 UI를 그린다. | [L716](../../src/PartyWindow.cs#L716) |
+| <a id="symbol-src-partywindow-cs-787-6af1a84a67"></a><code>PartyWindow.DrawObjectiveEditor</code><br><code>void DrawObjectiveEditor()</code> | 메서드 | 모집 목적 초안의 입력·유효성·적용 버튼을 그려 Plugin.ApplyObjectiveDraft에 대기 변경을 전달한다. | [L735](../../src/PartyWindow.cs#L735) |
+| <a id="symbol-src-partywindow-cs-829-288d743b2a"></a><code>PartyWindow.DrawListingSlotJob</code><br><code>void DrawListingSlotJob(ListingSlot slot, ListingSnapshot listing)</code> | 메서드 | 입장 직업/직업 제한 라벨과 마우스오버 허용 직업 목록을 표시한다. | [L777](../../src/PartyWindow.cs#L777) |
+| <a id="symbol-src-partywindow-cs-867-9f3f92e373"></a><code>PartyWindow.DrawJobEditor</code><br><code>void DrawJobEditor()</code> | 메서드 | 직업 초안 선택 UI와 적용 가능 여부를 표시하고 대기 변경으로 추가한다. | [L815](../../src/PartyWindow.cs#L815) |
+| <a id="symbol-src-partywindow-cs-916-287063d854"></a><code>PartyWindow.Cell</code><br><code>void Cell(string text)</code> | 메서드 | 표 셀을 이동하고 지정 문자열을 출력하는 공통 그리기 helper다. | [L864](../../src/PartyWindow.cs#L864) |
 
 <a id="file-src-plugin-afk-cs"></a>
 ## src/Plugin.Afk.cs

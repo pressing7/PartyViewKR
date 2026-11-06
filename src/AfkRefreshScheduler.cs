@@ -16,7 +16,7 @@ internal interface IAfkRefreshHost
 // current own listing through ListingRefresh before opening or submitting it.
 internal sealed class AfkRefreshScheduler(ListingRefresh refresh)
 {
-    private readonly ListingWebRefreshGuard guard = new();
+    private readonly ListingRefreshGuard guard = new();
     private AfkSettings settings = new();
     private bool scheduled, observedFinished;
     private ulong self;
