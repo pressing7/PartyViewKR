@@ -17,13 +17,28 @@ https://raw.githubusercontent.com/pressing7/PartyViewKR/main/pluginmaster.json
 배포 파일은 [Releases](https://github.com/pressing7/PartyViewKR/releases)의 `PartyViewKR.zip`입니다.
 저장소 루트에 남아 있는 이전 수동 업로드 DLL/JSON은 최신 배포 파일이 아닙니다.
 
+## 0.3.58의 인게임 화면 정리
+
+`/pvkr` 화면을 **디스코드 → 자동화 → 설정 → 디버그** 순서의 네 탭으로 나눴습니다. 처음 열리는 화면은 디스코드 설정이며, 각 탭은 따로 스크롤합니다.
+
+| 탭 | 내용 |
+| --- | --- |
+| 디스코드 | 봇 연결 상태, 토큰 저장·자동 연결, 토큰 삭제, 초대 링크와 설정 안내 |
+| 자동화 | AFK 켜기/끄기, 주기 조회·갱신, 조회 실패 재시도, 모집 완료 알림과 최근 자동 결과 |
+| 설정 | 채팅 종류별 수신·멘션·채널과 전달 상태 |
+| 디버그 | 현재 모집글 조회·수정·갱신, 등록 직업과 현재 파티 정보, 상세 진단 표시·복사, 수동 이벤트 기록 |
+
+기존 요청 처리와 저장 설정은 유지합니다. 편집창은 탭과 별도로 처리해 비동기 조회 중 탭이 바뀌어도 초안 표시와 닫기가 끊기지 않게 했습니다. 영역별 화면 코드를 나누고 [구조 계획](docs/ARCHITECTURE_PLAN.md)과 [함수 지도](docs/code-map/core.md#file-src-partywindow-cs)도 갱신했습니다. 새 모집 생성·목록 탐색·참가는 이후 작업입니다.
+
+관리형 회귀 검사529건, Python 배포 검사12건, native/interop 계약 검사와 Release 빌드(경고·오류0), 로컬 ZIP 패키징을 통과했습니다. 실제 인게임 화면 확인은 별도로 필요합니다. **Actions 실행과 릴리스 발행은 사용자가 담당합니다.**
+
 ## 0.3.57의 웹 제거와 구조 정리 계획
 
 로컬 브라우저 화면·HTTP 서버·Cloudflare 중계 클라이언트와 Worker·웹 연결 설정을 제거했습니다. 외부 조작은 개인 Discord 봇으로 사용합니다. 웹 전용 테스트와 배포 파일도 제거했습니다.
 
 Discord가 공유하던 모집 조회·편집·갱신·수정창 닫기 처리는 유지하고, `ListingWeb*`를 역할에 맞는 `ListingBridge`·`ListingEditContract`·`ListingViewProjection` 등으로 정리했습니다. 저장한 봇 토큰·자동 연결·채팅 경로·멘션·알림 채널·AFK 설정은 그대로 복원합니다. 기존 설정의 타입 정보를 읽기 위해 `RelayConfiguration` 이름을 유지하며 웹 주소 속성만 제거했습니다.
 
-[구조 정리 계획](docs/ARCHITECTURE_PLAN.md)에 인게임 다섯 탭, Discord 카드 원칙, 공통 모집 처리부와 단계별 전환을 제안했습니다. **전체 화면·내부 구조 개편은 아직 적용하지 않았습니다.** 이미 배포한 Cloudflare Worker는 이 변경으로 삭제되지 않습니다.
+[구조 정리 계획](docs/ARCHITECTURE_PLAN.md)에 화면·Discord 카드 원칙, 공통 모집 처리부와 단계별 전환을 정리했습니다. 0.3.58에서는 합의한 인게임 네 탭을 적용했으며, 내부 처리 구조 개편은 이후 단계입니다. 이미 배포한 Cloudflare Worker는 이 변경으로 삭제되지 않습니다.
 
 관리형 회귀 검사 **529건**, Python 배포 검사 **12건**, 고정 참조의 native/interop 계약 검사와 정식 `net10.0-windows` Release 빌드(경고·오류0)를 통과했습니다. Discord SDK 모의 전송과 기존 설정 재시작 복원을 포함하며 실제 게임·Discord 접속은 별도로 확인해야 합니다. **Actions 실행과 릴리스 발행은 사용자가 담당합니다.**
 

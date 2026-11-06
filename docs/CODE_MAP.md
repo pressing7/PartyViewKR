@@ -4,16 +4,16 @@
 
 ## 기준과 범위
 
-- 정리일: 2026-11-06. 플러그인 `0.3.57.0`, Dalamud API `15`.
-- 소스 기준: `0.3.57.0`. 기반 main [`58fba989007a1ca4e9286eae066422e4dc3134a6`](https://github.com/pressing7/PartyViewKR/commit/58fba989007a1ca4e9286eae066422e4dc3134a6) 이후 웹 제거와 공통 브리지 이름 정리를 포함한다.
-- 구조 계획과 문서를 포함한 추적 예정 파일 247개 전체를 [파일 지도](code-map/files.md)에 분류했다. 소스 위치는 이 버전의 행 번호다.
-- 함수표에는 **1,381개 명명된 항목/진입점**이 있다(C# 1,350, Python 31). 기존 Roslyn·Python AST 기반 목록에서 삭제한 파일/함수를 제외하고 공유 코드 이름과 소스 위치를 대조했다. 메서드뿐 아니라 생성자·로컬 함수·계산 속성·인터페이스 선언을 포함한다.
+- 정리일: 2026-11-06. 플러그인 `0.3.58.0`, Dalamud API `15`.
+- 소스 기준: `0.3.58.0`. 기반 main [`0074806545c4f840ce4284f837c9bc8b34e268ca`](https://github.com/pressing7/PartyViewKR/commit/0074806545c4f840ce4284f837c9bc8b34e268ca) 이후 인게임 네 탭과 영역별 화면 분리를 포함한다.
+- 구조 계획과 문서를 포함한 추적 예정 파일 251개 전체를 [파일 지도](code-map/files.md)에 분류했다. 소스 위치는 이 버전의 행 번호다.
+- 함수표에는 **1,384개 명명된 항목/진입점**이 있다(C# 1,353, Python 31). 기존 Roslyn·Python AST 기반 목록을 유지하고, 웹 제거와 UI 파일 분리로 이동·추가한 함수의 역할·소스 위치를 대조했다. 메서드뿐 아니라 생성자·로컬 함수·계산 속성·인터페이스 선언을 포함한다.
 - 자동 생성 record 메서드와 단순 auto-property accessor는 별도 함수로 세지 않는다. 이름 없는 LINQ/콜백은 소유 함수에서 설명하고, 명명된 테스트 시나리오는 따로 연결했다.
 - 현재 관리형 회귀 실행은 529건이고 Python 배포 검사는 12건이다. 웹 전용 관리형 검사10건과 JavaScript/중계 테스트를 제거하고 기존 설정 복원 검사1건을 추가했다.
 
 현재 구현은 **기존 본인 모집글의 조회·수정·수동 갱신 및 AFK 명단 감시·자동 조회·선택형 주기 갱신**다. AFK 모집 완료 everyone 알림과 파티·받은 귓속말·연합파티 채팅 전달, Discord에서 파티·연합파티·명시 귓속말·최근 상대 답장 전송을 제공한다. 새 모집 시작과 콘텐츠/파티 유형 변경은 아직 구현하지 않았다. 루트의 `PartyViewKR.dll/json/deps.json`은 이전 수동 배포본이다. 빌드 기준은 `src/PartyViewKR.csproj`와 `src/PartyViewKR.json`, 설치 대상은 Releases ZIP이다.
 
-[구조 정리 계획](ARCHITECTURE_PLAN.md)은 앞으로의 화면·책임 분리 제안이다. 아래 코드 지도는 현재 구현을 설명하며 계획의 적용 완료를 뜻하지 않는다.
+[구조 정리 계획](ARCHITECTURE_PLAN.md) 중 웹 제거와 인게임 네 탭은 적용했다. 아래 코드 지도는 현재 구현을 설명하며 후속 Discord 화면·기능·내부 책임 분리의 적용 완료를 뜻하지 않는다.
 
 ## 함수별 문서
 
@@ -27,6 +27,20 @@
 | [호환 검사·진단·배포](code-map/compat-release.md) | ABI 계약·포인터 읽기·수동 trace·reference/ZIP/release/feed 도구 |
 | [테스트 함수·시나리오](code-map/tests.md) | fake host/Discord SDK와 모든 등록 시나리오의 소스 위치 |
 | [전체 파일 지도](code-map/files.md) | 함수 없는 설정/프로젝트/manifest/workflow/이미지까지 포함한 파일별 역할 |
+
+## 인게임 화면 진입점 (0.3.58)
+
+`PartyWindow.Draw`는 디스코드 → 자동화 → 설정 → 디버그 순서로 탭을 표시한다. 처음에는 디스코드 탭을 보여주며, 각 탭은 스크롤 위치를 따로 가진다. 게임 조작은 기존 Plugin 요청 경로를 사용한다.
+
+| 파일 | 책임 |
+| --- | --- |
+| `PartyWindow.cs` | 탭·공통 구역 제목과 탭 밖 편집 모달 호출 |
+| `PartyWindow.Discord.cs` | 연결·토큰·초대·가이드 |
+| `PartyWindow.Automation.cs` | AFK·조회·갱신·알림 설정과 상태 |
+| `PartyWindow.Settings.cs` | 채팅 수신·멘션·채널과 전달 상태 |
+| `PartyWindow.Debug.cs` | 현재 모집글·현재 파티·수동 편집·갱신·전체 진단·trace |
+
+비동기 초안이 생성되거나 폐기될 때 팝업을 탭의 ID 범위 안에서 열지 않는다. Debug의 표시 상태와 관계없이 루트에서 각 편집 모달을 처리한다. 새 UI 기능은 해당 영역의 partial에 추가하며, 화면에서 직접 게임 포인터를 조작하지 않는다.
 
 ## 책임과 스레드 경계
 
@@ -309,6 +323,6 @@ native 계약은 `UIModule`, `AcquaintanceModule/Acquaintance`, `AllowedEntities
 - `ObserveRefresh`: 수동/자동 갱신이 종료되면 다음 전체 주기를 다시 계산한다. 성공/미확인/중단을 별도로 집계하고 자동 결과를 보존한다. 실패 즉시 재요청하지 않으며 열린 오류 수정창을 덮어쓰지 않는다.
 - `Postpone`: `Plugin.StopForRecovery`가 호출해 수정창 복구 직후 기한이 지난 자동 작업으로 창이 다시 열리는 것을 막는다.
 - `Plugin.OnUpdate`: guard는 `ListingReader.Read`보다 앞에, 스케줄 예약은 수동/외부 처리와 AFK 조회 뒤에 둔다. 독립 Task/타이머가 없어 네트워크 스레드가 게임을 호출하지 않는다.
-- `PartyWindow.DrawAfk`: 독립 조회/갱신 선택, 분 입력, 남은 시간/대기 사유, 최근 자동 결과를 표시한다. `autoRefresh*` 진단은 옵션·진행·소유 revision·요청/결과 수를 기록한다.
+- `PartyWindow.DrawAutomation`: 독립 조회/갱신 선택, 분 입력, 남은 시간/대기 사유, 최근 자동 결과를 표시한다. `autoRefresh*` 진단은 옵션·진행·소유 revision·요청/결과 수를 기록한다.
 
 순수 scheduler와 실제 `ListingRefresh`를 fake host에 연결한17개 회귀 검사를 추가했다. 기본/이전 설정·저장·1/55분 경계·새 조건 읽기·단일 제출·수동 작업/완료 이후 간격·설정 변경·예약 후 충돌·끄기 시점·모집 완료·로그아웃/캐릭터·stale·요청 교체·실패/미확인·복구 지연을 검사한다. 기존 검사 포함 관리형538개 및 Python 배포12개 통과, 오프라인 전체 소스 컴파일 경고/오류0, 고정 참조 ABI1136항목 차이0. Windows 대상 배포 빌드와 실제 게임/Discord 조작은 실행하지 않았으며 Actions는 사용자가 실행한다. 설치 피드와 이전 릴리스는 변경하지 않는다.
