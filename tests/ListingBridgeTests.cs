@@ -70,7 +70,7 @@ static class ListingBridgeTests
             check(view.Settings.Length == 10, "missing existing settings");
         });
         test("bridge hides foreign and unverified listings and labels cached results", () => {
-            foreach (var owner in new[] { ListingOwner.Other, ListingOwner.Unknown, ListingOwner.PartyLeader })
+            foreach (var owner in new[] { ListingOwner.Other, ListingOwner.Unknown })
                 check(ListingViewProjection.From(Sample() with { Owner = owner }, true, false) == null, "not an own listing");
             check(ListingViewProjection.From(Sample(), false, false) == null && ListingViewProjection.From(Sample() with { ReadAt = null }, true, false) == null, "unread data shown");
             check(!ListingViewProjection.From(Sample() with { IsLive = false }, true, false)!.Live && !ListingViewProjection.From(Sample(), true, true)!.Live, "stale query appears live");

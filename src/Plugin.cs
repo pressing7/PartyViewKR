@@ -104,7 +104,7 @@ public sealed partial class Plugin : IDalamudPlugin
     private void OnCommand(string command, string arguments) => Open();
     private void Open() { window.IsOpen = true; window.BringToFront(); RequestRead(); }
     internal void RequestRead() => readRequested = true;
-    internal void QueryOwnListing() => TryQueryOwnListing(out _);
+    internal void QueryPartyListing() => TryQueryPartyListing(out _);
     internal void RefreshOwnListing()
     {
         if (ObjectiveTrace.Busy || Refresh.Busy || ListingBusy || Refresh.CoolingDown(Environment.TickCount64) ||
@@ -427,9 +427,10 @@ public sealed partial class Plugin : IDalamudPlugin
         }
         try
         {
+            if (readParty || afk.Enabled || DiscordEnabled || listingReader.Busy || Refresh.Busy) afkReader.Update();
             discordHost?.BeforeRead(now);
             if (afkHost != null) { afk.BeforeRead(afkHost, now); autoRefresh.BeforeRead(afkHost, now); }
-            Listing = listingReader.Read(Snapshot, Listing);
+            Listing = listingReader.Read(Snapshot, Listing, afkReader.Current);
             lastListingError = "";
         }
         catch (Exception ex)

@@ -2,10 +2,12 @@ using FFXIVClientStructs.FFXIV.Client.UI.Info;
 
 namespace PartyViewKR;
 
-// Used only by AFK. Does not read ClassJob/JobId, nearby actors or Excel rows.
+// Identity snapshot shared by AFK and current-party queries. No current jobs.
 internal sealed class PartyRosterReader
 {
     internal string Diagnostic { get; private set; } = "afkRosterSource=not_started";
+    internal PartyRoster? Current { get; private set; }
+    internal void Update() => Current = TryRead(out var roster) ? roster : null;
 
     internal unsafe bool TryRead(out PartyRoster? roster)
     {
@@ -38,6 +40,7 @@ internal sealed class PartyRosterReader
         var local = proxy->LocalPlayerGroupIndex;
         if (count is < 1 or > 6 || local >= count) return Fail("cross_realm_shape_invalid");
         var ids = new List<ulong>();
+        var leaders = new List<ulong>();
         var localSelf = false;
         for (var groupIndex = 0; groupIndex < count; groupIndex++)
         {
@@ -48,6 +51,7 @@ internal sealed class PartyRosterReader
             {
                 var cid = group.GroupMembers[i].ContentId;
                 ids.Add(cid);
+                if (group.GroupMembers[i].IsPartyLeader) leaders.Add(cid);
                 if (groupIndex == local && cid == self) localSelf = true;
             }
             if (group.GroupMemberCount != members) return Fail("cross_realm_changed_during_read");
@@ -55,6 +59,9 @@ internal sealed class PartyRosterReader
         if (!localSelf || proxy->GroupCount != count || proxy->LocalPlayerGroupIndex != local ||
             !(proxy->IsCrossRealm || proxy->IsInCrossRealmParty) || !PartyRoster.TryCreate(self, ids, out roster))
             return Fail("cross_realm_incomplete");
+        if (leaders.Count == 0 && (ids.Count == 1 || proxy->IsPartyLeader)) leaders.Add(self);
+        var leaderIds = string.Join(",", leaders.Distinct());
+        roster = roster! with { PartyKey = "cross:" + string.Join(",", leaders.Distinct().Order()), LeaderIds = leaderIds };
         Diagnostic = $"afkRosterSource=cross_realm; afkRosterGroups={count}; afkRosterMembers={roster!.Count}";
         return true;
     }
@@ -66,6 +73,7 @@ internal sealed class PartyRosterReader
         var count = party.Length;
         var alliance = party.IsAlliance;
         var partyId = party.PartyId;
+        var leaderIndex = party.PartyLeaderIndex;
         if (count is < 0 or > 8) return Fail("regular_count_invalid");
         var ids = new List<ulong>();
         if (count == 0 && !alliance) ids.Add(self);
@@ -92,8 +100,12 @@ internal sealed class PartyRosterReader
                 }
             }
         }
-        if (party.Length != count || party.IsAlliance != alliance || party.PartyId != partyId ||
+        var leader = count == 0 && !alliance ? self : leaderIndex < count ? party[(int)leaderIndex]?.ContentId ?? 0 : 0;
+        if (leader == 0 && ids.Count == 1 && ids[0] == self) leader = self;
+        if (party.Length != count || party.IsAlliance != alliance || party.PartyId != partyId || party.PartyLeaderIndex != leaderIndex ||
             !PartyRoster.TryCreate(self, ids, out roster)) return Fail("regular_incomplete");
+        roster = roster! with { PartyKey = count == 0 && !alliance ? "solo" : $"regular:{partyId}",
+            LeaderIds = leader != 0 && roster.Contains(leader) ? leader.ToString() : "" };
         Diagnostic = $"afkRosterSource={(alliance ? "regular_alliance" : count == 0 ? "solo" : "regular")}; afkRosterMembers={roster!.Count}";
         return true;
     }

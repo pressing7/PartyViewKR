@@ -8,9 +8,10 @@ internal interface IAfkListingHost
     string? QueryBlockReason(bool ownQueryInProgress);
     bool QueryBusy { get; }
     bool QuerySucceeded { get; }
+    long QueryTimeoutMilliseconds => 15000;
     long RequestRevision { get; }
     long DetailRevision { get; }
-    bool OwnListingMatches(PartyRoster roster);
+    bool CurrentListingMatches(PartyRoster roster);
     int RegisteredCapacity { get; }
     ListingSlots? RegisteredSlots { get; }
     bool RequestQuery(out string error);
@@ -21,7 +22,6 @@ internal interface IAfkListingHost
 // editing/submit/refresh capability in its host contract.
 internal sealed class AfkListingMonitor
 {
-    private const long QueryTimeout = 15000;
     private const long MinimumQueryInterval = 2000;
     private readonly ListingRequestGuard ownedQuery = new();
     private PartyRoster? observed;
@@ -50,6 +50,7 @@ internal sealed class AfkListingMonitor
     private long joinRevision;
     internal ulong WatchedCharacterId => self;
     internal PartyJoinNotice? LastJoin { get; private set; }
+    internal long PartyContextRevision { get; private set; }
     internal string Status { get; private set; } = "AFK 모드가 꺼져 있습니다.";
     internal string Diagnostic => $"afkEnabled={Enabled}; afkPending={Pending}; afkInFlight={InFlight}; " +
         $"afkRosterReadable={readable}; afkMemberCount={observed?.Count ?? 0}; afkChanges={changes}; " +
@@ -60,7 +61,8 @@ internal sealed class AfkListingMonitor
         $"afkRecruitmentCapacity={RecruitmentCapacity}; afkRecruitmentComplete={RecruitmentComplete}; afkCompletionRevision={CompletionRevision}; " +
         $"afkSingleJobCompletionEnabled={Settings.SingleJobCompletionEnabled}; afkSingleJobComplete={SingleJobRecruitmentComplete}; " +
         $"afkJoinNotificationsEnabled={Settings.JoinNotificationsEnabled}; afkJoinBaselineReady={joinBaselineReady}; " +
-        $"afkJoinRevision={joinRevision}; afkLastJoinedCount={LastJoin?.JoinedCount ?? 0}; afkJoinMemberCount={LastJoin?.MemberCount ?? 0}";
+        $"afkJoinRevision={joinRevision}; afkLastJoinedCount={LastJoin?.JoinedCount ?? 0}; afkJoinMemberCount={LastJoin?.MemberCount ?? 0}; " +
+        $"afkPartyContextRevision={PartyContextRevision}; afkQueryCandidates={observed?.QueryCandidates.Length ?? 0}";
 
     internal void Configure(AfkSettings settings, long now)
     {
@@ -95,10 +97,11 @@ internal sealed class AfkListingMonitor
         confirmedGeneration = failedGeneration = 0; failed = false;
         RecruitmentCapacity = 0; complete = singleJobComplete = false; singleJobConfirmedGeneration = -1;
         joinBaselineReady = false; LastJoin = null;
+        PartyContextRevision++;
         capacityRequestRevision = host.RequestRevision; capacityDetailRevision = host.DetailRevision;
         failures = queries = successes = changes = 0;
         nextAttempt = now; nextSupplement = now + Settings.PeriodMilliseconds;
-        Status = enabled ? "명단을 읽고 내 모집글을 조회합니다." : "AFK 모드가 꺼져 있습니다.";
+        Status = enabled ? "명단을 읽고 현재 파티의 모집글을 조회합니다." : "AFK 모드가 꺼져 있습니다.";
         return true;
     }
 
@@ -107,7 +110,7 @@ internal sealed class AfkListingMonitor
     {
         if (!CheckSession(host)) return;
         if (InFlight && ownedQuery.BeforeRead(host.SelfId, host.RequestRevision, host.QueryBusy,
-            Enabled, host.QueryBlockReason(true) != null, now))
+            Enabled, host.QueryBlockReason(true) != null, now, host.QueryTimeoutMilliseconds))
         {
             CancelOwned(host);
             Retry(now, "조회 가능한 상태가 되면 다시 시도합니다.");
@@ -120,6 +123,14 @@ internal sealed class AfkListingMonitor
         var hasRoster = host.TryReadRoster(out var current) && current != null && current.SelfId == self;
         if (hasRoster)
         {
+            if (observed != null && !current!.Continues(observed))
+            {
+                CancelOwned(host);
+                RecruitmentCapacity = 0; complete = singleJobComplete = false; singleJobConfirmedGeneration = -1;
+                capacityRequestRevision = host.RequestRevision; capacityDetailRevision = host.DetailRevision;
+                joinBaselineReady = false; LastJoin = null; PartyContextRevision++;
+                failed = false; nextAttempt = now; confirmedGeneration = -1;
+            }
             // Keep the last good roster through read gaps. Enabling an alert
             // establishes a baseline; it must not announce existing members.
             if (Settings.JoinNotificationsEnabled && joinBaselineReady && observed != null)
@@ -145,7 +156,7 @@ internal sealed class AfkListingMonitor
         // while the previous full state suppresses automatic queries. Adopt only
         // a NEW successful own response whose entire roster still matches.
         if (hasRoster && !host.QueryBusy && host.QuerySucceeded && host.RequestRevision != capacityRequestRevision &&
-            host.DetailRevision > capacityDetailRevision && host.OwnListingMatches(current!)) RememberCapacity(host);
+            host.DetailRevision > capacityDetailRevision && host.CurrentListingMatches(current!)) RememberCapacity(host);
 
         // A full recruitment disappears from Party Finder automatically. Detect
         // completion from the current CID roster and the last verified capacity,
@@ -172,7 +183,7 @@ internal sealed class AfkListingMonitor
                 Retry(now, "모집글 조회에 실패했습니다. 자동으로 다시 시도합니다.");
             }
             else if (!host.QueryBusy && host.QuerySucceeded && host.DetailRevision > detailBefore &&
-                readable && host.OwnListingMatches(observed!))
+                readable && host.CurrentListingMatches(observed!))
             {
                 ownedQuery.Clear(); requestRevision = -1;
                 successes++; failures = 0; failed = false; nextSupplement = now + Settings.PeriodMilliseconds;
@@ -187,12 +198,12 @@ internal sealed class AfkListingMonitor
                     Status = $"파티 모집 완료 · {RecruitmentCapacity}/{RecruitmentCapacity}명";
                 }
             }
-            else if (now - started >= QueryTimeout)
+            else if (now - started >= host.QueryTimeoutMilliseconds)
             {
                 CancelOwned(host);
                 Retry(now, "새 모집정보를 확인하지 못했습니다. 자동으로 다시 시도합니다.");
             }
-            else Status = "새 본인 모집정보를 기다리는 중입니다.";
+            else Status = "현재 파티의 새 모집정보를 기다리는 중입니다.";
             return;
         }
 
@@ -216,7 +227,7 @@ internal sealed class AfkListingMonitor
                 { Retry(now, "조회 요청을 시작하지 못했습니다."); return; }
                 requestRevision = host.RequestRevision;
                 ownedQuery.Started(self, requestRevision, now);
-                Status = "내 모집글을 자동 조회하는 중입니다.";
+                Status = "현재 파티의 모집글을 자동 조회하는 중입니다.";
             }
             else Retry(now, error.Length > 0 ? error : "조회 요청을 시작하지 못했습니다.");
         }

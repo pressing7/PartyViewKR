@@ -18,15 +18,38 @@ internal sealed class ListingReader
     private string requestNote = "";
     private string requestDiagnostic = "request=none";
     private ulong observedSelf;
+    private bool ownOnly = true;
+    private PartyRoster? requestedParty;
+    private ulong[] candidates = [];
+    private int candidateIndex;
+    private ulong requestedLeader;
+    private string confirmedPartyKey = "";
+    private ulong confirmedPartyLeader;
+    private PartyRoster? viewedParty;
+    private long? partyChangedAtRevision;
 
     internal bool Busy => userRequested || openingMain || waitingRevision.HasValue;
-    internal bool LastOwnRequestSucceeded { get; private set; }
+    internal bool LastRequestSucceeded { get; private set; }
+    internal bool LastOwnRequestSucceeded => ownOnly && LastRequestSucceeded;
+    internal long QueryTimeoutMilliseconds => Math.Clamp(5000L + candidates.Length * 8000L, 15000, 55000);
     internal long DetailRevision => Interlocked.Read(ref detailRevision);
     internal long RequestRevision => Interlocked.Read(ref requestRevision);
-    internal void RequestOwn() { if (!Busy) { LastOwnRequestSucceeded = false; userRequested = true; Interlocked.Increment(ref requestRevision); } }
+    internal void RequestOwn()
+    {
+        if (Busy) return;
+        ownOnly = true; requestedParty = null; candidates = []; candidateIndex = 0; requestedLeader = 0;
+        LastRequestSucceeded = false; userRequested = true; Interlocked.Increment(ref requestRevision);
+    }
+    internal bool RequestParty(PartyRoster roster)
+    {
+        if (Busy || roster.QueryCandidates.Length == 0) return false;
+        RequestOwn(); ownOnly = false; requestedParty = roster;
+        candidates = roster.QueryCandidates.OrderByDescending(id => roster.PartyKey == confirmedPartyKey && id == confirmedPartyLeader).ToArray();
+        return true;
+    }
     internal void DetailUpdated() => Interlocked.Increment(ref detailRevision);
 
-    internal unsafe ListingSnapshot Read(PartySnapshot party, ListingSnapshot previous)
+    internal unsafe ListingSnapshot Read(PartySnapshot party, ListingSnapshot previous, PartyRoster? current)
     {
         if (!Plugin.ClientState.IsLoggedIn || !Plugin.PlayerState.IsLoaded)
         {
@@ -35,48 +58,56 @@ internal sealed class ListingReader
         }
         if (observedSelf != Plugin.PlayerState.ContentId)
         {
-            var requested = userRequested;
-            Reset();
+            // A first read may already have a queued request. A character switch
+            // must discard the old character's target rather than replay it.
+            if (observedSelf != 0) Reset();
             observedSelf = Plugin.PlayerState.ContentId;
-            userRequested = requested;
             previous = ListingSnapshot.Empty;
         }
         if (!NativeCompatibility.IsCompatible)
         {
             userRequested = openingMain = false;
             waitingRevision = null;
-            LastOwnRequestSucceeded = false;
+            LastRequestSucceeded = false;
             return ListingSnapshot.Empty with { Note = "구조 DLL의 호환 검사를 통과하지 못해 모집글 조회를 중지했습니다.", Diagnostic = "listingRead=skipped; reason=structure_mismatch" };
         }
         if (Plugin.Condition[ConditionFlag.BetweenAreas] || Plugin.Condition[ConditionFlag.BetweenAreas51])
             return previous with { Status = "이동 중 — 마지막 모집글", IsLive = false };
 
+        if (current != null)
+        {
+            if (viewedParty != null && !current.Continues(viewedParty))
+            { partyChangedAtRevision = DetailRevision; previous = ListingSnapshot.Empty; }
+            viewedParty = current;
+        }
+
+        if (!ownOnly && Busy && (current == null || requestedParty == null || !current.Continues(requestedParty)))
+        {
+            userRequested = false;
+            FinishFailed("소속 파티가 바뀌었거나 파티 정보를 확인하지 못했습니다. 다시 조회해 주세요.", "party_context_changed");
+        }
         HandleRequest();
+        if (waitingRevision.HasValue && Environment.TickCount64 - requestTick >= 7000)
+        {
+            if (!NextCandidate()) FinishFailed("현재 파티의 모집글 응답을 확인하지 못했습니다. 모집이 종료되었을 수 있습니다.", "response_timeout");
+        }
         if (waitingRevision is { } expected && Interlocked.Read(ref detailRevision) <= expected)
-        {
-            if (Environment.TickCount64 - requestTick < 7000)
-                return previous with { Status = "내 모집글 응답 대기 중", IsLive = false, Note = "게임의 상세 조회 응답을 기다리고 있습니다.", Diagnostic = requestDiagnostic + "; detailRefreshSeen=false" };
-            waitingRevision = null;
-            LastOwnRequestSucceeded = false;
-            requestNote = "자동 조회의 새 응답을 확인하지 못했습니다. 게임에서 내 모집 확인 창을 열면 내용을 읽습니다.";
-            requestDiagnostic += "; timedOut=true";
-        }
-        else if (waitingRevision.HasValue)
-        {
-            waitingRevision = null;
-            LastOwnRequestSucceeded = true;
-            requestNote = "";
-            requestDiagnostic += "; detailRefreshSeen=true";
-        }
+            return previous with { Status = "모집글 응답 대기 중", IsLive = false, Note = "게임의 상세 조회 응답을 기다리고 있습니다.", Diagnostic = requestDiagnostic + "; detailRefreshSeen=false" };
         if (openingMain)
             return previous with { Status = "파티찾기 창 여는 중", IsLive = false, Note = "", Diagnostic = requestDiagnostic };
+        if (partyChangedAtRevision is { } boundary)
+        {
+            if (DetailRevision <= boundary)
+                return ListingSnapshot.Empty with { Status = "소속 파티가 바뀌었습니다. 현재 파티 모집글을 조회해 주세요.", Diagnostic = requestDiagnostic + "; partyDetailStale=true" };
+            partyChangedAtRevision = null;
+        }
 
         var addon = Plugin.GameGui.GetAddonByName<AddonLookingForGroupDetail>("LookingForGroupDetail", 1);
         if (!NativeReadGuard.Readable(addon, (nuint)sizeof(AddonLookingForGroupDetail)) || !addon->IsVisible || !addon->IsReady)
             return previous with {
                 Status = previous.ReadAt == null ? "모집글 상세 창 대기" : "마지막으로 읽은 모집글 — 상세 창 닫힘",
                 IsLive = false,
-                Note = requestNote.Length > 0 ? requestNote : "내 모집글 조회를 누르거나 게임에서 모집글 상세 창을 열어주세요.",
+                Note = requestNote.Length > 0 ? requestNote : "현재 파티 모집글 조회를 누르거나 게임에서 모집글 상세 창을 열어주세요.",
                 Diagnostic = $"listingDetailVisible=false\n{requestDiagnostic}"
             };
 
@@ -89,6 +120,7 @@ internal sealed class ListingReader
         var timeRead = NativeReadGuard.TextNode(addon->TimeRemainingTextNode, out var remaining);
 
         var owner = ListingOwner.Unknown;
+        ulong leaderContentId = 0;
         byte? objective = null;
         byte? completion = null;
         int? itemLevel = null;
@@ -131,6 +163,12 @@ internal sealed class ListingReader
             owner = ListingIdentity.Resolve(detail.LeaderContentId, nativeName,
                 shapePlausible && nameAgrees && commentAgrees, Plugin.PlayerState.ContentId,
                 Plugin.PlayerState.CharacterName, party.Members.Select(m => (m.ContentId, m.Name, m.IsLeader)).ToArray());
+            leaderContentId = detail.LeaderContentId;
+            if (owner != ListingOwner.Self)
+                owner = shapePlausible && nameAgrees && commentAgrees && current != null &&
+                    current.Contains(leaderContentId) && current.QueryCandidates.Contains(leaderContentId) &&
+                    slots.Slots.Any(s => s.HasMember && s.MemberContentId == current.SelfId)
+                    ? ListingOwner.PartyLeader : owner == ListingOwner.PartyLeader ? ListingOwner.Other : owner;
             agentDiagnostic = $"listingIdPresent={detail.ListingId != 0}; ownIdRaw={agent->OwnListingId}; " +
                 $"leaderCidIsSelf={detail.LeaderContentId == Plugin.PlayerState.ContentId}; " +
                 $"leaderNameAgrees={nameAgrees}; commentAgrees={commentAgrees}; " +
@@ -159,8 +197,19 @@ internal sealed class ListingReader
         var note = requestNote;
         if (owner == ListingOwner.Unknown)
             note = (note + " 현재 열린 상세 창의 내용입니다. 내 모집글인지 여부는 아직 확인되지 않았습니다.").Trim();
-        return new("상세 창에서 읽은 모집글", owner, leader, duty, description.Text,
-            remaining, DateTime.Now, true, note, diagnostic) { ViewerContentId = Plugin.PlayerState.ContentId, Slots = slots, Objective = objective, Completion = completion, ItemLevel = itemLevel, DutyFlags = dutyFlags, LootRule = lootRule, BeginnerFriendly = beginnerFriendly, UniqueJobs = uniqueJobs, Private = privateListing };
+        var result = new ListingSnapshot("상세 창에서 읽은 모집글", owner, leader, duty, description.Text,
+            remaining, DateTime.Now, true, note, diagnostic) { ViewerContentId = Plugin.PlayerState.ContentId,
+            LeaderContentId = leaderContentId, PartyKey = current?.PartyKey ?? "", Slots = slots, Objective = objective, Completion = completion, ItemLevel = itemLevel, DutyFlags = dutyFlags, LootRule = lootRule, BeginnerFriendly = beginnerFriendly, UniqueJobs = uniqueJobs, Private = privateListing };
+        if (waitingRevision.HasValue)
+        {
+            if (!ListingPartyScope.CanConfirm(requestedLeader, ownOnly, result, current))
+                return previous with { IsLive = false, Status = "요청한 파티의 모집글을 확인하는 중", Diagnostic = diagnostic + "; responseTargetAgrees=false" };
+            waitingRevision = null; LastRequestSucceeded = true; requestNote = "";
+            if (!ownOnly) { confirmedPartyKey = current!.PartyKey; confirmedPartyLeader = requestedLeader; }
+            requestDiagnostic += "; detailRefreshSeen=true; responseTargetAgrees=true";
+            result = result with { Note = "", Diagnostic = diagnostic + "; detailRefreshSeen=true; responseTargetAgrees=true" };
+        }
+        return result;
     }
 
     private unsafe void HandleRequest()
@@ -172,7 +221,8 @@ internal sealed class ListingReader
             showIssued = false;
             requestTick = Environment.TickCount64;
             requestNote = "";
-            requestDiagnostic = "request=own_by_content_id";
+            if (ownOnly) candidates = [Plugin.PlayerState.ContentId];
+            requestDiagnostic = ownOnly ? "request=own_by_content_id" : "request=party_by_content_id";
         }
         if (!openingMain) return;
         var agent = AgentLookingForGroup.Instance();
@@ -190,22 +240,30 @@ internal sealed class ListingReader
         waitingRevision = Interlocked.Read(ref detailRevision);
         requestTick = Environment.TickCount64;
         // This requests a detail view. It never edits/reposts/joins a listing.
-        var accepted = agent->OpenListingByContentId(Plugin.PlayerState.ContentId);
-        requestDiagnostic += $"; requestAccepted={accepted}";
+        requestedLeader = candidates[candidateIndex];
+        var accepted = agent->OpenListingByContentId(requestedLeader);
+        requestDiagnostic += $"; requestCandidate={candidateIndex + 1}/{candidates.Length}; requestTargetIsSelf={requestedLeader == Plugin.PlayerState.ContentId}; requestAccepted={accepted}";
         if (!accepted)
-            FinishFailed("상세 조회 요청이 받아들여지지 않았습니다. 게임에서 내 모집 확인 창을 열어 주세요.", "request_rejected");
+            if (!NextCandidate()) FinishFailed("현재 파티의 모집글 조회 요청이 받아들여지지 않았습니다. 모집이 종료되었을 수 있습니다.", "request_rejected");
+    }
+
+    private bool NextCandidate()
+    {
+        if (ownOnly || candidateIndex + 1 >= candidates.Length) return false;
+        candidateIndex++; waitingRevision = null; openingMain = true; requestTick = Environment.TickCount64;
+        return true;
     }
 
     private void FinishFailed(string message, string reason)
     {
-        LastOwnRequestSucceeded = false;
+        LastRequestSucceeded = false;
         openingMain = false;
         waitingRevision = null;
         requestNote = message;
         requestDiagnostic += $"; failure={reason}";
     }
 
-    internal void FailRequest() { userRequested = openingMain = LastOwnRequestSucceeded = false; waitingRevision = null; }
+    internal void FailRequest() { userRequested = openingMain = LastRequestSucceeded = false; waitingRevision = null; }
 
     internal void RecordFailure(string message)
     {
@@ -221,5 +279,7 @@ internal sealed class ListingReader
         requestNote = "";
         requestDiagnostic = "request=none";
         observedSelf = 0;
+        viewedParty = null; partyChangedAtRevision = null;
+        confirmedPartyKey = ""; confirmedPartyLeader = 0;
     }
 }

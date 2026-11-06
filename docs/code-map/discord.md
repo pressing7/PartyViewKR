@@ -4,7 +4,7 @@
 
 개인 봇 owner만 조작할 수 있다. interaction ACK가 성공한 뒤 공통 Bridge에 게임 작업을 넣는다. 카드/모달/이모지는 각자의 책임이며 토큰은 Windows CurrentUser DPAPI ciphertext로만 저장한다.
 
-기준: 0.3.59.0 소스. main `4e8b65e1d1065072c730524d711a68c491ad2b17` 이후 AFK 파티원 참가 알림을 포함한다. 2026-11-06 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
+기준: 0.3.60.0 소스. main `c04c81e9c98f570b5689618c8d9a116713023f14` 이후 참가 파티 조회·알림을 포함한다. 2026-11-06 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
 
 표에는 직접 선언한 메서드·생성자·로컬 함수·계산 속성·인터페이스 메서드를 각각 포함한다. 자동 생성 record 메서드/단순 auto-property accessor는 제외한다. 이름 없는 LINQ/타이머/콜백은 이를 소유한 함수 설명에 포함하며, 명명된 테스트 시나리오는 별도로 표시한다.
 
@@ -461,22 +461,22 @@ SDK와 게임 메모리에서 분리된 카드/session 상태 모델. Overview·
 
 | 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
 |---|---|---|---|
-| <a id="symbol-src-plugin-discord-cs-11-c18d138fb6"></a><code>Plugin.DiscordEnabled</code><br><code>bool DiscordEnabled</code> | 계산 속성 | Discord client가 실행 중인지 반환한다. 계산식: <code>discordClient?.Running == true</code>. | [L11](../../src/Plugin.Discord.cs#L11) |
-| <a id="symbol-src-plugin-discord-cs-12-a8c0c2f707"></a><code>Plugin.DiscordStatus</code><br><code>string DiscordStatus</code> | 계산 속성 | 봇 연결/이모지 진행/오류 상태를 반환한다. 계산식: <code>discordClient?.Status ?? discordStatus</code>. | [L12](../../src/Plugin.Discord.cs#L12) |
-| <a id="symbol-src-plugin-discord-cs-13-5a040469aa"></a><code>Plugin.DiscordNotificationStatus</code><br><code>string DiscordNotificationStatus</code> | 계산 속성 | 연결 클라이언트의 알림 채널/전송 상태를 인게임 UI에 전달한다. 계산식: <code>discordClient?.NotificationStatus ?? ""</code>. | [L13](../../src/Plugin.Discord.cs#L13) |
-| <a id="symbol-src-plugin-discord-cs-14-080bbe9feb"></a><code>Plugin.DiscordInviteUrl</code><br><code>string DiscordInviteUrl</code> | 계산 속성 | 현재 봇 설치 링크를 반환한다. 계산식: <code>discordClient?.InviteUrl ?? ""</code>. | [L14](../../src/Plugin.Discord.cs#L14) |
-| <a id="symbol-src-plugin-discord-cs-15-a0432bf1a1"></a><code>Plugin.HasSavedDiscordToken</code><br><code>bool HasSavedDiscordToken</code> | 계산 속성 | 저장 ciphertext가 존재하는지 반환한다. 복호화 가능 여부를 미리 보장하지 않는다. 계산식: <code>(PluginInterface.GetPluginConfig() as RelayConfiguration)?.HasSavedDiscordToken == true</code>. | [L15](../../src/Plugin.Discord.cs#L15) |
-| <a id="symbol-src-plugin-discord-cs-16-276350ac16"></a><code>Plugin.RememberDiscordToken</code><br><code>bool RememberDiscordToken</code> | 계산 속성 | 토큰 기억 설정을 읽거나 변경한다. 계산식: <code>(PluginInterface.GetPluginConfig() as RelayConfiguration)?.RememberDiscordToken ?? true</code>. | [L16](../../src/Plugin.Discord.cs#L16) |
-| <a id="symbol-src-plugin-discord-cs-18-2f833b12e1"></a><code>Plugin.RestoreDiscordConnection</code><br><code>void RestoreDiscordConnection()</code> | 메서드 | 최초 update에서 기억/자동 연결 옵션과 저장 ciphertext가 있으면 복호화 후 StartDiscord를 요청한다. 실패를 매 프레임 재시도하지 않는다. | [L18](../../src/Plugin.Discord.cs#L18) |
-| <a id="symbol-src-plugin-discord-cs-30-3ee88f8393"></a><code>Plugin.StartDiscord</code><br><code>bool StartDiscord(string token, bool remember)</code> | 메서드 | 중복 연결을 피하고 이전 Discord 클라이언트가 남아 있으면 정리한 뒤 토큰/자동 연결 선호·완료 알림 목적지·채팅 설정과 저장 callback으로 개인 봇을 시작한다. 단계별 안전한 오류를 표시한다. | [L30](../../src/Plugin.Discord.cs#L30) |
-| <a id="symbol-src-plugin-discord-cs-62-021bb3930f"></a><code>Plugin.SaveDiscordNotificationTarget</code><br><code>Task SaveDiscordNotificationTarget(DiscordNotificationTarget target, CancellationToken cancellation)</code> | 메서드 | Framework 스레드로 이동해 취소/종료를 재검사한 뒤 봇·서버·채널 ID만 설정에 저장한다. 기존 토큰/AFK 옵션은 보존한다. | [L60](../../src/Plugin.Discord.cs#L60) |
-| <a id="symbol-src-plugin-discord-cs-70-e06ab183e1"></a><code>Plugin.UpdateDiscordNotifications</code><br><code>void UpdateDiscordNotifications()</code> | 메서드 | 완료 판정과 참가 관측을 각각 Discord 알림에 전달한다. 참가에는 AFK가 확인한 캐릭터 ID를 사용해 일시적인 PlayerState 부재가 정상 명단 기준을 지우지 않게 한다. | [L68](../../src/Plugin.Discord.cs#L68) |
-| <a id="symbol-src-plugin-discord-cs-74-9fad41bdcc"></a><code>Plugin.ProtectDiscordToken</code><br><code>string ProtectDiscordToken(string token)</code> | 메서드 | Windows CurrentUser DPAPI로 토큰을 보호해 저장 가능한 문자열로 만든다. | [L76](../../src/Plugin.Discord.cs#L76) |
-| <a id="symbol-src-plugin-discord-cs-80-28f1a584b5"></a><code>Plugin.UnprotectDiscordToken</code><br><code>string UnprotectDiscordToken(string encrypted)</code> | 메서드 | 저장 ciphertext를 같은 Windows 사용자 범위로 복호화한다. 다른 계정/손상 데이터는 실패 처리한다. | [L82](../../src/Plugin.Discord.cs#L82) |
-| <a id="symbol-src-plugin-discord-cs-86-626cd70da4"></a><code>Plugin.DisableDiscordAutoConnect</code><br><code>bool DisableDiscordAutoConnect()</code> | 메서드 | 명시 다른 연결 방식 선택 시 DiscordAutoConnect=false를 저장한다. 저장 실패를 호출자에게 전달한다. | [L88](../../src/Plugin.Discord.cs#L88) |
-| <a id="symbol-src-plugin-discord-cs-99-db6d158430"></a><code>Plugin.TurnOffDiscord</code><br><code>void TurnOffDiscord()</code> | 메서드 | 자동 재연결 설정을 끄고 현재 Discord 연결을 종료한다. | [L101](../../src/Plugin.Discord.cs#L101) |
-| <a id="symbol-src-plugin-discord-cs-104-7acdd18513"></a><code>Plugin.ForgetDiscordToken</code><br><code>void ForgetDiscordToken()</code> | 메서드 | 설정의 암호화 토큰과 자동 연결 플래그를 제거한다. 현재 살아 있는 연결과 저장 삭제의 의미를 구분한다. | [L106](../../src/Plugin.Discord.cs#L106) |
-| <a id="symbol-src-plugin-discord-cs-113-0aa1705c9e"></a><code>Plugin.StopDiscord</code><br><code>void StopDiscord()</code> | 메서드 | 현재 client를 교체/종료하고 그 연결이 소유한 조회·갱신만 취소한다. 수명 종료 중 토큰 기억 설정은 보존한다. | [L115](../../src/Plugin.Discord.cs#L115) |
+| <a id="symbol-src-plugin-discord-cs-11-c18d138fb6"></a><code>Plugin.DiscordEnabled</code><br><code>bool DiscordEnabled</code> | 계산 속성 | Discord client가 실행 중인지 반환한다. 계산식: <code>discordClient?.Running == true</code>. | [L12](../../src/Plugin.Discord.cs#L12) |
+| <a id="symbol-src-plugin-discord-cs-12-a8c0c2f707"></a><code>Plugin.DiscordStatus</code><br><code>string DiscordStatus</code> | 계산 속성 | 봇 연결/이모지 진행/오류 상태를 반환한다. 계산식: <code>discordClient?.Status ?? discordStatus</code>. | [L13](../../src/Plugin.Discord.cs#L13) |
+| <a id="symbol-src-plugin-discord-cs-13-5a040469aa"></a><code>Plugin.DiscordNotificationStatus</code><br><code>string DiscordNotificationStatus</code> | 계산 속성 | 연결 클라이언트의 알림 채널/전송 상태를 인게임 UI에 전달한다. 계산식: <code>discordClient?.NotificationStatus ?? ""</code>. | [L14](../../src/Plugin.Discord.cs#L14) |
+| <a id="symbol-src-plugin-discord-cs-14-080bbe9feb"></a><code>Plugin.DiscordInviteUrl</code><br><code>string DiscordInviteUrl</code> | 계산 속성 | 현재 봇 설치 링크를 반환한다. 계산식: <code>discordClient?.InviteUrl ?? ""</code>. | [L15](../../src/Plugin.Discord.cs#L15) |
+| <a id="symbol-src-plugin-discord-cs-15-a0432bf1a1"></a><code>Plugin.HasSavedDiscordToken</code><br><code>bool HasSavedDiscordToken</code> | 계산 속성 | 저장 ciphertext가 존재하는지 반환한다. 복호화 가능 여부를 미리 보장하지 않는다. 계산식: <code>(PluginInterface.GetPluginConfig() as RelayConfiguration)?.HasSavedDiscordToken == true</code>. | [L16](../../src/Plugin.Discord.cs#L16) |
+| <a id="symbol-src-plugin-discord-cs-16-276350ac16"></a><code>Plugin.RememberDiscordToken</code><br><code>bool RememberDiscordToken</code> | 계산 속성 | 토큰 기억 설정을 읽거나 변경한다. 계산식: <code>(PluginInterface.GetPluginConfig() as RelayConfiguration)?.RememberDiscordToken ?? true</code>. | [L17](../../src/Plugin.Discord.cs#L17) |
+| <a id="symbol-src-plugin-discord-cs-18-2f833b12e1"></a><code>Plugin.RestoreDiscordConnection</code><br><code>void RestoreDiscordConnection()</code> | 메서드 | 최초 update에서 기억/자동 연결 옵션과 저장 ciphertext가 있으면 복호화 후 StartDiscord를 요청한다. 실패를 매 프레임 재시도하지 않는다. | [L19](../../src/Plugin.Discord.cs#L19) |
+| <a id="symbol-src-plugin-discord-cs-30-3ee88f8393"></a><code>Plugin.StartDiscord</code><br><code>bool StartDiscord(string token, bool remember)</code> | 메서드 | 중복 연결을 피하고 이전 Discord 클라이언트가 남아 있으면 정리한 뒤 토큰/자동 연결 선호·완료 알림 목적지·채팅 설정과 저장 callback으로 개인 봇을 시작한다. 단계별 안전한 오류를 표시한다. | [L31](../../src/Plugin.Discord.cs#L31) |
+| <a id="symbol-src-plugin-discord-cs-62-021bb3930f"></a><code>Plugin.SaveDiscordNotificationTarget</code><br><code>Task SaveDiscordNotificationTarget(DiscordNotificationTarget target, CancellationToken cancellation)</code> | 메서드 | Framework 스레드로 이동해 취소/종료를 재검사한 뒤 봇·서버·채널 ID만 설정에 저장한다. 기존 토큰/AFK 옵션은 보존한다. | [L61](../../src/Plugin.Discord.cs#L61) |
+| <a id="symbol-src-plugin-discord-cs-70-e06ab183e1"></a><code>Plugin.UpdateDiscordNotifications</code><br><code>void UpdateDiscordNotifications()</code> | 메서드 | 완료와 참가 관측을 Discord에 전달한다. 파티 컨텍스트 revision이 바뀌면 이전 전송과 대기를 먼저 취소한 뒤 새 파티의 감시 기준을 잡는다. | [L69](../../src/Plugin.Discord.cs#L69) |
+| <a id="symbol-src-plugin-discord-cs-74-9fad41bdcc"></a><code>Plugin.ProtectDiscordToken</code><br><code>string ProtectDiscordToken(string token)</code> | 메서드 | Windows CurrentUser DPAPI로 토큰을 보호해 저장 가능한 문자열로 만든다. | [L83](../../src/Plugin.Discord.cs#L83) |
+| <a id="symbol-src-plugin-discord-cs-80-28f1a584b5"></a><code>Plugin.UnprotectDiscordToken</code><br><code>string UnprotectDiscordToken(string encrypted)</code> | 메서드 | 저장 ciphertext를 같은 Windows 사용자 범위로 복호화한다. 다른 계정/손상 데이터는 실패 처리한다. | [L89](../../src/Plugin.Discord.cs#L89) |
+| <a id="symbol-src-plugin-discord-cs-86-626cd70da4"></a><code>Plugin.DisableDiscordAutoConnect</code><br><code>bool DisableDiscordAutoConnect()</code> | 메서드 | 명시 다른 연결 방식 선택 시 DiscordAutoConnect=false를 저장한다. 저장 실패를 호출자에게 전달한다. | [L95](../../src/Plugin.Discord.cs#L95) |
+| <a id="symbol-src-plugin-discord-cs-99-db6d158430"></a><code>Plugin.TurnOffDiscord</code><br><code>void TurnOffDiscord()</code> | 메서드 | 자동 재연결 설정을 끄고 현재 Discord 연결을 종료한다. | [L108](../../src/Plugin.Discord.cs#L108) |
+| <a id="symbol-src-plugin-discord-cs-104-7acdd18513"></a><code>Plugin.ForgetDiscordToken</code><br><code>void ForgetDiscordToken()</code> | 메서드 | 설정의 암호화 토큰과 자동 연결 플래그를 제거한다. 현재 살아 있는 연결과 저장 삭제의 의미를 구분한다. | [L113](../../src/Plugin.Discord.cs#L113) |
+| <a id="symbol-src-plugin-discord-cs-113-0aa1705c9e"></a><code>Plugin.StopDiscord</code><br><code>void StopDiscord()</code> | 메서드 | 현재 client를 교체/종료하고 그 연결이 소유한 조회·갱신만 취소한다. 수명 종료 중 토큰 기억 설정은 보존한다. | [L122](../../src/Plugin.Discord.cs#L122) |
 
 <a id="file-src-relayconfiguration-cs"></a>
 ## src/RelayConfiguration.cs
@@ -495,7 +495,6 @@ SDK와 게임 메모리에서 분리된 카드/session 상태 모델. Overview·
 | <a id="symbol-src-relayconfiguration-cs-43-676543dc57"></a><code>RelayConfiguration.ShouldAutoConnectDiscord</code><br><code>bool ShouldAutoConnectDiscord</code> | 계산 속성 | DiscordAutoConnect와 저장 ciphertext 존재 여부를 합쳐 시작 시 연결 복원 대상인지 판정한다. PrepareDiscordConnection이 기억 옵션과 자동 연결을 함께 저장한다. 계산식: <code>DiscordAutoConnect &amp;&amp; HasSavedDiscordToken</code>. | [L47](../../src/RelayConfiguration.cs#L47) |
 | <a id="symbol-src-relayconfiguration-cs-45-684dc15240"></a><code>RelayConfiguration.PrepareDiscordConnection</code><br><code>bool PrepareDiscordConnection(string input, bool remember, Func&lt;string, string&gt; protect, Func&lt;string, string&gt; unprotect, out string token)</code> | 메서드 | 명시 token 또는 saved token 경로를 검증하고 protect/unprotect를 통해 새 설정을 준비한다. 암호화 실패 전에 기존 저장 설정을 변경하지 않는다. | [L49](../../src/RelayConfiguration.cs#L49) |
 | <a id="symbol-src-relayconfiguration-cs-61-570dd34a71"></a><code>RelayConfiguration.ForgetDiscordToken</code><br><code>void ForgetDiscordToken()</code> | 메서드 | EncryptedDiscordToken을 비우고 자동 연결을 끈다. | [L65](../../src/RelayConfiguration.cs#L65) |
-
 
 <a id="file-src-listingdiscordnotifications-joins-cs"></a>
 ## src/ListingDiscordNotifications.Joins.cs

@@ -20,11 +20,13 @@ public sealed partial class Plugin
         return null;
     }
 
-    private bool TryQueryOwnListing(out string error)
+    private bool TryQueryPartyListing(out string error)
     {
         error = QueryUnavailableReason ?? "";
         if (error.Length > 0) return false;
-        listingReader.RequestOwn(); RequestRead(); return true;
+        if (afkReader.Current is not { } roster || !listingReader.RequestParty(roster))
+        { error = "현재 소속 파티와 파티장을 확인하지 못했습니다. 잠시 후 다시 조회해 주세요."; return false; }
+        RequestRead(); return true;
     }
 
     private void UpdateDiscordBridge(long now)
@@ -43,11 +45,15 @@ public sealed partial class Plugin
         public ulong SelfId => ClientState.IsLoggedIn && PlayerState.IsLoaded ? PlayerState.ContentId : 0;
         public string? QueryBlockReason => plugin.QueryUnavailableReason;
         public bool QueryBusy => plugin.listingReader.Busy;
-        public bool QuerySucceeded => plugin.listingReader.LastOwnRequestSucceeded;
+        public bool QuerySucceeded => plugin.listingReader.LastRequestSucceeded;
+        public long QueryTimeoutMilliseconds => plugin.listingReader.QueryTimeoutMilliseconds;
         public long DetailRevision => plugin.listingReader.DetailRevision;
-        public ListingSnapshot Listing => plugin.Listing;
+        public ListingSnapshot Listing => plugin.afkReader.Current is { } roster && ListingPartyScope.BelongsTo(plugin.Listing, roster)
+            ? plugin.Listing : ListingSnapshot.Empty;
         public string? RefreshBlockReason => plugin.QueryUnavailableReason ??
-            (plugin.PendingChanges.Items.Count > 0 ? "PVKR에 적용 대기 중인 변경사항을 먼저 처리해 주세요." :
+            (plugin.afkReader.Current is { } roster && !roster.QueryCandidates.Contains(SelfId) || Listing.Owner == ListingOwner.PartyLeader
+                ? "참가한 파티는 조회와 알림을 사용할 수 있습니다. 수정·갱신은 모집자만 가능합니다." :
+            plugin.PendingChanges.Items.Count > 0 ? "PVKR에 적용 대기 중인 변경사항을 먼저 처리해 주세요." :
             plugin.Refresh.CoolingDown(Environment.TickCount64) ? "잠시 후 다시 갱신해 주세요." : null);
         public RefreshTarget? CaptureEditTarget()
         {
@@ -72,7 +78,7 @@ public sealed partial class Plugin
             ? RemoteRefreshProgress.From(plugin.Refresh) : null;
         public bool RequestQuery(out string error)
         {
-            if (!plugin.TryQueryOwnListing(out error)) return false;
+            if (!plugin.TryQueryPartyListing(out error)) return false;
             ownedQuery.Started(SelfId, plugin.listingReader.RequestRevision, Environment.TickCount64); return true;
         }
         internal void BeforeRead(long now)
@@ -84,7 +90,7 @@ public sealed partial class Plugin
             // the intervening frame. Never cancel a newer local request.
             if (ownedQuery.Owns(plugin.listingReader.RequestRevision, plugin.listingReader.Busy) &&
                 ownedQuery.BeforeRead(SelfId, plugin.listingReader.RequestRevision, true, plugin.DiscordEnabled,
-                    plugin.GetQueryUnavailableReason(true) != null, now))
+                    plugin.GetQueryUnavailableReason(true) != null, now, QueryTimeoutMilliseconds))
                 CancelOwnedQuery();
         }
         internal void CancelOwnedQuery()

@@ -8,6 +8,7 @@ internal interface IListingQueryHost
     string? QueryBlockReason { get; }
     bool QueryBusy { get; }
     bool QuerySucceeded { get; }
+    long QueryTimeoutMilliseconds => 15000;
     long DetailRevision { get; }
     ListingSnapshot Listing { get; }
     bool RequestQuery(out string error);
@@ -90,7 +91,7 @@ internal sealed partial class ListingBridge
                 else
                 {
                     expectedRevision = host.DetailRevision; startedTick = now;
-                    SetQuery(pending with { State = "running", Message = "내 모집글을 확인하는 중입니다." });
+                    SetQuery(pending with { State = "running", Message = "현재 파티의 모집글을 확인하는 중입니다." });
                     try
                     {
                         if (!host.RequestQuery(out var error)) SetQuery(pending with { State = "failed", Message = error });
@@ -101,10 +102,10 @@ internal sealed partial class ListingBridge
             else if (view.Query is { State: "running" } running)
             {
                 if (!host.QueryBusy && host.QuerySucceeded && host.DetailRevision > expectedRevision &&
-                    listing.Owner == ListingOwner.Self && listing.IsLive)
-                    SetQuery(running with { State = "complete", Message = "내 모집글을 조회했습니다." });
-                else if (!host.QueryBusy && !host.QuerySucceeded || now - startedTick > 15000)
-                    SetQuery(running with { State = "failed", Message = "내 모집글 조회를 확인하지 못했습니다. 게임의 모집 상태를 확인해 주세요." });
+                    ListingPartyScope.ReadableOwner(listing.Owner) && listing.IsLive)
+                    SetQuery(running with { State = "complete", Message = listing.Owner == ListingOwner.Self ? "내 모집글을 조회했습니다." : "참가한 파티의 모집글을 조회했습니다." });
+                else if (!host.QueryBusy && !host.QuerySucceeded || now - startedTick > host.QueryTimeoutMilliseconds)
+                    SetQuery(running with { State = "failed", Message = "현재 파티의 모집글을 확인하지 못했습니다. 모집이 종료되었거나 파티가 변경되었을 수 있습니다." });
             }
             UpdateOperation(host as IListingEditHost, now);
             var reason = RecoveryActive ? "수정창을 닫는 중입니다." : host.QueryBlockReason ?? (WriteActive ? "갱신 요청을 처리하는 중입니다." : Active ? "조회 요청을 처리하는 중입니다." : "");

@@ -33,7 +33,7 @@ internal static class ListingViewProjection
 {
     internal static RemoteListing? From(ListingSnapshot listing, bool loggedIn, bool queryBusy)
     {
-        if (!loggedIn || listing.Owner != ListingOwner.Self || listing.ReadAt == null) return null;
+        if (!loggedIn || !ListingPartyScope.ReadableOwner(listing.Owner) || listing.ReadAt == null) return null;
         var slots = listing.Slots;
         var readable = slots.Readable && slots.MappingValid;
         var groups = readable ? slots.Slots.GroupBy(s => slots.NumberOfParties > 1 ? s.NativeIndex / 8 : 0)

@@ -62,11 +62,11 @@ internal sealed partial class PartyWindow
     {
         var listing = plugin.Listing;
         ImGui.BeginDisabled(plugin.QueryUnavailableReason != null);
-        if (ImGui.Button("내 모집글 조회")) plugin.QueryOwnListing();
+        if (ImGui.Button("현재 파티 모집글 조회")) plugin.QueryPartyListing();
         ImGui.EndDisabled();
         ImGui.SameLine();
         ImGui.BeginDisabled(plugin.ObjectiveTrace.Busy || plugin.ListingBusy || plugin.Refresh.Busy || plugin.Refresh.CoolingDown(Environment.TickCount64) ||
-            !Plugin.ClientState.IsLoggedIn || !Plugin.PlayerState.IsLoaded);
+            !Plugin.ClientState.IsLoggedIn || !Plugin.PlayerState.IsLoaded || listing.Owner != ListingOwner.Self);
         if (ImGui.Button(plugin.PendingChanges.Items.Count > 0 ? $"변경사항 적용 및 갱신 ({plugin.PendingChanges.Items.Count})" : "내 모집글 갱신")) plugin.RefreshOwnListing();
         ImGui.EndDisabled();
         if (plugin.Refresh.Busy)

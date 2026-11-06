@@ -60,7 +60,7 @@ internal sealed partial class ListingDiscordSession(ListingBridge bridge, ulong 
             var reply = panel.Start(work, Now);
             if (work.Body != null) CryptographicOperations.ZeroMemory(work.Body);
             if (Pending(reply)) {
-                await response.Screen(ListingDiscordPanel.RecoveryMessage(work.Query ? "게임에서 내 모집글을 조회하고 있습니다." : "변경사항을 적용하고 모집글을 갱신하고 있습니다.", work.Session), true, true);
+                await response.Screen(ListingDiscordPanel.RecoveryMessage(work.Query ? "게임에서 현재 파티의 모집글을 조회하고 있습니다." : "변경사항을 적용하고 모집글을 갱신하고 있습니다.", work.Session), true, true);
                 var started = Environment.TickCount64;
                 do {
                     await Task.Delay(400, cancellation);

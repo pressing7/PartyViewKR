@@ -11,10 +11,10 @@ internal sealed class ListingRequestGuard
     internal void Started(ulong selfId, long requestRevision, long now)
     { self = selfId; revision = requestRevision; started = now; dispatched = false; }
     internal bool Owns(long requestRevision, bool busy) => revision >= 0 && requestRevision == revision && busy;
-    internal bool BeforeRead(ulong selfId, long requestRevision, bool busy, bool enabled, bool blocked, long now)
+    internal bool BeforeRead(ulong selfId, long requestRevision, bool busy, bool enabled, bool blocked, long now, long maximumRunMilliseconds = 15000)
     {
         if (!Owns(requestRevision, busy)) return false;
-        if (!enabled || selfId == 0 || selfId != self || blocked || now - started > (dispatched ? 15000 : 5000)) return true;
+        if (!enabled || selfId == 0 || selfId != self || blocked || now - started > (dispatched ? Math.Clamp(maximumRunMilliseconds, 15000, 55000) : 5000)) return true;
         dispatched = true; return false;
     }
     internal void Clear() => revision = -1;

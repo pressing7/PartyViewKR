@@ -8,6 +8,7 @@ public sealed partial class Plugin
     private ListingDiscordClient? discordClient;
     private bool discordStartupChecked;
     private string discordStatus = "디스코드 연결이 꺼져 있습니다.";
+    private long notifiedPartyContext = -1;
     internal bool DiscordEnabled => discordClient?.Running == true;
     internal string DiscordStatus => discordClient?.Status ?? discordStatus;
     internal string DiscordNotificationStatus => discordClient?.NotificationStatus ?? "";
@@ -67,6 +68,12 @@ public sealed partial class Plugin
 
     private void UpdateDiscordNotifications()
     {
+        if (notifiedPartyContext != afk.PartyContextRevision)
+        {
+            discordClient?.ObserveCompletion(false, 0, afk.CompletionRevision, false);
+            discordClient?.ObserveJoins(false, 0, null);
+            notifiedPartyContext = afk.PartyContextRevision;
+        }
         discordClient?.ObserveCompletion(afk.Enabled,
             ClientState.IsLoggedIn && PlayerState.IsLoaded ? PlayerState.ContentId : 0,
             afk.CompletionRevision, afk.RecruitmentComplete || afk.SingleJobRecruitmentComplete,

@@ -4,9 +4,18 @@ namespace PartyViewKR;
 // cannot participate in AFK change detection. Recruitment jobs stay in ListingSlots.
 internal sealed record PartyRoster(ulong SelfId, string Fingerprint, int Count)
 {
+    internal string PartyKey { get; init; } = "";
+    internal string LeaderIds { get; init; } = "";
+    internal ulong[] QueryCandidates => LeaderIds.Length == 0 ? [] : LeaderIds.Split(',').Select(ulong.Parse).ToArray();
+    internal bool Contains(ulong id) => id != 0 && Fingerprint.Split(',').Contains(id.ToString(), StringComparer.Ordinal);
+    internal bool SameMembers(PartyRoster other) => SelfId == other.SelfId && Fingerprint == other.Fingerprint;
+    internal bool Continues(PartyRoster previous) => SelfId == previous.SelfId &&
+        (PartyKey == previous.PartyKey && LeaderIds == previous.LeaderIds ||
+         previous.PartyKey == "solo" && LeaderIds == SelfId.ToString());
+
     internal int CountJoinedSince(PartyRoster previous)
     {
-        if (SelfId != previous.SelfId || Fingerprint == previous.Fingerprint) return 0;
+        if (!Continues(previous) || Fingerprint == previous.Fingerprint) return 0;
         var before = previous.Fingerprint.Split(',').ToHashSet(StringComparer.Ordinal);
         return Fingerprint.Split(',').Count(id => !before.Contains(id));
     }

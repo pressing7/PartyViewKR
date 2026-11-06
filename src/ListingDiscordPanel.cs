@@ -105,7 +105,7 @@ internal sealed partial class ListingDiscordPanel(ListingBridge bridge, ulong ap
         }
         if (action == "details" && p.Kind == PanelKind.Overview) {
             if (p.View.Listing is not { SlotsReadable: true, Groups.Length: > 0 })
-                return Error("자리 정보를 읽지 못했습니다. 내 모집글을 다시 조회해 주세요.");
+                return Error("자리 정보를 읽지 못했습니다. 현재 파티 모집글을 다시 조회해 주세요.");
             details = new(p.View, PanelKind.Details) { Group = p.Group };
             return new(Render(details, now), Replace: false);
         }

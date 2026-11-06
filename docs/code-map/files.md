@@ -251,6 +251,8 @@
 | [src/ListingDiscordNotifications.Joins.cs](../../src/ListingDiscordNotifications.Joins.cs) | 참가 알림의 순서 큐·중복 억제·수명 취소. 기존 완료 알림과 같은 채널·gate·transport를 공유하고 전송 상태는 별도로 보존한다. [함수 목록](discord.md#file-src-listingdiscordnotifications-joins-cs) |
 | [tests/AfkJoinTests.cs](../../tests/AfkJoinTests.cs) | AFK 명단에서 새 참가자를 감지하는 순수 회귀 검사. [함수 목록](tests.md#file-tests-afkjointests-cs) |
 | [tests/ListingDiscordJoinNotificationTests.cs](../../tests/ListingDiscordJoinNotificationTests.cs) | 참가 알림 전송 제어기의 수명·중복·권한·실패·대기 한도 회귀 검사. [함수 목록](tests.md#file-tests-listingdiscordjoinnotificationtests-cs) |
+| [src/ListingPartyScope.cs](../../src/ListingPartyScope.cs) | 본인/참가 파티 모집글의 읽기 소속, 전체 명단 일치, 요청 대상 확인을 공유한다. 편집 권한은 확대하지 않는다. [함수 목록](core.md#file-src-listingpartyscope-cs) |
+| [tests/PartyMembershipTests.cs](../../tests/PartyMembershipTests.cs) | 참가 파티 조회·읽기 전용 Discord 카드·AFK 알림 및 파티 변경의 경계 회귀 검사. [함수 목록](tests.md#file-tests-partymembershiptests-cs) |
 
 ## 문서 파일
 

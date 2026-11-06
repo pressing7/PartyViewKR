@@ -12,7 +12,7 @@ internal sealed partial class PartyWindow
         if (ImGui.Checkbox("AFK 모드 · 모집 관리", ref enabled)) plugin.SetAfkEnabled(enabled);
         ImGui.EndDisabled();
         ImGui.TextWrapped(plugin.AfkStatus);
-        ImGui.TextWrapped("AFK 모드에서 명단 변화 시 모집글을 조회합니다. 직업 변경은 비교하지 않습니다.");
+        ImGui.TextWrapped("AFK 모드에서 본인 또는 참가한 파티의 모집글을 조회하고 알림을 보냅니다. 직업 변경은 비교하지 않습니다.");
 
         var settings = plugin.AfkOptions;
         var periodic = settings.PeriodicEnabled; var minutes = settings.PeriodMinutes;
@@ -41,7 +41,7 @@ internal sealed partial class PartyWindow
         ImGui.EndDisabled();
         if (autoRefresh || plugin.AutoRefreshInFlight)
         {
-            ImGui.TextWrapped("기존 조건으로 갱신합니다. 이미 열린 수정창의 갱신은 마무리한 뒤 꺼집니다.");
+            ImGui.TextWrapped("본인 모집글만 기존 조건으로 갱신합니다. 이미 열린 수정창의 갱신은 마무리한 뒤 꺼집니다.");
             ImGui.TextWrapped(plugin.AutoRefreshStatus);
         }
         if (plugin.AutoRefreshLastResult.Length > 0)

@@ -238,6 +238,7 @@ Test("adding text during an empty-comment refresh is detected", () => {
 });
 AfkListingMonitorTests.Run(Test, Check);
 AfkJoinTests.Run(Test, Check);
+PartyMembershipTests.Run(Test, Check);
 AfkSettingsTests.Run(Test, Check);
 AfkCompletionTests.Run(Test, Check);
 ListingDiscordNotificationTests.Run(Test, Check);

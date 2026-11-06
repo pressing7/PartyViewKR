@@ -100,7 +100,8 @@ internal sealed partial class ListingBridge
             else if (listing.IsLive && host.RefreshBlockReason == null) source = null;
         }
         var reason = RecoveryActive ? "수정창을 닫는 중입니다." : WriteActive ? "갱신 요청을 처리하는 중입니다." : Active ? "조회 요청을 처리하는 중입니다." :
-            host?.RefreshBlockReason ?? (source == null ? "내 모집글을 조회해 주세요." : "");
+            host?.RefreshBlockReason ?? (listing.Owner == ListingOwner.PartyLeader ? "참가한 파티는 조회와 알림을 사용할 수 있습니다. 수정·갱신은 모집자만 가능합니다." :
+                source == null ? "내 모집글을 조회해 주세요." : "");
         if (self == 0) reason = "게임에 로그인해 주세요.";
         if (writeIds.Count >= 1024) reason = "디스코드 연결을 껐다 켠 뒤 /pvkr로 새 카드를 열어 주세요.";
         view = view with { Editor = source != null ? ListingEditContract.Model(source, sourceRevision) : null,
