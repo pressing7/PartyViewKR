@@ -2,9 +2,9 @@
 
 [전체 지도](../CODE_MAP.md) · [전체 파일 목록](files.md)
 
-이 문서는 테스트를 실행한 보고서가 아니라 현재 소스에 등록된 검증 범위의 지도다. 관리형 runner의 530개 등록 시나리오, Node 테스트와 Python 테스트를 source 위치에 연결한다. 실제 게임·Windows DPAPI·Discord live 검증은 fake 테스트와 별개다.
+이 문서는 테스트를 실행한 보고서가 아니라 현재 소스에 등록된 검증 범위의 지도다. 관리형 runner의551개 실행 시나리오와 Python 배포 검사12건를 source 위치에 연결한다. 실제 게임·Windows DPAPI·Discord live 검증은 fake 테스트와 별개다.
 
-기준: 0.3.57.0 소스. main `58fba989007a1ca4e9286eae066422e4dc3134a6` 이후 웹 제거와 공통 브리지 이름 정리를 포함한다. 2026-11-06 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
+기준: 0.3.59.0 소스. main `4e8b65e1d1065072c730524d711a68c491ad2b17` 이후 AFK 파티원 참가 알림을 포함한다. 2026-11-06 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
 
 표에는 직접 선언한 메서드·생성자·로컬 함수·계산 속성·인터페이스 메서드를 각각 포함한다. 자동 생성 record 메서드/단순 auto-property accessor는 제외한다. 이름 없는 LINQ/타이머/콜백은 이를 소유한 함수 설명에 포함하며, 명명된 테스트 시나리오는 별도로 표시한다.
 
@@ -57,6 +57,8 @@
 - [tests/NativePointerContractTests.cs](#file-tests-nativepointercontracttests-cs)
 - [tests/Program.cs](#file-tests-program-cs)
 - [tests/test_release.py](#file-tests-test-release-py)
+- [tests/AfkJoinTests.cs](#file-tests-afkjointests-cs)
+- [tests/ListingDiscordJoinNotificationTests.cs](#file-tests-listingdiscordjoinnotificationtests-cs)
 
 <a id="file-tests-afkcompletiontests-cs"></a>
 ## tests/AfkCompletionTests.cs
@@ -753,21 +755,23 @@ Dalamud 공개 채팅 이벤트의 두 delegate 형태·읽기 전용 수신·�
 | 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
 |---|---|---|---|
 | <a id="symbol-tests-listingdiscordnotificationsdktests-cs-7-0430313662"></a><code>ListingDiscordConnectionTests.RunNotificationSdk</code><br><code>void RunNotificationSdk(Action&lt;string, Action&gt; test, Action&lt;bool, string&gt; check)</code> | 메서드 | 실제 Discord.Net SDK가 선택 채널로 고정 본문/everyone allowed_mentions를 한 번 전송하는지와 권한 부족 시 미전송을 확인한다. | [L7](../../tests/ListingDiscordNotificationSdkTests.cs#L7) |
-| <a id="symbol-tests-listingdiscordnotificationsdktests-cs-69-d991ef7024"></a><code>ListingDiscordConnectionTests.OfflineTransport.NotificationGuild</code><br><code>Task NotificationGuild(ulong permissions = 134144, ulong[]? channelIds = null)</code> | 메서드 | READY에 예고된 서버의 역할·텍스트 채널·봇 멤버 GUILD_CREATE를 모의 전송한다. everyone 권한 bit를 바꿔 허용/거부를 검증한다. | [L69](../../tests/ListingDiscordNotificationSdkTests.cs#L69) |
+| <a id="symbol-tests-listingdiscordnotificationsdktests-cs-69-d991ef7024"></a><code>ListingDiscordConnectionTests.OfflineTransport.NotificationGuild</code><br><code>Task NotificationGuild(ulong permissions = 134144, ulong[]? channelIds = null)</code> | 메서드 | READY에 예고된 서버의 역할·텍스트 채널·봇 멤버 GUILD_CREATE를 모의 전송한다. everyone 권한 bit를 바꿔 허용/거부를 검증한다. | [L98](../../tests/ListingDiscordNotificationSdkTests.cs#L98) |
 
 ### 등록된 회귀 시나리오
 
 | 소스의 시나리오 이름 | 위치 |
 |---|---|
-| <code>Discord SDK completion POST serializes exact everyone mention once to selected server channel</code> | [L9](../../tests/ListingDiscordNotificationSdkTests.cs#L9) |
-| <code>Discord SDK rejects missing everyone channel permission before posting</code> | [L27](../../tests/ListingDiscordNotificationSdkTests.cs#L27) |
-| <code>Discord SDK reserved-seat completion uses its own text and deduplicates everyone</code> | [L38](../../tests/ListingDiscordNotificationSdkTests.cs#L38) |
-| <code>Discord SDK does not report success or repeat POST if the server did not confirm everyone</code> | [L52](../../tests/ListingDiscordNotificationSdkTests.cs#L52) |
+| <code>Discord SDK join POST includes exact counts and only everyone allowed mentions</code> | [L9](../../tests/ListingDiscordNotificationSdkTests.cs#L9) |
+| <code>Discord SDK join POST without confirmed everyone is failed and never replayed</code> | [L26](../../tests/ListingDiscordNotificationSdkTests.cs#L26) |
+| <code>Discord SDK completion POST serializes exact everyone mention once to selected server channel</code> | [L38](../../tests/ListingDiscordNotificationSdkTests.cs#L38) |
+| <code>Discord SDK rejects missing everyone channel permission before posting</code> | [L56](../../tests/ListingDiscordNotificationSdkTests.cs#L56) |
+| <code>Discord SDK reserved-seat completion uses its own text and deduplicates everyone</code> | [L67](../../tests/ListingDiscordNotificationSdkTests.cs#L67) |
+| <code>Discord SDK does not report success or repeat POST if the server did not confirm everyone</code> | [L81](../../tests/ListingDiscordNotificationSdkTests.cs#L81) |
 
 <a id="file-tests-listingdiscordnotificationtests-cs"></a>
 ## tests/ListingDiscordNotificationTests.cs
 
-[소스 파일](../../tests/ListingDiscordNotificationTests.cs) · 명명된 항목/진입점 9개
+[소스 파일](../../tests/ListingDiscordNotificationTests.cs) · 명명된 항목/진입점 10개
 
 알림 채널 저장·소유자/ACK·everyone 전송·취소·오류 중복 방지를 검사한다. 아래 시나리오 이름은 소스의 실제 test 등록문에서 추출했다.
 
@@ -775,31 +779,32 @@ Dalamud 공개 채팅 이벤트의 두 delegate 형태·읽기 전용 수신·�
 |---|---|---|---|
 | <a id="symbol-tests-listingdiscordnotificationtests-cs-8-e35a357e3c"></a><code>ListingDiscordNotificationTests.Done</code><br><code>void Done(Task task)</code> | 메서드 | 비동기 알림/설정 작업을5초 예산으로 완료시키고 실패를 테스트에 전파한다. | [L8](../../tests/ListingDiscordNotificationTests.cs#L8) |
 | <a id="symbol-tests-listingdiscordnotificationtests-cs-9-8940b0751d"></a><code>ListingDiscordNotificationTests.Run</code><br><code>void Run(Action&lt;string, Action&gt; test, Action&lt;bool, string&gt; check)</code> | 메서드 | 알림 채널 저장·소유자/ACK·everyone 전송·취소·오류 중복 방지 관련 시나리오를 실행한다. 개별 등록 조건은 아래 test 목록을 참조한다. | [L9](../../tests/ListingDiscordNotificationTests.cs#L9) |
-| <a id="symbol-tests-listingdiscordnotificationtests-cs-11-37ecf42258"></a><code>ListingDiscordNotificationTests.Run.Service</code><br><code>ListingDiscordNotifications Service(NotificationFakeTransport t, DiscordNotificationTarget? target = null, Func&lt;DiscordNotificationTarget, CancellationToken, Task&gt;? save = null)</code> | 로컬 함수 | fake transport와 저장 callback으로 연결된 알림 controller를 만든다. | [L11](../../tests/ListingDiscordNotificationTests.cs#L11) |
-| <a id="symbol-tests-listingdiscordnotificationtests-cs-110-842e05356e"></a><code>ListingDiscordNotificationTests.Run.Input</code><br><code>DiscordInput Input(ulong id)</code> | 로컬 함수 | owner/application 정보가 붙은 DiscordInput fixture를 만든다. | [L110](../../tests/ListingDiscordNotificationTests.cs#L110) |
-| <a id="symbol-tests-listingdiscordnotificationtests-cs-123-1142f19fb8"></a><code>ListingDiscordNotificationTests.NotificationResponse.Defer</code><br><code>Task Defer()</code> | 메서드 | 정상 ACK 또는 실패 ACK를 모사한다. | [L123](../../tests/ListingDiscordNotificationTests.cs#L123) |
-| <a id="symbol-tests-listingdiscordnotificationtests-cs-124-7c540c0a68"></a><code>ListingDiscordNotificationTests.NotificationResponse.Modal</code><br><code>Task Modal(Modal modal)</code> | 메서드 | 채널 선택에서 모달 호출이 발생하면 테스트를 실패시킨다. | [L124](../../tests/ListingDiscordNotificationTests.cs#L124) |
-| <a id="symbol-tests-listingdiscordnotificationtests-cs-125-54e28baf7f"></a><code>ListingDiscordNotificationTests.NotificationResponse.Screen</code><br><code>Task Screen(DiscordScreen screen, bool replace, bool deferred)</code> | 메서드 | 채널 설정의 응답을 소비한다. 외부 메시지를 보내지 않는다. | [L125](../../tests/ListingDiscordNotificationTests.cs#L125) |
-| <a id="symbol-tests-listingdiscordnotificationtests-cs-136-98cf3d8a0d"></a><code>ListingDiscordNotificationTests.NotificationFakeTransport.CheckChannel</code><br><code>Task&lt;string?&gt; CheckChannel(DiscordNotificationTarget target, CancellationToken cancellation)</code> | 메서드 | 권한 실패·중단 가능한 지연 확인을 모사하고 확인 시작 신호를 보낸다. | [L136](../../tests/ListingDiscordNotificationTests.cs#L136) |
-| <a id="symbol-tests-listingdiscordnotificationtests-cs-142-e9386c4aac"></a><code>ListingDiscordNotificationTests.NotificationFakeTransport.SendCompletion</code><br><code>Task SendCompletion(DiscordNotificationTarget target, CancellationToken cancellation, bool excludesSingleJob = false)</code> | 메서드 | 전송 횟수/목적지를 기록하고 결과 불확실 예외를 주입한다. 실제 네트워크는 사용하지 않는다. | [L142](../../tests/ListingDiscordNotificationTests.cs#L142) |
+| <a id="symbol-tests-listingdiscordnotificationtests-cs-11-37ecf42258"></a><code>ListingDiscordNotificationTests.Run.Service</code><br><code>ListingDiscordNotifications Service(NotificationFakeTransport t, DiscordNotificationTarget? target = null, Func&lt;DiscordNotificationTarget, CancellationToken, Task&gt;? save = null)</code> | 로컬 함수 | fake transport와 저장 callback으로 연결된 알림 controller를 만든다. | [L12](../../tests/ListingDiscordNotificationTests.cs#L12) |
+| <a id="symbol-tests-listingdiscordnotificationtests-cs-110-842e05356e"></a><code>ListingDiscordNotificationTests.Run.Input</code><br><code>DiscordInput Input(ulong id)</code> | 로컬 함수 | owner/application 정보가 붙은 DiscordInput fixture를 만든다. | [L111](../../tests/ListingDiscordNotificationTests.cs#L111) |
+| <a id="symbol-tests-listingdiscordnotificationtests-cs-123-1142f19fb8"></a><code>ListingDiscordNotificationTests.NotificationResponse.Defer</code><br><code>Task Defer()</code> | 메서드 | 정상 ACK 또는 실패 ACK를 모사한다. | [L124](../../tests/ListingDiscordNotificationTests.cs#L124) |
+| <a id="symbol-tests-listingdiscordnotificationtests-cs-124-7c540c0a68"></a><code>ListingDiscordNotificationTests.NotificationResponse.Modal</code><br><code>Task Modal(Modal modal)</code> | 메서드 | 채널 선택에서 모달 호출이 발생하면 테스트를 실패시킨다. | [L125](../../tests/ListingDiscordNotificationTests.cs#L125) |
+| <a id="symbol-tests-listingdiscordnotificationtests-cs-125-54e28baf7f"></a><code>ListingDiscordNotificationTests.NotificationResponse.Screen</code><br><code>Task Screen(DiscordScreen screen, bool replace, bool deferred)</code> | 메서드 | 채널 설정의 응답을 소비한다. 외부 메시지를 보내지 않는다. | [L126](../../tests/ListingDiscordNotificationTests.cs#L126) |
+| <a id="symbol-tests-listingdiscordnotificationtests-cs-136-98cf3d8a0d"></a><code>ListingDiscordNotificationTests.NotificationFakeTransport.CheckChannel</code><br><code>Task&lt;string?&gt; CheckChannel(DiscordNotificationTarget target, CancellationToken cancellation)</code> | 메서드 | 권한 실패·중단 가능한 지연 확인을 모사하고 확인 시작 신호를 보낸다. | [L138](../../tests/ListingDiscordNotificationTests.cs#L138) |
+| <a id="symbol-tests-listingdiscordnotificationtests-cs-142-e9386c4aac"></a><code>ListingDiscordNotificationTests.NotificationFakeTransport.SendCompletion</code><br><code>Task SendCompletion(DiscordNotificationTarget target, CancellationToken cancellation, bool excludesSingleJob = false)</code> | 메서드 | 전송 횟수/목적지를 기록하고 결과 불확실 예외를 주입한다. 실제 네트워크는 사용하지 않는다. | [L145](../../tests/ListingDiscordNotificationTests.cs#L145) |
+| <a id="symbol-tests-listingdiscordnotificationtests-cs-listingdiscordnotificationtests-notificationfaketransport-sendpartyjoin"></a><code>ListingDiscordNotificationTests.NotificationFakeTransport.SendPartyJoin</code><br><code>Task SendPartyJoin(DiscordNotificationTarget target, PartyJoinNotice notice, CancellationToken cancellation)</code> | 메서드 | 참가 메시지와 채널을 큐에 기록하며 취소·불확실한 POST 실패를 모사한다. | [L150](../../tests/ListingDiscordNotificationTests.cs#L150) |
 
 ### 등록된 회귀 시나리오
 
 | 소스의 시나리오 이름 | 위치 |
 |---|---|
-| <code>Discord completion is an everyone only mention with the requested fixed text</code> | [L15](../../tests/ListingDiscordNotificationTests.cs#L15) |
-| <code>Discord notification target persists with bot identity while unrelated settings survive</code> | [L22](../../tests/ListingDiscordNotificationTests.cs#L22) |
-| <code>Discord alerts require AFK completion and an explicitly selected matching bot channel</code> | [L29](../../tests/ListingDiscordNotificationTests.cs#L29) |
-| <code>Discord repeated full roster polls send once and a new completion episode sends again</code> | [L38](../../tests/ListingDiscordNotificationTests.cs#L38) |
-| <code>Discord preflight is cancelled when AFK stops a vacancy appears or the character changes</code> | [L46](../../tests/ListingDiscordNotificationTests.cs#L46) |
-| <code>Discord temporary unreadability before POST can recover without losing the completion alert</code> | [L54](../../tests/ListingDiscordNotificationTests.cs#L54) |
-| <code>Discord ambiguous notification POST failures never retry on every roster poll</code> | [L60](../../tests/ListingDiscordNotificationTests.cs#L60) |
-| <code>Discord unavailable connection waits for reconnect without consuming an alert</code> | [L66](../../tests/ListingDiscordNotificationTests.cs#L66) |
-| <code>Discord missing everyone permission blocks sending and channel selection without silent fallback</code> | [L71](../../tests/ListingDiscordNotificationTests.cs#L71) |
-| <code>Discord DM selection and failed persistence preserve the old notification target</code> | [L80](../../tests/ListingDiscordNotificationTests.cs#L80) |
-| <code>Discord channel selection alone never posts a message but can deliver a pending full roster</code> | [L89](../../tests/ListingDiscordNotificationTests.cs#L89) |
-| <code>Discord cancellation while waiting for settings save never activates the selected channel</code> | [L96](../../tests/ListingDiscordNotificationTests.cs#L96) |
-| <code>Discord notification channel controls reject wrong owner app stale session and failed ACK</code> | [L106](../../tests/ListingDiscordNotificationTests.cs#L106) |
+| <code>Discord completion is an everyone only mention with the requested fixed text</code> | [L16](../../tests/ListingDiscordNotificationTests.cs#L16) |
+| <code>Discord notification target persists with bot identity while unrelated settings survive</code> | [L23](../../tests/ListingDiscordNotificationTests.cs#L23) |
+| <code>Discord alerts require AFK completion and an explicitly selected matching bot channel</code> | [L30](../../tests/ListingDiscordNotificationTests.cs#L30) |
+| <code>Discord repeated full roster polls send once and a new completion episode sends again</code> | [L39](../../tests/ListingDiscordNotificationTests.cs#L39) |
+| <code>Discord preflight is cancelled when AFK stops a vacancy appears or the character changes</code> | [L47](../../tests/ListingDiscordNotificationTests.cs#L47) |
+| <code>Discord temporary unreadability before POST can recover without losing the completion alert</code> | [L55](../../tests/ListingDiscordNotificationTests.cs#L55) |
+| <code>Discord ambiguous notification POST failures never retry on every roster poll</code> | [L61](../../tests/ListingDiscordNotificationTests.cs#L61) |
+| <code>Discord unavailable connection waits for reconnect without consuming an alert</code> | [L67](../../tests/ListingDiscordNotificationTests.cs#L67) |
+| <code>Discord missing everyone permission blocks sending and channel selection without silent fallback</code> | [L72](../../tests/ListingDiscordNotificationTests.cs#L72) |
+| <code>Discord DM selection and failed persistence preserve the old notification target</code> | [L81](../../tests/ListingDiscordNotificationTests.cs#L81) |
+| <code>Discord channel selection alone never posts a message but can deliver a pending full roster</code> | [L90](../../tests/ListingDiscordNotificationTests.cs#L90) |
+| <code>Discord cancellation while waiting for settings save never activates the selected channel</code> | [L97](../../tests/ListingDiscordNotificationTests.cs#L97) |
+| <code>Discord notification channel controls reject wrong owner app stale session and failed ACK</code> | [L107](../../tests/ListingDiscordNotificationTests.cs#L107) |
 
 <a id="file-tests-listingdiscordresulttests-cs"></a>
 ## tests/ListingDiscordResultTests.cs
@@ -1510,30 +1515,30 @@ snapshot 최소 노출·query queue·캐릭터/요청 소유권·연결 종료�
 | <a id="symbol-tests-program-cs-8-423ce5a35d"></a><code>Test</code><br><code>void Test(string name, Action body)</code> | 로컬 함수 | 등록된 test body를 실행하고 성공 횟수와 PASS 이름을 출력한다. | [L6](../../tests/Program.cs#L6) |
 | <a id="symbol-tests-program-cs-9-38aec8dfb2"></a><code>StartToEditor</code><br><code>(FakeHost h, ListingRefresh flow) StartToEditor()</code> | 로컬 함수 | 기본 갱신 요청과 조회 완료를 시뮬레이션해 OpeningEditor 상태를 만든다. | [L7](../../tests/Program.cs#L7) |
 | <a id="symbol-tests-program-cs-16-24c4d6a476"></a><code>StartToVerify</code><br><code>(FakeHost h, ListingRefresh flow) StartToVerify()</code> | 로컬 함수 | 기본 편집/제출을 진행해 제출 후 Verifying 상태를 만든다. | [L14](../../tests/Program.cs#L14) |
-| <a id="symbol-tests-program-cs-323-07e1d163f5"></a><code>FakeHost.QueryOwn</code><br><code>void QueryOwn()</code> | 메서드 | 실제 네이티브 조회 대신 요청 횟수와 query busy 상태를 기록한다. | [L320](../../tests/Program.cs#L320) |
-| <a id="symbol-tests-program-cs-324-8179daac75"></a><code>FakeHost.FinishQuery</code><br><code>void FinishQuery()</code> | 메서드 | 새 상세 revision/성공 여부를 지정하여 fake 조회 응답을 완료한다. | [L321](../../tests/Program.cs#L321) |
-| <a id="symbol-tests-program-cs-325-1f1e8476a0"></a><code>FakeHost.CancelQuery</code><br><code>void CancelQuery()</code> | 메서드 | fake 조회의 취소 횟수와 busy 상태를 갱신한다. | [L322](../../tests/Program.cs#L322) |
-| <a id="symbol-tests-program-cs-326-84354e3731"></a><code>FakeHost.TryGetOwn</code><br><code>bool TryGetOwn(out RefreshTarget target, out string error)</code> | 메서드 | 설정된 source와 OwnVerified/오류 상태로 본인 상세 읽기를 모사한다. | [L323](../../tests/Program.cs#L323) |
-| <a id="symbol-tests-program-cs-327-436064f9fc"></a><code>FakeHost.OpenEditor</code><br><code>bool OpenEditor(RefreshTarget target, out string error)</code> | 메서드 | fake 수정창 표시/수명 revision을 갱신하고 열기 횟수·실패/예외를 모사한다. | [L324](../../tests/Program.cs#L324) |
-| <a id="symbol-tests-program-cs-333-7757af74b3"></a><code>FakeHost.Submit</code><br><code>bool Submit(RefreshTarget target, string? description, out string error)</code> | 메서드 | 테스트 fixture에서는 modal 제출 또는 fake 네이티브 갱신 제출을 모사하며 호출 횟수/허용 여부/예외를 기록한다. | [L330](../../tests/Program.cs#L330) |
-| <a id="symbol-tests-program-cs-341-ebf4b27432"></a><code>FakeHost.BeginSlotEdit</code><br><code>bool BeginSlotEdit(RefreshTarget target, ListingJobEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L338](../../tests/Program.cs#L338) |
-| <a id="symbol-tests-program-cs-348-7a9608b125"></a><code>FakeHost.UpdateSlotEdit</code><br><code>SlotEditProgress UpdateSlotEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L345](../../tests/Program.cs#L345) |
-| <a id="symbol-tests-program-cs-353-93bacd97bb"></a><code>FakeHost.BeginDescriptionEdit</code><br><code>bool BeginDescriptionEdit(RefreshTarget target, ListingDescriptionEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L350](../../tests/Program.cs#L350) |
-| <a id="symbol-tests-program-cs-360-472b5ee9d6"></a><code>FakeHost.UpdateDescriptionEdit</code><br><code>SlotEditProgress UpdateDescriptionEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L357](../../tests/Program.cs#L357) |
-| <a id="symbol-tests-program-cs-365-872a2ce5c4"></a><code>FakeHost.BeginObjectiveEdit</code><br><code>bool BeginObjectiveEdit(RefreshTarget target, ListingObjectiveEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L362](../../tests/Program.cs#L362) |
-| <a id="symbol-tests-program-cs-374-c8a4c77d78"></a><code>FakeHost.UpdateObjectiveEdit</code><br><code>SlotEditProgress UpdateObjectiveEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L371](../../tests/Program.cs#L371) |
-| <a id="symbol-tests-program-cs-379-a0f5801063"></a><code>FakeHost.BeginBeginnerEdit</code><br><code>bool BeginBeginnerEdit(RefreshTarget target, ListingBeginnerEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L376](../../tests/Program.cs#L376) |
-| <a id="symbol-tests-program-cs-387-6c1553430b"></a><code>FakeHost.UpdateBeginnerEdit</code><br><code>SlotEditProgress UpdateBeginnerEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L384](../../tests/Program.cs#L384) |
-| <a id="symbol-tests-program-cs-392-a8fbfbb14e"></a><code>FakeHost.BeginUniqueJobsEdit</code><br><code>bool BeginUniqueJobsEdit(RefreshTarget target, ListingUniqueJobsEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L389](../../tests/Program.cs#L389) |
-| <a id="symbol-tests-program-cs-400-ab11cf71c4"></a><code>FakeHost.UpdateUniqueJobsEdit</code><br><code>SlotEditProgress UpdateUniqueJobsEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L397](../../tests/Program.cs#L397) |
-| <a id="symbol-tests-program-cs-405-112c7e2a0b"></a><code>FakeHost.BeginPrivateEdit</code><br><code>bool BeginPrivateEdit(RefreshTarget target, ListingPrivateEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L402](../../tests/Program.cs#L402) |
-| <a id="symbol-tests-program-cs-413-0a64d0e7eb"></a><code>FakeHost.UpdatePrivateEdit</code><br><code>SlotEditProgress UpdatePrivateEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L410](../../tests/Program.cs#L410) |
-| <a id="symbol-tests-program-cs-418-e68bdcb6a6"></a><code>FakeHost.BeginCompletionEdit</code><br><code>bool BeginCompletionEdit(RefreshTarget target, ListingCompletionEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L415](../../tests/Program.cs#L415) |
-| <a id="symbol-tests-program-cs-426-16b76cbfe0"></a><code>FakeHost.UpdateCompletionEdit</code><br><code>SlotEditProgress UpdateCompletionEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L423](../../tests/Program.cs#L423) |
-| <a id="symbol-tests-program-cs-431-d60d7a9a68"></a><code>FakeHost.BeginItemLevelEdit</code><br><code>bool BeginItemLevelEdit(RefreshTarget target, ListingItemLevelEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L428](../../tests/Program.cs#L428) |
-| <a id="symbol-tests-program-cs-439-a97e9c0d5d"></a><code>FakeHost.UpdateItemLevelEdit</code><br><code>SlotEditProgress UpdateItemLevelEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L436](../../tests/Program.cs#L436) |
-| <a id="symbol-tests-program-cs-444-faf03b5367"></a><code>FakeHost.BeginRuleEdit</code><br><code>bool BeginRuleEdit(RefreshTarget target, ListingRuleEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L441](../../tests/Program.cs#L441) |
-| <a id="symbol-tests-program-cs-451-c3d387619b"></a><code>FakeHost.UpdateRuleEdit</code><br><code>SlotEditProgress UpdateRuleEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L448](../../tests/Program.cs#L448) |
+| <a id="symbol-tests-program-cs-323-07e1d163f5"></a><code>FakeHost.QueryOwn</code><br><code>void QueryOwn()</code> | 메서드 | 실제 네이티브 조회 대신 요청 횟수와 query busy 상태를 기록한다. | [L321](../../tests/Program.cs#L321) |
+| <a id="symbol-tests-program-cs-324-8179daac75"></a><code>FakeHost.FinishQuery</code><br><code>void FinishQuery()</code> | 메서드 | 새 상세 revision/성공 여부를 지정하여 fake 조회 응답을 완료한다. | [L322](../../tests/Program.cs#L322) |
+| <a id="symbol-tests-program-cs-325-1f1e8476a0"></a><code>FakeHost.CancelQuery</code><br><code>void CancelQuery()</code> | 메서드 | fake 조회의 취소 횟수와 busy 상태를 갱신한다. | [L323](../../tests/Program.cs#L323) |
+| <a id="symbol-tests-program-cs-326-84354e3731"></a><code>FakeHost.TryGetOwn</code><br><code>bool TryGetOwn(out RefreshTarget target, out string error)</code> | 메서드 | 설정된 source와 OwnVerified/오류 상태로 본인 상세 읽기를 모사한다. | [L324](../../tests/Program.cs#L324) |
+| <a id="symbol-tests-program-cs-327-436064f9fc"></a><code>FakeHost.OpenEditor</code><br><code>bool OpenEditor(RefreshTarget target, out string error)</code> | 메서드 | fake 수정창 표시/수명 revision을 갱신하고 열기 횟수·실패/예외를 모사한다. | [L325](../../tests/Program.cs#L325) |
+| <a id="symbol-tests-program-cs-333-7757af74b3"></a><code>FakeHost.Submit</code><br><code>bool Submit(RefreshTarget target, string? description, out string error)</code> | 메서드 | 테스트 fixture에서는 modal 제출 또는 fake 네이티브 갱신 제출을 모사하며 호출 횟수/허용 여부/예외를 기록한다. | [L331](../../tests/Program.cs#L331) |
+| <a id="symbol-tests-program-cs-341-ebf4b27432"></a><code>FakeHost.BeginSlotEdit</code><br><code>bool BeginSlotEdit(RefreshTarget target, ListingJobEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L339](../../tests/Program.cs#L339) |
+| <a id="symbol-tests-program-cs-348-7a9608b125"></a><code>FakeHost.UpdateSlotEdit</code><br><code>SlotEditProgress UpdateSlotEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L346](../../tests/Program.cs#L346) |
+| <a id="symbol-tests-program-cs-353-93bacd97bb"></a><code>FakeHost.BeginDescriptionEdit</code><br><code>bool BeginDescriptionEdit(RefreshTarget target, ListingDescriptionEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L351](../../tests/Program.cs#L351) |
+| <a id="symbol-tests-program-cs-360-472b5ee9d6"></a><code>FakeHost.UpdateDescriptionEdit</code><br><code>SlotEditProgress UpdateDescriptionEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L358](../../tests/Program.cs#L358) |
+| <a id="symbol-tests-program-cs-365-872a2ce5c4"></a><code>FakeHost.BeginObjectiveEdit</code><br><code>bool BeginObjectiveEdit(RefreshTarget target, ListingObjectiveEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L363](../../tests/Program.cs#L363) |
+| <a id="symbol-tests-program-cs-374-c8a4c77d78"></a><code>FakeHost.UpdateObjectiveEdit</code><br><code>SlotEditProgress UpdateObjectiveEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L372](../../tests/Program.cs#L372) |
+| <a id="symbol-tests-program-cs-379-a0f5801063"></a><code>FakeHost.BeginBeginnerEdit</code><br><code>bool BeginBeginnerEdit(RefreshTarget target, ListingBeginnerEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L377](../../tests/Program.cs#L377) |
+| <a id="symbol-tests-program-cs-387-6c1553430b"></a><code>FakeHost.UpdateBeginnerEdit</code><br><code>SlotEditProgress UpdateBeginnerEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L385](../../tests/Program.cs#L385) |
+| <a id="symbol-tests-program-cs-392-a8fbfbb14e"></a><code>FakeHost.BeginUniqueJobsEdit</code><br><code>bool BeginUniqueJobsEdit(RefreshTarget target, ListingUniqueJobsEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L390](../../tests/Program.cs#L390) |
+| <a id="symbol-tests-program-cs-400-ab11cf71c4"></a><code>FakeHost.UpdateUniqueJobsEdit</code><br><code>SlotEditProgress UpdateUniqueJobsEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L398](../../tests/Program.cs#L398) |
+| <a id="symbol-tests-program-cs-405-112c7e2a0b"></a><code>FakeHost.BeginPrivateEdit</code><br><code>bool BeginPrivateEdit(RefreshTarget target, ListingPrivateEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L403](../../tests/Program.cs#L403) |
+| <a id="symbol-tests-program-cs-413-0a64d0e7eb"></a><code>FakeHost.UpdatePrivateEdit</code><br><code>SlotEditProgress UpdatePrivateEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L411](../../tests/Program.cs#L411) |
+| <a id="symbol-tests-program-cs-418-e68bdcb6a6"></a><code>FakeHost.BeginCompletionEdit</code><br><code>bool BeginCompletionEdit(RefreshTarget target, ListingCompletionEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L416](../../tests/Program.cs#L416) |
+| <a id="symbol-tests-program-cs-426-16b76cbfe0"></a><code>FakeHost.UpdateCompletionEdit</code><br><code>SlotEditProgress UpdateCompletionEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L424](../../tests/Program.cs#L424) |
+| <a id="symbol-tests-program-cs-431-d60d7a9a68"></a><code>FakeHost.BeginItemLevelEdit</code><br><code>bool BeginItemLevelEdit(RefreshTarget target, ListingItemLevelEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L429](../../tests/Program.cs#L429) |
+| <a id="symbol-tests-program-cs-439-a97e9c0d5d"></a><code>FakeHost.UpdateItemLevelEdit</code><br><code>SlotEditProgress UpdateItemLevelEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L437](../../tests/Program.cs#L437) |
+| <a id="symbol-tests-program-cs-444-faf03b5367"></a><code>FakeHost.BeginRuleEdit</code><br><code>bool BeginRuleEdit(RefreshTarget target, ListingRuleEdit edit, out string error)</code> | 메서드 | 실제 UI 대신 지정 edit를 fake host에 기록하고 시작 허용/예외 및 예상 draft를 모사한다. | [L442](../../tests/Program.cs#L442) |
+| <a id="symbol-tests-program-cs-451-c3d387619b"></a><code>FakeHost.UpdateRuleEdit</code><br><code>SlotEditProgress UpdateRuleEdit(out RefreshTarget expected, out string error)</code> | 메서드 | fake edit의 Waiting/Complete/Failed와 expected target을 반환해 재시도·timeout·결과 검증을 검사한다. | [L449](../../tests/Program.cs#L449) |
 
 ### 등록된 회귀 시나리오
 
@@ -1602,3 +1607,61 @@ unittest/mock으로 배포 URL·버전·의존성 allowlist·해시·공개 다�
 | <a id="symbol-tests-test-release-py-90-0ae8ee6237"></a><code>ReleaseTests.test_no_non_https_downloads</code><br><code>test_no_non_https_downloads(self)</code> | Python 함수 | 배포 회귀 검사: no non https downloads. 외부 API/파일 부작용은 fixture와 mock으로 통제한다. | [L90](../../tests/test_release.py#L90) |
 | <a id="symbol-tests-test-release-py-94-f95dcfc0a4"></a><code>ReleaseTests.test_failed_public_download_never_updates_feed</code><br><code>test_failed_public_download_never_updates_feed(self)</code> | Python 함수 | 배포 회귀 검사: failed public download never updates feed. 외부 API/파일 부작용은 fixture와 mock으로 통제한다. | [L94](../../tests/test_release.py#L94) |
 | <a id="symbol-tests-test-release-py-104-0009de0c0b"></a><code>ReleaseTests.test_failed_public_download_never_updates_feed.fake_api</code><br><code>fake_api(repo, path, method='GET', data=None, raw=False)</code> | Python 함수 | publish 경로가 기대한 GitHub GET만 호출하는지 기록하고 feed write나 다른 API 호출은 assertion으로 차단한다. | [L104](../../tests/test_release.py#L104) |
+
+
+<a id="file-tests-afkjointests-cs"></a>
+## tests/AfkJoinTests.cs
+
+[소스 파일](../../tests/AfkJoinTests.cs) · 명명된 항목/진입점 2개
+
+AFK 명단에서 새 참가자를 감지하는 순수 회귀 검사.
+
+| 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
+|---|---|---|---|
+| <a id="symbol-tests-afkjointests-cs-afkjointests-run"></a><code>AfkJoinTests.Run</code><br><code>void Run(Action&lt;string, Action&gt; test, Action&lt;bool, string&gt; check)</code> | 메서드 | 참가 옵션 기본값·저장, CID 차집합, 최초 기준 명단, 읽기 실패·재입장·옵션/캐릭터 수명과 모집 완료 시점의 참가 관측을 검증한다. | [L6](../../tests/AfkJoinTests.cs#L6) |
+| <a id="symbol-tests-afkjointests-cs-afkjointests-run-start"></a><code>AfkJoinTests.Run.Start</code><br><code>(AfkListingMonitor m, AfkFakeHost h) Start(bool alerts = true)</code> | 로컬 함수 | 수정창 때문에 모집 조회가 막힌 fake host에 AFK 명단 기준을 잡는다. 참가 감지가 상세 조회 성공에 의존하지 않는지 검사한다. | [L8](../../tests/AfkJoinTests.cs#L8) |
+
+
+### 등록된 회귀 시나리오
+
+| 소스의 시나리오 이름 | 위치 |
+|---|---|
+| <code>AFK join alerts default off and first readable roster is only a baseline</code> | [L17](../../tests/AfkJoinTests.cs#L17) |
+| <code>AFK newcomer alert does not wait for a listing read or an open editor</code> | [L24](../../tests/AfkJoinTests.cs#L24) |
+| <code>AFK counts newcomers by identity even with equal or lower member counts</code> | [L32](../../tests/AfkJoinTests.cs#L32) |
+| <code>AFK order and departures do not alert but an observed rejoin does</code> | [L41](../../tests/AfkJoinTests.cs#L41) |
+| <code>AFK unreadability preserves the join baseline and catches real arrivals after recovery</code> | [L49](../../tests/AfkJoinTests.cs#L49) |
+| <code>AFK join option resets baseline while other preferences preserve it</code> | [L58](../../tests/AfkJoinTests.cs#L58) |
+| <code>AFK stop logout and character switch discard join events and rebaseline</code> | [L71](../../tests/AfkJoinTests.cs#L71) |
+| <code>AFK last-seat join is detected even when full recruitment ends before another query</code> | [L83](../../tests/AfkJoinTests.cs#L83) |
+| <code>AFK join counting covers light full alliance and friendly rosters</code> | [L90](../../tests/AfkJoinTests.cs#L90) |
+| <code>AFK join preference persists without enabling AFK or altering saved tokens and channels</code> | [L100](../../tests/AfkJoinTests.cs#L100) |
+
+
+<a id="file-tests-listingdiscordjoinnotificationtests-cs"></a>
+## tests/ListingDiscordJoinNotificationTests.cs
+
+[소스 파일](../../tests/ListingDiscordJoinNotificationTests.cs) · 명명된 항목/진입점 2개
+
+참가 알림 전송 제어기의 수명·중복·권한·실패·대기 한도 회귀 검사.
+
+| 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
+|---|---|---|---|
+| <a id="symbol-tests-listingdiscordjoinnotificationtests-cs-listingdiscordnotificationtests-runjoins"></a><code>ListingDiscordNotificationTests.RunJoins</code><br><code>void RunJoins(Action&lt;string, Action&gt; test, Action&lt;bool, string&gt; check)</code> | 메서드 | 참가 알림의 최초 기준·중복 억제·연속 큐·연결/캐릭터/채널 취소·실패 비재시도·권한·인원 검증·대기 한도를 검사한다. | [L5](../../tests/ListingDiscordJoinNotificationTests.cs#L5) |
+| <a id="symbol-tests-listingdiscordjoinnotificationtests-cs-listingdiscordnotificationtests-runjoins-service"></a><code>ListingDiscordNotificationTests.RunJoins.Service</code><br><code>ListingDiscordNotifications Service(NotificationFakeTransport t, DiscordNotificationTarget? target)</code> | 로컬 함수 | 가짜 전송부와 지정 채널로 알림 제어기를 만들며 실제 Discord 메시지는 보내지 않는다. | [L7](../../tests/ListingDiscordJoinNotificationTests.cs#L7) |
+
+
+### 등록된 회귀 시나리오
+
+| 소스의 시나리오 이름 | 위치 |
+|---|---|
+| <code>Discord joins require opt in connection identity and matching channel</code> | [L10](../../tests/ListingDiscordJoinNotificationTests.cs#L10) |
+| <code>Discord joins ignore the initial event and send later revisions once</code> | [L21](../../tests/ListingDiscordJoinNotificationTests.cs#L21) |
+| <code>Discord queues consecutive distinct joins during a pending send</code> | [L30](../../tests/ListingDiscordJoinNotificationTests.cs#L30) |
+| <code>Discord disabling joins changing character or disconnecting cancels pending alerts</code> | [L37](../../tests/ListingDiscordJoinNotificationTests.cs#L37) |
+| <code>Discord reconnect and channel reselection do not replay historical joins</code> | [L47](../../tests/ListingDiscordJoinNotificationTests.cs#L47) |
+| <code>Discord changing notification channel cancels queued joins in the old channel</code> | [L57](../../tests/ListingDiscordJoinNotificationTests.cs#L57) |
+| <code>Discord failed join POST is consumed once while later arrivals still send</code> | [L68](../../tests/ListingDiscordJoinNotificationTests.cs#L68) |
+| <code>Discord missing everyone permission prevents join POST without repeated polling attempts</code> | [L76](../../tests/ListingDiscordJoinNotificationTests.cs#L76) |
+| <code>Discord malformed join counts cannot produce alerts</code> | [L84](../../tests/ListingDiscordJoinNotificationTests.cs#L84) |
+| <code>Discord join queue stays bounded and exposes dropped pending events</code> | [L89](../../tests/ListingDiscordJoinNotificationTests.cs#L89) |

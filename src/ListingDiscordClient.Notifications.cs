@@ -9,6 +9,8 @@ internal sealed partial class ListingDiscordClient
     internal string NotificationStatus => notifications?.Status ?? "디스코드 알림 연결 준비 중입니다.";
     internal void ObserveCompletion(bool enabled, ulong self, long revision, bool complete, bool excludesSingleJob = false) =>
         notifications?.Observe(enabled && Connected, self, revision, complete, excludesSingleJob);
+    internal void ObserveJoins(bool enabled, ulong self, PartyJoinNotice? notice) =>
+        notifications?.ObserveJoins(enabled && Connected, self, notice);
 
     internal static AllowedMentions CompletionMentions() => new(AllowedMentionTypes.Everyone);
     private sealed class NotificationTransport(ListingDiscordClient client) : IDiscordNotificationTransport
@@ -29,12 +31,18 @@ internal sealed partial class ListingDiscordClient
                 : !permissions.MentionEveryone ? "봇에 이 채널의 ‘@everyone, @here 및 모든 역할 멘션’ 권한이 필요합니다." : null);
         }
 
-        public async Task SendCompletion(DiscordNotificationTarget target, CancellationToken cancellation, bool excludesSingleJob = false)
+        public Task SendCompletion(DiscordNotificationTarget target, CancellationToken cancellation, bool excludesSingleJob = false) =>
+            Send(target, excludesSingleJob ? ListingDiscordNotifications.SingleJobCompletionText : ListingDiscordNotifications.CompletionText, cancellation);
+
+        public Task SendPartyJoin(DiscordNotificationTarget target, PartyJoinNotice notice, CancellationToken cancellation) =>
+            Send(target, ListingDiscordNotifications.JoinText(notice), cancellation);
+
+        private async Task Send(DiscordNotificationTarget target, string text, CancellationToken cancellation)
         {
             var error = await CheckChannel(target, cancellation);
             if (error != null) throw new InvalidOperationException("Notification channel unavailable");
             cancellation.ThrowIfCancellationRequested();
-            var sent = await Channel(target)!.SendMessageAsync(excludesSingleJob ? ListingDiscordNotifications.SingleJobCompletionText : ListingDiscordNotifications.CompletionText,
+            var sent = await Channel(target)!.SendMessageAsync(text,
                 allowedMentions: CompletionMentions(), options: new RequestOptions {
                     CancelToken = cancellation, Timeout = 10000, RetryMode = RetryMode.AlwaysFail
                 });

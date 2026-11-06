@@ -2,12 +2,13 @@ using System.Text.Json;
 using Discord;
 using PartyViewKR;
 
-static class ListingDiscordNotificationTests
+static partial class ListingDiscordNotificationTests
 {
     private static readonly DiscordNotificationTarget Target = new(500, 700, 800);
     private static void Done(Task task) => task.WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
     internal static void Run(Action<string, Action> test, Action<bool, string> check)
     {
+        RunJoins(test, check);
         ListingDiscordNotifications Service(NotificationFakeTransport t, DiscordNotificationTarget? target = null,
             Func<DiscordNotificationTarget, CancellationToken, Task>? save = null) =>
             new(500, t, target, save ?? ((_, _) => Task.CompletedTask), CancellationToken.None);
@@ -133,15 +134,22 @@ static class ListingDiscordNotificationTests
         internal TaskCompletionSource? BlockCheck;
         internal TaskCompletionSource CheckStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
         internal DiscordNotificationTarget? LastSent;
+        internal readonly System.Collections.Concurrent.ConcurrentQueue<PartyJoinNotice> Joins = new();
         public async Task<string?> CheckChannel(DiscordNotificationTarget target, CancellationToken cancellation)
         {
+            var blocked = BlockCheck;
             CheckStarted.TrySetResult();
-            if (BlockCheck != null) await BlockCheck.Task.WaitAsync(cancellation);
+            if (blocked != null) await blocked.Task.WaitAsync(cancellation);
             cancellation.ThrowIfCancellationRequested(); return Error;
         }
         public Task SendCompletion(DiscordNotificationTarget target, CancellationToken cancellation, bool excludesSingleJob = false)
         {
             cancellation.ThrowIfCancellationRequested(); LastSent = target; Interlocked.Increment(ref Sends);
+            return ThrowSend ? Task.FromException(new IOException("sensitive")) : Task.CompletedTask;
+        }
+        public Task SendPartyJoin(DiscordNotificationTarget target, PartyJoinNotice notice, CancellationToken cancellation)
+        {
+            cancellation.ThrowIfCancellationRequested(); LastSent = target; Joins.Enqueue(notice);
             return ThrowSend ? Task.FromException(new IOException("sensitive")) : Task.CompletedTask;
         }
     }

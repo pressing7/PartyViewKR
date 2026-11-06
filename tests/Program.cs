@@ -237,6 +237,7 @@ Test("adding text during an empty-comment refresh is detected", () => {
     Check(flow.Stage == RefreshStage.Unconfirmed && h.SubmitCalls == 1, "new content ignored or resubmitted");
 });
 AfkListingMonitorTests.Run(Test, Check);
+AfkJoinTests.Run(Test, Check);
 AfkSettingsTests.Run(Test, Check);
 AfkCompletionTests.Run(Test, Check);
 ListingDiscordNotificationTests.Run(Test, Check);

@@ -21,7 +21,7 @@ public sealed partial class Plugin
         afkHost ??= new(this);
         afk.SetEnabled(enabled, afkHost, Environment.TickCount64);
         autoRefresh.BeforeRead(afkHost, Environment.TickCount64);
-        UpdateDiscordCompletion();
+        UpdateDiscordNotifications();
         RequestRead();
     }
 
@@ -45,6 +45,7 @@ public sealed partial class Plugin
             config.WriteAfkSettings(settings); PluginInterface.SavePluginConfig(config);
             afk.Configure(config.ReadAfkSettings(), Environment.TickCount64);
             autoRefresh.Configure(config.ReadAfkSettings(), Environment.TickCount64);
+            UpdateDiscordNotifications();
             AfkSettingsError = ""; RequestRead();
         }
         catch (Exception) { AfkSettingsError = "AFK 설정을 저장하지 못했습니다. 다시 시도해 주세요."; }

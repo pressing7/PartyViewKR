@@ -46,6 +46,10 @@ internal sealed class AfkListingMonitor
     private bool singleJobComplete;
     private long singleJobConfirmedGeneration = -1;
     private long capacityRequestRevision, capacityDetailRevision;
+    private bool joinBaselineReady;
+    private long joinRevision;
+    internal ulong WatchedCharacterId => self;
+    internal PartyJoinNotice? LastJoin { get; private set; }
     internal string Status { get; private set; } = "AFK 모드가 꺼져 있습니다.";
     internal string Diagnostic => $"afkEnabled={Enabled}; afkPending={Pending}; afkInFlight={InFlight}; " +
         $"afkRosterReadable={readable}; afkMemberCount={observed?.Count ?? 0}; afkChanges={changes}; " +
@@ -54,11 +58,15 @@ internal sealed class AfkListingMonitor
         $"afkPeriodicEnabled={Settings.PeriodicEnabled}; afkPeriodMinutes={Settings.PeriodMinutes}; " +
         $"afkRetryEnabled={Settings.RetryEnabled}; afkRetrySeconds={Settings.RetrySeconds}; afkFailed={failed}; " +
         $"afkRecruitmentCapacity={RecruitmentCapacity}; afkRecruitmentComplete={RecruitmentComplete}; afkCompletionRevision={CompletionRevision}; " +
-        $"afkSingleJobCompletionEnabled={Settings.SingleJobCompletionEnabled}; afkSingleJobComplete={SingleJobRecruitmentComplete}";
+        $"afkSingleJobCompletionEnabled={Settings.SingleJobCompletionEnabled}; afkSingleJobComplete={SingleJobRecruitmentComplete}; " +
+        $"afkJoinNotificationsEnabled={Settings.JoinNotificationsEnabled}; afkJoinBaselineReady={joinBaselineReady}; " +
+        $"afkJoinRevision={joinRevision}; afkLastJoinedCount={LastJoin?.JoinedCount ?? 0}; afkJoinMemberCount={LastJoin?.MemberCount ?? 0}";
 
     internal void Configure(AfkSettings settings, long now)
     {
         settings = settings.Normalize();
+        if (settings.JoinNotificationsEnabled != Settings.JoinNotificationsEnabled)
+        { joinBaselineReady = false; LastJoin = null; }
         if (settings.SingleJobCompletionEnabled != Settings.SingleJobCompletionEnabled) {
             singleJobComplete = false; singleJobConfirmedGeneration = -1;
             confirmedGeneration = -1; // Require a new own read when enabling the condition.
@@ -86,6 +94,7 @@ internal sealed class AfkListingMonitor
         observed = null; readable = false; generation = requestedGeneration = 0;
         confirmedGeneration = failedGeneration = 0; failed = false;
         RecruitmentCapacity = 0; complete = singleJobComplete = false; singleJobConfirmedGeneration = -1;
+        joinBaselineReady = false; LastJoin = null;
         capacityRequestRevision = host.RequestRevision; capacityDetailRevision = host.DetailRevision;
         failures = queries = successes = changes = 0;
         nextAttempt = now; nextSupplement = now + Settings.PeriodMilliseconds;
@@ -111,6 +120,14 @@ internal sealed class AfkListingMonitor
         var hasRoster = host.TryReadRoster(out var current) && current != null && current.SelfId == self;
         if (hasRoster)
         {
+            // Keep the last good roster through read gaps. Enabling an alert
+            // establishes a baseline; it must not announce existing members.
+            if (Settings.JoinNotificationsEnabled && joinBaselineReady && observed != null)
+            {
+                var joined = current!.CountJoinedSince(observed);
+                if (joined > 0) LastJoin = new(++joinRevision, joined, current.Count);
+            }
+            joinBaselineReady = Settings.JoinNotificationsEnabled;
             if (!readable || observed != current)
             {
                 generation++; Pending = true;

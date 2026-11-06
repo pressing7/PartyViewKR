@@ -4,6 +4,13 @@ namespace PartyViewKR;
 // cannot participate in AFK change detection. Recruitment jobs stay in ListingSlots.
 internal sealed record PartyRoster(ulong SelfId, string Fingerprint, int Count)
 {
+    internal int CountJoinedSince(PartyRoster previous)
+    {
+        if (SelfId != previous.SelfId || Fingerprint == previous.Fingerprint) return 0;
+        var before = previous.Fingerprint.Split(',').ToHashSet(StringComparer.Ordinal);
+        return Fingerprint.Split(',').Count(id => !before.Contains(id));
+    }
+
     internal static bool TryCreate(ulong selfId, IEnumerable<ulong> members, out PartyRoster? roster)
     {
         roster = null;
@@ -14,3 +21,6 @@ internal sealed record PartyRoster(ulong SelfId, string Fingerprint, int Count)
         return true;
     }
 }
+
+// A managed observation, not a new listing query or a persisted player identity.
+internal sealed record PartyJoinNotice(long Revision, int JoinedCount, int MemberCount);

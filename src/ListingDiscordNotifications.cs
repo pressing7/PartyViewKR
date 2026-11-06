@@ -10,11 +10,12 @@ internal interface IDiscordNotificationTransport
     bool Connected { get; }
     Task<string?> CheckChannel(DiscordNotificationTarget target, CancellationToken cancellation);
     Task SendCompletion(DiscordNotificationTarget target, CancellationToken cancellation, bool excludesSingleJob = false);
+    Task SendPartyJoin(DiscordNotificationTarget target, PartyJoinNotice notice, CancellationToken cancellation);
 }
 
 // Receives only managed AFK observations. No game memory or interaction token
 // is retained here; alerts are new bot messages to an explicitly selected channel.
-internal sealed class ListingDiscordNotifications : IDisposable
+internal sealed partial class ListingDiscordNotifications : IDisposable
 {
     internal const string CompletionText = "@everyone 파티모집완료";
     internal const string SingleJobCompletionText = "@everyone 단일 직업 빈자리를 제외한 파티모집완료";
@@ -32,7 +33,8 @@ internal sealed class ListingDiscordNotifications : IDisposable
     private bool attemptedPost;
     private DiscordNotificationTarget? attemptedTarget;
     private string status;
-    internal string Status { get { lock (gate) return status; } }
+    internal string Status { get { lock (gate) return status + (joinStatus.Length == 0 ? "" : "\n" + joinStatus) +
+        (joinDropped == 0 ? "" : $" · 참가 알림 대기 한도 초과 {joinDropped}건 제외"); } }
     internal Task Delivery { get; private set; } = Task.CompletedTask;
 
     internal ListingDiscordNotifications(ulong app, IDiscordNotificationTransport transport,
@@ -63,10 +65,10 @@ internal sealed class ListingDiscordNotifications : IDisposable
             lock (gate)
             {
                 if (disposed) return "디스코드 연결이 종료됐습니다.";
-                if (target != selected) sending?.Cancel();
+                if (target != selected) { sending?.Cancel(); ResetJoinWatching(); }
                 if (!attemptedPost) attemptedRevision = -1;
                 target = selected;
-                status = $"알림 채널 <#{channelId}> · AFK 모집 완료 알림을 보냅니다. 단일 직업 빈자리 제외 조건은 인게임 AFK 설정에서 켤 수 있습니다.";
+                status = $"알림 채널 <#{channelId}> · AFK 모집 완료 알림을 보냅니다. 파티원 참가와 단일 직업 빈자리 제외 알림은 인게임 자동화 탭에서 켤 수 있습니다.";
                 return status;
             }
         }
@@ -138,7 +140,7 @@ internal sealed class ListingDiscordNotifications : IDisposable
 
     public void Dispose()
     {
-        lock (gate) { if (disposed) return; disposed = true; watching = false; sending?.Cancel(); }
+        lock (gate) { if (disposed) return; disposed = true; watching = false; sending?.Cancel(); ResetJoinWatching(); }
         stop.Cancel();
         // SelectChannel may still be unwinding. Do not dispose its semaphore or
         // cancellation source while an async caller still owns their handles.

@@ -10,6 +10,7 @@
     <Compile Include="../src/AfkSettings.cs" Link="AfkSettings.cs" />
     <Compile Include="../src/AfkRefreshScheduler.cs" Link="AfkRefreshScheduler.cs" />
     <Compile Include="../src/ListingDiscordNotifications.cs" Link="ListingDiscordNotifications.cs" />
+    <Compile Include="../src/ListingDiscordNotifications.Joins.cs" Link="ListingDiscordNotifications.Joins.cs" />
     <Compile Include="../src/ListingDiscordClient.Notifications.cs" Link="ListingDiscordClient.Notifications.cs" />
     <Compile Include="../src/ListingDiscordSession.Notifications.cs" Link="ListingDiscordSession.Notifications.cs" />
     <Compile Include="../src/DiscordChatSettings.cs" Link="DiscordChatSettings.cs" />

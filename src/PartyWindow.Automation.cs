@@ -18,6 +18,7 @@ internal sealed partial class PartyWindow
         var periodic = settings.PeriodicEnabled; var minutes = settings.PeriodMinutes;
         var retry = settings.RetryEnabled; var seconds = settings.RetrySeconds;
         var singleJobCompletion = settings.SingleJobCompletionEnabled;
+        var joins = settings.JoinNotificationsEnabled;
         var autoRefresh = settings.RefreshEnabled; var refreshMinutes = settings.RefreshMinutes;
 
         DrawSection("자동 조회");
@@ -46,14 +47,16 @@ internal sealed partial class PartyWindow
         if (plugin.AutoRefreshLastResult.Length > 0)
             ImGui.TextWrapped("최근 자동 갱신 결과: " + plugin.AutoRefreshLastResult);
 
-        DrawSection("모집 완료 알림");
+        DrawSection("디스코드 알림");
+        changed |= ImGui.Checkbox("파티원 참가 시 @everyone 알림", ref joins);
+        if (joins) ImGui.TextWrapped("AFK 모드에서 새 파티원이 확인되면 알립니다. 처음 읽은 명단과 직업 변경은 알리지 않습니다.");
         ImGui.TextWrapped("정원이 차면 디스코드로 알립니다. 조회 카드에서 알림 채널을 지정하세요.");
         changed |= ImGui.Checkbox("단일 직업 빈자리 제외 모집 완료 알림", ref singleJobCompletion);
         if (singleJobCompletion)
             ImGui.TextWrapped("허용 직업이 정확히 하나인 빈자리만 남았을 때도 알립니다.");
         if (plugin.DiscordNotificationStatus.Length > 0) ImGui.TextWrapped(plugin.DiscordNotificationStatus);
 
-        if (changed) plugin.SaveAfkSettings(new(periodic, minutes, retry, seconds, singleJobCompletion, autoRefresh, refreshMinutes));
+        if (changed) plugin.SaveAfkSettings(new(periodic, minutes, retry, seconds, singleJobCompletion, autoRefresh, refreshMinutes, joins));
         if (plugin.AfkSettingsError.Length > 0) ImGui.TextWrapped(plugin.AfkSettingsError);
     }
 }

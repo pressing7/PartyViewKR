@@ -6,6 +6,35 @@ static partial class ListingDiscordConnectionTests
 {
     private static void RunNotificationSdk(Action<string, Action> test, Action<bool, string> check)
     {
+        test("Discord SDK join POST includes exact counts and only everyone allowed mentions", () => {
+            var transport = new OfflineTransport();
+            using var client = new ListingDiscordClient(new("test"), FakeToken, transport.Config(), new(500, 700, 800));
+            Wait(() => transport.Identified.Task.IsCompleted || !client.Running);
+            transport.Ready(true).GetAwaiter().GetResult(); transport.NotificationGuild().GetAwaiter().GetResult();
+            Wait(() => client.Connected || !client.Running);
+            client.ObserveJoins(true, 10, null); client.ObserveJoins(true, 10, new(1, 2, 5));
+            Wait(() => client.NotificationStatus.Contains("전송 완료") || client.NotificationStatus.Contains("실패"));
+            check(client.NotificationStatus.Contains("전송 완료") && transport.NotificationMessages.Count == 1, client.NotificationStatus);
+            var body = transport.NotificationMessages.Single();
+            check(body.GetProperty("content").GetString() == "@everyone 파티원 2명이 참가했습니다. (확인 인원: 5명)", "wrong arrival text");
+            check(body.GetProperty("allowed_mentions").GetProperty("parse").EnumerateArray().Select(x => x.GetString()).SequenceEqual(["everyone"]), "unsafe or missing mentions");
+            check(!body.TryGetProperty("flags", out var flags) || flags.GetInt32() == 0, "ephemeral or suppressed join");
+            for (var i = 0; i < 10; i++) client.ObserveJoins(true, 10, new(1, 2, 5));
+            check(transport.NotificationMessages.Count == 1, "duplicate arrival POST");
+            client.Dispose(); client.Completion.WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
+        });
+        test("Discord SDK join POST without confirmed everyone is failed and never replayed", () => {
+            var transport = new OfflineTransport { DropEveryoneMention = true };
+            using var client = new ListingDiscordClient(new("test"), FakeToken, transport.Config(), new(500, 700, 800));
+            Wait(() => transport.Identified.Task.IsCompleted || !client.Running);
+            transport.Ready(true).GetAwaiter().GetResult(); transport.NotificationGuild().GetAwaiter().GetResult();
+            Wait(() => client.Connected || !client.Running);
+            client.ObserveJoins(true, 10, null); client.ObserveJoins(true, 10, new(1, 1, 3));
+            Wait(() => client.NotificationStatus.Contains("실패"));
+            for (var i = 0; i < 10; i++) client.ObserveJoins(true, 10, new(1, 1, 3));
+            check(transport.NotificationMessages.Count == 1, "unconfirmed join POST retried");
+            client.Dispose(); client.Completion.WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
+        });
         test("Discord SDK completion POST serializes exact everyone mention once to selected server channel", () => {
             var transport = new OfflineTransport();
             using var client = new ListingDiscordClient(new("test"), FakeToken, transport.Config(), new(500, 700, 800));

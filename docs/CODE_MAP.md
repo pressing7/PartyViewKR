@@ -4,14 +4,14 @@
 
 ## 기준과 범위
 
-- 정리일: 2026-11-06. 플러그인 `0.3.58.0`, Dalamud API `15`.
-- 소스 기준: `0.3.58.0`. 기반 main [`0074806545c4f840ce4284f837c9bc8b34e268ca`](https://github.com/pressing7/PartyViewKR/commit/0074806545c4f840ce4284f837c9bc8b34e268ca) 이후 인게임 네 탭과 영역별 화면 분리를 포함한다.
-- 구조 계획과 문서를 포함한 추적 예정 파일 251개 전체를 [파일 지도](code-map/files.md)에 분류했다. 소스 위치는 이 버전의 행 번호다.
-- 함수표에는 **1,384개 명명된 항목/진입점**이 있다(C# 1,353, Python 31). 기존 Roslyn·Python AST 기반 목록을 유지하고, 웹 제거와 UI 파일 분리로 이동·추가한 함수의 역할·소스 위치를 대조했다. 메서드뿐 아니라 생성자·로컬 함수·계산 속성·인터페이스 선언을 포함한다.
+- 정리일: 2026-11-06. 플러그인 `0.3.59.0`, Dalamud API `15`.
+- 소스 기준: `0.3.59.0`. 기반 main [`4e8b65e1d1065072c730524d711a68c491ad2b17`](https://github.com/pressing7/PartyViewKR/commit/4e8b65e1d1065072c730524d711a68c491ad2b17) 이후 AFK 파티원 참가 알림을 포함한다.
+- 구조 계획과 문서를 포함한 추적 예정 파일 254개 전체를 [파일 지도](code-map/files.md)에 분류했다. 소스 위치는 이 버전의 행 번호다.
+- 함수표에는 **1,403개 명명된 항목/진입점**이 있다(C# 1,372, Python 31). 기존 Roslyn·Python AST 기반 목록을 유지하고, 웹 제거·UI 분리·참가 알림으로 이동·추가한 함수의 역할·소스 위치를 대조했다. 메서드뿐 아니라 생성자·로컬 함수·계산 속성·인터페이스 선언을 포함한다.
 - 자동 생성 record 메서드와 단순 auto-property accessor는 별도 함수로 세지 않는다. 이름 없는 LINQ/콜백은 소유 함수에서 설명하고, 명명된 테스트 시나리오는 따로 연결했다.
-- 현재 관리형 회귀 실행은 529건이고 Python 배포 검사는 12건이다. 웹 전용 관리형 검사10건과 JavaScript/중계 테스트를 제거하고 기존 설정 복원 검사1건을 추가했다.
+- 현재 관리형 회귀 실행은551건이고 Python 배포 검사는12건이다. 0.3.58의529건에 참가 감지·전송·수명·SDK 직렬화 검사22건을 추가했다.
 
-현재 구현은 **기존 본인 모집글의 조회·수정·수동 갱신 및 AFK 명단 감시·자동 조회·선택형 주기 갱신**다. AFK 모집 완료 everyone 알림과 파티·받은 귓속말·연합파티 채팅 전달, Discord에서 파티·연합파티·명시 귓속말·최근 상대 답장 전송을 제공한다. 새 모집 시작과 콘텐츠/파티 유형 변경은 아직 구현하지 않았다. 루트의 `PartyViewKR.dll/json/deps.json`은 이전 수동 배포본이다. 빌드 기준은 `src/PartyViewKR.csproj`와 `src/PartyViewKR.json`, 설치 대상은 Releases ZIP이다.
+현재 구현은 **기존 본인 모집글의 조회·수정·수동 갱신 및 AFK 명단 감시·자동 조회·선택형 주기 갱신**다. AFK 모집 완료·선택형 파티원 참가 everyone 알림과 파티·받은 귓속말·연합파티 채팅 전달, Discord에서 파티·연합파티·명시 귓속말·최근 상대 답장 전송을 제공한다. 새 모집 시작과 콘텐츠/파티 유형 변경은 아직 구현하지 않았다. 루트의 `PartyViewKR.dll/json/deps.json`은 이전 수동 배포본이다. 빌드 기준은 `src/PartyViewKR.csproj`와 `src/PartyViewKR.json`, 설치 대상은 Releases ZIP이다.
 
 [구조 정리 계획](ARCHITECTURE_PLAN.md) 중 웹 제거와 인게임 네 탭은 적용했다. 아래 코드 지도는 현재 구현을 설명하며 후속 Discord 화면·기능·내부 책임 분리의 적용 완료를 뜻하지 않는다.
 
@@ -41,6 +41,19 @@
 | `PartyWindow.Debug.cs` | 현재 모집글·현재 파티·수동 편집·갱신·전체 진단·trace |
 
 비동기 초안이 생성되거나 폐기될 때 팝업을 탭의 ID 범위 안에서 열지 않는다. Debug의 표시 상태와 관계없이 루트에서 각 편집 모달을 처리한다. 새 UI 기능은 해당 영역의 partial에 추가하며, 화면에서 직접 게임 포인터를 조작하지 않는다.
+
+## AFK 파티원 참가 알림 (0.3.59)
+
+- `AfkSettings.JoinNotificationsEnabled` / `RelayConfiguration.AfkJoinNotificationsEnabled`: 기본false. 자동화 탭의 참가 알림 선택만 저장하며 AFK 활성 자체는 세션 선택이다.
+- `PartyRoster.CountJoinedSince`: 정렬된 정상 CID 명단의 차집합으로 참가자 수를 계산한다. 같은 인원수 교체와 관측된 탈퇴 후 재입장을 감지하고, 직업·순서·탈퇴는 참가로 세지 않는다.
+- `AfkListingMonitor.Update`: 첫 정상 명단은 기준만 잡는다. 마지막 정상 명단은 읽기 실패 동안 보존한다. 참가 관측을 완료 판정·상세 조회 처리보다 먼저 수행해, 조회가 막히거나 모집이 자동 종료돼도 `PartyJoinNotice`를 만든다. `LastJoin`은 최근 이벤트이며 `joinRevision`은 AFK 재시작 때 재사용하지 않는다.
+- `Plugin.UpdateDiscordNotifications`: 게임 스레드에서 완료 판정과 참가 이벤트를 알림 담당부로 넘긴다. 참가 이벤트에는 revision·새 참가자 수·관측 전체 인원만 포함하고 개별 CID는 전송하지 않는다.
+- `ListingDiscordNotifications.ObserveJoins`: 접속·옵션·캐릭터·알림 채널을 확인한다. 첫 관측은 기준으로 삼고 새 revision만 순서 큐에 넣는다. 큐는 최대64건이며 초과 때 가장 오래된 대기를 제외하고 상태에 수를 표시한다. 기존 완료 알림과 같은 채널을 쓰지만 서로 다른 조건이므로 마지막 입장에 두 알림이 발생할 수 있다.
+- `DeliverJoins`: 항목별15초 예산, 전송 전 세션·채널 재검증, everyone 명시 허용과 응답 확인을 적용한다. 오류·불확실한 POST를 반복하지 않는다. AFK/옵션 끄기·로그아웃/캐릭터 변경·연결 단절·채널 변경은 대기와 진행 전송을 취소하고 재연결 때 과거 참가를 재생하지 않는다.
+
+진단 키는 `afkJoinNotificationsEnabled`, `afkJoinBaselineReady`, `afkJoinRevision`, `afkLastJoinedCount`, `afkJoinMemberCount`다. 상세 조회 성공 없이도 명단이 실제 바뀌면 감지하지만 두 관측 사이에 탈퇴와 재입장이 모두 끝나 명단이 같으면 알 수 없다. 일반/서버 초월/연합/친선의 native 읽기 경로는 기존 `PartyRosterReader`를 그대로 사용한다.
+
+관련 검사: `AfkJoinTests`, `ListingDiscordJoinNotificationTests`, `ListingDiscordNotificationSdkTests`. 전체551건·Python12건, native1136/interop2 계약 차이0, Release 빌드 경고/오류0과 로컬 패키징 통과. 실제 게임과 Discord 알림은 인게임 검증 대상이다.
 
 ## 책임과 스레드 경계
 
@@ -251,7 +264,7 @@ AFK의 `IAfkListingHost`에는 수정/제출 계약이 없다. 모집 완료 알
 
 `Update`의 현재 명단 관측 후, 조회 결과 대기보다 **먼저** `CheckCompletion`을 수행한다. 기억한 정원과 인원수가 같아진 최초 관측에서 `CompletionRevision`을 증가시키고 자기 조회를 취소한다. 가득 찬 상태는 자동 종료된 모집글을 주기/실패 재시도로 계속 조회하지 않는다. `RecruitmentComplete`는 현재 명단 읽기에 성공한 경우에만 참이다. 실제 빈자리 관측은 재무장하며 일시적 읽기 실패는 latch를 초기화하지 않는다. 정원보다 많은 명단은 이전 정원이 유효하지 않다고 보고 정원을 폐기한다. AFK 종료/캐릭터 변경은 정원을 초기화한다. 최초 AFK 조회 전 이미 모집이 종료됐다면 인원수로 정원을 추측하지 않는다.
 
-`Plugin.UpdateDiscordCompletion`은 위 관리형 완료 관측만 Discord 클라이언트에 전달한다. `ListingDiscordNotifications.Observe`는 AFK·본인·완료 세대·목적지·연결 상태를 확인해 비동기 전송을1개 예약한다. `Deliver`는 현재 상태를 재검증하고 POST 직전에 세대를 소비한다. 완료→실제 빈자리→완료는 새 세대이고, 반복 조회·읽기 실패만으로 같은 everyone 알림을 반복하지 않는다. POST 전 취소는 다시 유효한 명단에서 재시도할 수 있지만, 이미 전송을 시도한 뒤 응답을 잃으면 자동 재전송하지 않는다.
+`Plugin.UpdateDiscordNotifications`은 위 관리형 완료 관측만 Discord 클라이언트에 전달한다. `ListingDiscordNotifications.Observe`는 AFK·본인·완료 세대·목적지·연결 상태를 확인해 비동기 전송을1개 예약한다. `Deliver`는 현재 상태를 재검증하고 POST 직전에 세대를 소비한다. 완료→실제 빈자리→완료는 새 세대이고, 반복 조회·읽기 실패만으로 같은 everyone 알림을 반복하지 않는다. POST 전 취소는 다시 유효한 명단에서 재시도할 수 있지만, 이미 전송을 시도한 뒤 응답을 잃으면 자동 재전송하지 않는다.
 
 조회 카드의 `알림 채널로 설정`은 `pvkr:notify:<session>`을 사용한다. 세션의 owner/app 인증·중복·같은 session·ACK 성공을 확인한 뒤 **SDK interaction의 서버/채널 ID**를 사용한다. 임의 channel ID를 custom_id나 입력문자열에서 받지 않는다. `SelectChannel`은 DM을 거부하고 채널 확인→Framework 설정 저장→활성 목적지 교체를 수행한다. 저장 실패 시 기존 목적지를 유지하며, 앱 ID가 다른 저장 목적지는 복원하지 않는다. 정상 설정만으로 알림/시험 메시지를 보내지는 않는다.
 

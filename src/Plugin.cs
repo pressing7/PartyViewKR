@@ -458,7 +458,7 @@ public sealed partial class Plugin : IDalamudPlugin
         }
         UpdateDiscordBridge(now);
         if (afkHost != null) { afk.Update(afkHost, now); autoRefresh.Update(afkHost, now); }
-        UpdateDiscordCompletion();
+        UpdateDiscordNotifications();
         UpdateDiscordChat();
     }
 

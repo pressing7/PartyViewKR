@@ -65,10 +65,14 @@ public sealed partial class Plugin
             config.WriteNotificationTarget(target); PluginInterface.SavePluginConfig(config);
         });
 
-    private void UpdateDiscordCompletion() => discordClient?.ObserveCompletion(afk.Enabled,
-        ClientState.IsLoggedIn && PlayerState.IsLoaded ? PlayerState.ContentId : 0,
-        afk.CompletionRevision, afk.RecruitmentComplete || afk.SingleJobRecruitmentComplete,
-        !afk.RecruitmentComplete && afk.SingleJobRecruitmentComplete);
+    private void UpdateDiscordNotifications()
+    {
+        discordClient?.ObserveCompletion(afk.Enabled,
+            ClientState.IsLoggedIn && PlayerState.IsLoaded ? PlayerState.ContentId : 0,
+            afk.CompletionRevision, afk.RecruitmentComplete || afk.SingleJobRecruitmentComplete,
+            !afk.RecruitmentComplete && afk.SingleJobRecruitmentComplete);
+        discordClient?.ObserveJoins(afk.Enabled && afk.Settings.JoinNotificationsEnabled, afk.WatchedCharacterId, afk.LastJoin);
+    }
     private static string ProtectDiscordToken(string token)
     {
         var plain = Encoding.UTF8.GetBytes(token);

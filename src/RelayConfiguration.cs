@@ -30,8 +30,10 @@ public sealed class RelayConfiguration : IPluginConfiguration
     public bool AfkSingleJobCompletionEnabled { get; set; }
     public bool AfkRefreshEnabled { get; set; }
     public int AfkRefreshMinutes { get; set; } = 30;
+    public bool AfkJoinNotificationsEnabled { get; set; }
     internal AfkSettings ReadAfkSettings() => new AfkSettings(AfkPeriodicEnabled, AfkPeriodMinutes,
-        AfkRetryEnabled, AfkRetrySeconds, AfkSingleJobCompletionEnabled, AfkRefreshEnabled, AfkRefreshMinutes).Normalize();
+        AfkRetryEnabled, AfkRetrySeconds, AfkSingleJobCompletionEnabled, AfkRefreshEnabled, AfkRefreshMinutes,
+        AfkJoinNotificationsEnabled).Normalize();
     internal void WriteAfkSettings(AfkSettings settings)
     {
         settings = settings.Normalize();
@@ -39,6 +41,7 @@ public sealed class RelayConfiguration : IPluginConfiguration
         AfkRetryEnabled = settings.RetryEnabled; AfkRetrySeconds = settings.RetrySeconds;
         AfkSingleJobCompletionEnabled = settings.SingleJobCompletionEnabled;
         AfkRefreshEnabled = settings.RefreshEnabled; AfkRefreshMinutes = settings.RefreshMinutes;
+        AfkJoinNotificationsEnabled = settings.JoinNotificationsEnabled;
     }
     internal bool HasSavedDiscordToken => !string.IsNullOrEmpty(EncryptedDiscordToken);
     internal bool ShouldAutoConnectDiscord => DiscordAutoConnect && HasSavedDiscordToken;

@@ -248,6 +248,9 @@
 | [tools/CompatibilityTool/CompatibilityTool.csproj](../../tools/CompatibilityTool/CompatibilityTool.csproj) | net10.0 CLI 프로젝트. shared/NativeContract.cs를 링크해 runtime과 같은 ABI 비교 로직을 쓴다. |
 | [tools/CompatibilityTool/Program.cs](../../tools/CompatibilityTool/Program.cs) | PE metadata CLI: inspect는 assembly 이름/버전, capture/capture-runtime은 계약 baseline 생성, verify는 현재 DLL과 저장 계약을 비교한다. [함수 목록](compat-release.md#file-tools-compatibilitytool-program-cs) |
 | [tools/release.py](../../tools/release.py) | 고정 reference 다운로드→ABI 확인→버전/런타임 의존성 검증 ZIP→release 검증 후 feed 업데이트. 명시 실행하는 배포 도구다. [함수 목록](compat-release.md#file-tools-release-py) |
+| [src/ListingDiscordNotifications.Joins.cs](../../src/ListingDiscordNotifications.Joins.cs) | 참가 알림의 순서 큐·중복 억제·수명 취소. 기존 완료 알림과 같은 채널·gate·transport를 공유하고 전송 상태는 별도로 보존한다. [함수 목록](discord.md#file-src-listingdiscordnotifications-joins-cs) |
+| [tests/AfkJoinTests.cs](../../tests/AfkJoinTests.cs) | AFK 명단에서 새 참가자를 감지하는 순수 회귀 검사. [함수 목록](tests.md#file-tests-afkjointests-cs) |
+| [tests/ListingDiscordJoinNotificationTests.cs](../../tests/ListingDiscordJoinNotificationTests.cs) | 참가 알림 전송 제어기의 수명·중복·권한·실패·대기 한도 회귀 검사. [함수 목록](tests.md#file-tests-listingdiscordjoinnotificationtests-cs) |
 
 ## 문서 파일
 
