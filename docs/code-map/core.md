@@ -4,7 +4,7 @@
 
 게임 상태 읽기는 `Plugin.OnUpdate`에서 한다. `PartySnapshot`은 현재 파티, `ListingSnapshot`/`RefreshTarget`은 모집글이다. 직업 수정과 표시의 기준은 후자다.
 
-기준: 0.3.60.0 소스. main `c04c81e9c98f570b5689618c8d9a116713023f14` 이후 참가 파티 조회·알림을 포함한다. 2026-11-06 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
+기준: 0.3.61.0 소스. main `612c010139298f5f87a969a3582247fcad5cd36c` 이후 소개말 표시 줄바꿈 검증 및 비교 진단 보완을 포함한다. 2026-11-06 정리. 소스 링크의 행 번호는 이 기준에 해당한다.
 
 표에는 직접 선언한 메서드·생성자·로컬 함수·계산 속성·인터페이스 메서드를 각각 포함한다. 자동 생성 record 메서드/단순 auto-property accessor는 제외한다. 이름 없는 LINQ/타이머/콜백은 이를 소유한 함수 설명에 포함하며, 명명된 테스트 시나리오는 별도로 표시한다.
 
@@ -213,14 +213,18 @@ AFK와 별개로 채팅 수신 캐릭터와 홈 서버 이름을 보관한다. �
 <a id="file-src-listingdescription-cs"></a>
 ## src/ListingDescription.cs
 
-[소스 파일](../../src/ListingDescription.cs) · 명명된 항목/진입점 2개
+[소스 파일](../../src/ListingDescription.cs) · 명명된 항목/진입점 5개
 
 상세창 TextNode·문자열 buffer·네이티브 comment를 결합한다. 빈 소개말의 게임 대체문구를 실제 모집글로 착각하지 않는다.
 
 | 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
 |---|---|---|---|
 | <a id="symbol-src-listingdescription-cs-3-ce2af5df00"></a><code>ListingDescription</code><br><code>ListingDescription(bool Readable, string Text, string Source, bool NativeAgrees, bool EmptyPlaceholder)</code> | 주 생성자/모델 | 선택한 소개말 텍스트·읽기 source·native 일치·빈문구 대체 판정을 묶는다. | [L3](../../src/ListingDescription.cs#L3) |
-| <a id="symbol-src-listingdescription-cs-8-5f5a38d786"></a><code>ListingDescription.Resolve</code><br><code>ListingDescription Resolve(bool nodeRead, string nodeText, bool bufferRead, string bufferText, bool nativeRead, string nativeText)</code> | 메서드 | 읽을 수 있는 UI 소스를 선택하고 native comment와 비교한다. native가 비어 있을 때만 검증된 ‘소개말 없음’ 대체문구를 빈 문자열로 해석한다. | [L8](../../src/ListingDescription.cs#L8) |
+| <a id="symbol-src-listingdescription-cs-8-5f5a38d786"></a><code>ListingDescription.Resolve</code><br><code>ListingDescription Resolve(bool nodeRead, string nodeText, bool bufferRead, string bufferText, bool nativeRead, string nativeText)</code> | 메서드 | 읽을 수 있는 UI 소스를 선택하고 native comment와 비교한다. 추가 줄바꿈만 있는 node는 별도 UI 버퍼와 native 원문이 일치할 때만 허용하고 표시용 줄바꿈은 원문에 넣지 않는다. 검증된 빈 소개말 대체문구 처리는 유지한다. | [L8](../../src/ListingDescription.cs#L8) |
+| <a id="symbol-src-listingdescription-cs-normalizelines"></a><code>ListingDescription.NormalizeLines</code><br><code>string NormalizeLines(string text)</code> | 메서드 | 이 소개말 표시 비교에 한정해 CRLF/CR을 LF로 맞추고 기존 비교와 같이 양끝을 정리한다. 전역 identity/편집 비교는 바꾸지 않는다. | [L42](../../src/ListingDescription.cs#L42) |
+| <a id="symbol-src-listingdescription-cs-onlyaddedlinebreaks"></a><code>ListingDescription.OnlyAddedLineBreaks</code><br><code>bool OnlyAddedLineBreaks(string displayed, string authored)</code> | 메서드 | 비어 있지 않은 원문을 순서대로 보존하면서 node에 LF만 추가됐는지 확인한다. 원래 줄바꿈 삭제/이동과 다른 문자·공백·특수기호 차이는 허용하지 않는다. | [L44](../../src/ListingDescription.cs#L44) |
+| <a id="symbol-src-listingdescription-cs-comparesources"></a><code>ListingDescription.CompareSources</code><br><code>string CompareSources(bool nodeRead, string nodeText, bool bufferRead, string bufferText, bool nativeRead, string nativeText)</code> | 메서드 | node/native 및 별도 UI 버퍼/native의 일치 여부·첫 차이와 세 소스의 줄바꿈 수를 출력한다. 읽기 실패를 빈 문자열 일치로 오인하지 않으며 원문 전체는 출력하지 않는다. | [L58](../../src/ListingDescription.cs#L58) |
+| <a id="symbol-src-listingdescription-cs-difference"></a><code>ListingDescription.Difference</code><br><code>string Difference(string displayed, string authored)</code> | 메서드 | 줄끝/양끝 정규화 후 첫 불일치의 UTF-16 index·두 코드 단위 또는 end를 반환한다. 정확히 같으면 same을 반환한다. | [L66](../../src/ListingDescription.cs#L66) |
 
 <a id="file-src-listingeditorcriteria-cs"></a>
 ## src/ListingEditorCriteria.cs
@@ -279,21 +283,21 @@ ClassJob row ID와 모집 비트 위치의 명시적 대응, 사용자 지정 �
 
 | 심볼 · signature | 종류 | 역할 / 디버깅 시 확인할 점 | 소스 |
 |---|---|---|---|
-| <a id="symbol-src-listingreader-cs-22-6e2a53de31"></a><code>ListingReader.Busy</code><br><code>bool Busy</code> | 계산 속성 | 실행 중인 조회/편집/추적 단계가 남아 있는지 계산한다. 계산식: <code>userRequested &#124;&#124; openingMain &#124;&#124; waitingRevision.HasValue</code>. | [L31](../../src/ListingReader.cs#L31) |
-| <a id="symbol-src-listingreader-cs-24-959442b55f"></a><code>ListingReader.DetailRevision</code><br><code>long DetailRevision</code> | 계산 속성 | 상세창 PostSetup/PostRefresh revision을 읽는다. 계산식: <code>Interlocked.Read(ref detailRevision)</code>. | [L35](../../src/ListingReader.cs#L35) |
-| <a id="symbol-src-listingreader-cs-25-528b98b8c0"></a><code>ListingReader.RequestRevision</code><br><code>long RequestRevision</code> | 계산 속성 | 조회 요청 serial을 읽어 요청 소유권과 신규 요청 여부를 구분한다. 계산식: <code>Interlocked.Read(ref requestRevision)</code>. | [L36](../../src/ListingReader.cs#L36) |
-| <a id="symbol-src-listingreader-cs-26-c325385611"></a><code>ListingReader.RequestOwn</code><br><code>void RequestOwn()</code> | 메서드 | 편집/갱신 전용 본인 상세 조회를 예약한다. 참가 파티 후보나 과거 조회 성공 상태를 재사용하지 않는다. | [L37](../../src/ListingReader.cs#L37) |
-| <a id="symbol-src-listingreader-cs-27-a9ebf18572"></a><code>ListingReader.DetailUpdated</code><br><code>void DetailUpdated()</code> | 메서드 | 상세창 수명/갱신 이벤트를 원자적 revision 증가로 기록한다. | [L50](../../src/ListingReader.cs#L50) |
-| <a id="symbol-src-listingreader-cs-29-0c1612b196"></a><code>ListingReader.Read</code><br><code>ListingSnapshot Read(PartySnapshot party, ListingSnapshot previous, PartyRoster? current)</code> | 메서드 | 요청 대상 CID와 UI/native 상세의 일치를 확인한다. 현재 참가 여부로 PartyLeader를 검증하고, 파티 전환 이전 상세는 새 revision이 오기 전 재사용하지 않는다. 상세가 닫혔을 때는 마지막 snapshot을 보존하되 live로 표시하지 않는다. | [L52](../../src/ListingReader.cs#L52) |
-| <a id="symbol-src-listingreader-cs-166-f869fbab4d"></a><code>ListingReader.HandleRequest</code><br><code>void HandleRequest()</code> | 메서드 | Framework에서 파티찾기 창을 열고 선택된 파티장 CID로 상세 조회한다. 본인 전용 경로는 자기 CID만, 참가 파티 경로는 확인된 후보만 순서대로 사용한다. | [L215](../../src/ListingReader.cs#L215) |
-| <a id="symbol-src-listingreader-cs-199-45a2e7cdd7"></a><code>ListingReader.FinishFailed</code><br><code>void FinishFailed(string message, string reason)</code> | 메서드 | 조회 진행 플래그를 종료하고 실패 상태와 원인 코드를 기록한다. | [L257](../../src/ListingReader.cs#L257) |
-| <a id="symbol-src-listingreader-cs-208-71a6deb875"></a><code>ListingReader.FailRequest</code><br><code>void FailRequest()</code> | 메서드 | 사용자 취소나 소유한 외부 요청 중단에 따라 대기 조회를 실패 종료한다. | [L266](../../src/ListingReader.cs#L266) |
-| <a id="symbol-src-listingreader-cs-210-1bcd9beb9a"></a><code>ListingReader.RecordFailure</code><br><code>void RecordFailure(string message)</code> | 메서드 | 읽기 예외를 조회 실패 상태로 기록한다. | [L268](../../src/ListingReader.cs#L268) |
-| <a id="symbol-src-listingreader-cs-217-51cbbef118"></a><code>ListingReader.Reset</code><br><code>void Reset()</code> | 메서드 | 로그아웃/캐릭터 변경 등에 맞춰 조회 플래그와 사용자 상태를 초기화한다. | [L275](../../src/ListingReader.cs#L275) |
-| <a id="symbol-src-listingreader-cs-listingreader-lastownrequestsucceeded"></a><code>ListingReader.LastOwnRequestSucceeded</code><br><code>bool LastOwnRequestSucceeded</code> | 계산 속성 | 본인 전용 요청이 성공했을 때만 true다. 참가 파티 조회 성공을 편집/갱신의 본인 확인으로 재사용하지 않는다. | [L33](../../src/ListingReader.cs#L33) |
-| <a id="symbol-src-listingreader-cs-listingreader-querytimeoutmilliseconds"></a><code>ListingReader.QueryTimeoutMilliseconds</code><br><code>long QueryTimeoutMilliseconds</code> | 계산 속성 | 파티장 후보 수에 따라 전체 조회 대기를 15~55초로 제한한다. main 열기와 후보별 응답 대기 예산을 포함한다. | [L34](../../src/ListingReader.cs#L34) |
-| <a id="symbol-src-listingreader-cs-listingreader-requestparty"></a><code>ListingReader.RequestParty</code><br><code>bool RequestParty(PartyRoster roster)</code> | 메서드 | 현재 명단/파티와 후보 CID에 묶인 조회를 예약한다. 같은 파티에서 최근 성공한 파티장을 우선 조회하며 다른 파티로 넘어가면 요청을 중단한다. | [L43](../../src/ListingReader.cs#L43) |
-| <a id="symbol-src-listingreader-cs-listingreader-nextcandidate"></a><code>ListingReader.NextCandidate</code><br><code>bool NextCandidate()</code> | 메서드 | 현재 후보가 거절되거나 7초 내 응답이 없으면 다음 파티장 후보의 상세 조회만 예약한다. 본인 전용 요청은 다른 후보를 시도하지 않는다. | [L250](../../src/ListingReader.cs#L250) |
+| <a id="symbol-src-listingreader-cs-22-6e2a53de31"></a><code>ListingReader.Busy</code><br><code>bool Busy</code> | 계산 속성 | 실행 중인 조회/편집/추적 단계가 남아 있는지 계산한다. 계산식: <code>userRequested &#124;&#124; openingMain &#124;&#124; waitingRevision.HasValue</code>. | [L32](../../src/ListingReader.cs#L32) |
+| <a id="symbol-src-listingreader-cs-24-959442b55f"></a><code>ListingReader.DetailRevision</code><br><code>long DetailRevision</code> | 계산 속성 | 상세창 PostSetup/PostRefresh revision을 읽는다. 계산식: <code>Interlocked.Read(ref detailRevision)</code>. | [L36](../../src/ListingReader.cs#L36) |
+| <a id="symbol-src-listingreader-cs-25-528b98b8c0"></a><code>ListingReader.RequestRevision</code><br><code>long RequestRevision</code> | 계산 속성 | 조회 요청 serial을 읽어 요청 소유권과 신규 요청 여부를 구분한다. 계산식: <code>Interlocked.Read(ref requestRevision)</code>. | [L37](../../src/ListingReader.cs#L37) |
+| <a id="symbol-src-listingreader-cs-26-c325385611"></a><code>ListingReader.RequestOwn</code><br><code>void RequestOwn()</code> | 메서드 | 편집/갱신 전용 본인 상세 조회를 예약한다. 참가 파티 후보나 과거 조회 성공 상태를 재사용하지 않는다. | [L38](../../src/ListingReader.cs#L38) |
+| <a id="symbol-src-listingreader-cs-27-a9ebf18572"></a><code>ListingReader.DetailUpdated</code><br><code>void DetailUpdated()</code> | 메서드 | 상세창 수명/갱신 이벤트를 원자적 revision 증가로 기록한다. | [L52](../../src/ListingReader.cs#L52) |
+| <a id="symbol-src-listingreader-cs-29-0c1612b196"></a><code>ListingReader.Read</code><br><code>ListingSnapshot Read(PartySnapshot party, ListingSnapshot previous, PartyRoster? current)</code> | 메서드 | 요청 대상 CID와 UI/native 상세의 일치를 확인한다. 현재 참가 여부로 PartyLeader를 검증하고, 파티 전환 이전 상세는 새 revision이 오기 전 재사용하지 않는다. 상세가 닫혔을 때는 마지막 snapshot을 보존하되 live로 표시하지 않는다. 소개말 세 소스의 줄바꿈 수·첫 차이 UTF-16 단위를 진단하며 응답 없음과 응답 검증 실패를 구분한다. | [L54](../../src/ListingReader.cs#L54) |
+| <a id="symbol-src-listingreader-cs-166-f869fbab4d"></a><code>ListingReader.HandleRequest</code><br><code>void HandleRequest()</code> | 메서드 | Framework에서 파티찾기 창을 열고 선택된 파티장 CID로 상세 조회한다. 본인 전용 경로는 자기 CID만, 참가 파티 경로는 확인된 후보만 순서대로 사용한다. | [L228](../../src/ListingReader.cs#L228) |
+| <a id="symbol-src-listingreader-cs-199-45a2e7cdd7"></a><code>ListingReader.FinishFailed</code><br><code>void FinishFailed(string message, string reason)</code> | 메서드 | 조회 진행 플래그를 종료하고 실패 상태와 원인 코드를 기록한다. | [L271](../../src/ListingReader.cs#L271) |
+| <a id="symbol-src-listingreader-cs-208-71a6deb875"></a><code>ListingReader.FailRequest</code><br><code>void FailRequest()</code> | 메서드 | 사용자 취소나 소유한 외부 요청 중단에 따라 대기 조회를 실패 종료한다. | [L280](../../src/ListingReader.cs#L280) |
+| <a id="symbol-src-listingreader-cs-210-1bcd9beb9a"></a><code>ListingReader.RecordFailure</code><br><code>void RecordFailure(string message)</code> | 메서드 | 읽기 예외를 조회 실패 상태로 기록한다. | [L282](../../src/ListingReader.cs#L282) |
+| <a id="symbol-src-listingreader-cs-217-51cbbef118"></a><code>ListingReader.Reset</code><br><code>void Reset()</code> | 메서드 | 로그아웃/캐릭터 변경 등에 맞춰 조회 플래그와 사용자 상태를 초기화한다. | [L289](../../src/ListingReader.cs#L289) |
+| <a id="symbol-src-listingreader-cs-listingreader-lastownrequestsucceeded"></a><code>ListingReader.LastOwnRequestSucceeded</code><br><code>bool LastOwnRequestSucceeded</code> | 계산 속성 | 본인 전용 요청이 성공했을 때만 true다. 참가 파티 조회 성공을 편집/갱신의 본인 확인으로 재사용하지 않는다. | [L34](../../src/ListingReader.cs#L34) |
+| <a id="symbol-src-listingreader-cs-listingreader-querytimeoutmilliseconds"></a><code>ListingReader.QueryTimeoutMilliseconds</code><br><code>long QueryTimeoutMilliseconds</code> | 계산 속성 | 파티장 후보 수에 따라 전체 조회 대기를 15~55초로 제한한다. main 열기와 후보별 응답 대기 예산을 포함한다. | [L35](../../src/ListingReader.cs#L35) |
+| <a id="symbol-src-listingreader-cs-listingreader-requestparty"></a><code>ListingReader.RequestParty</code><br><code>bool RequestParty(PartyRoster roster)</code> | 메서드 | 현재 명단/파티와 후보 CID에 묶인 조회를 예약한다. 같은 파티에서 최근 성공한 파티장을 우선 조회하며 다른 파티로 넘어가면 요청을 중단한다. | [L45](../../src/ListingReader.cs#L45) |
+| <a id="symbol-src-listingreader-cs-listingreader-nextcandidate"></a><code>ListingReader.NextCandidate</code><br><code>bool NextCandidate()</code> | 메서드 | 현재 후보가 거절되거나 7초 내 응답이 없으면 다음 파티장 후보의 상세 조회만 예약한다. 본인 전용 요청은 다른 후보를 시도하지 않는다. | [L263](../../src/ListingReader.cs#L263) |
 
 <a id="file-src-listingrolecomparison-cs"></a>
 ## src/ListingRoleComparison.cs

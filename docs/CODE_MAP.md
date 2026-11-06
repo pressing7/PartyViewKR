@@ -4,12 +4,12 @@
 
 ## 기준과 범위
 
-- 정리일: 2026-11-06. 플러그인 `0.3.60.0`, Dalamud API `15`.
-- 소스 기준: `0.3.60.0`. 기반 main [`c04c81e9c98f570b5689618c8d9a116713023f14`](https://github.com/pressing7/PartyViewKR/commit/c04c81e9c98f570b5689618c8d9a116713023f14) 이후 참가 파티 조회·알림을 포함한다.
+- 정리일: 2026-11-06. 플러그인 `0.3.61.0`, Dalamud API `15`.
+- 소스 기준: `0.3.61.0`. 기반 main [`612c010139298f5f87a969a3582247fcad5cd36c`](https://github.com/pressing7/PartyViewKR/commit/612c010139298f5f87a969a3582247fcad5cd36c) 이후 소개말 표시 줄바꿈 검증과 비교 진단 보완을 포함한다.
 - 구조 계획과 문서를 포함한 추적 예정 파일 256개 전체를 [파일 지도](code-map/files.md)에 분류했다. 소스 위치는 이 버전의 행 번호다.
-- 함수표에는 **1,439개 명명된 항목/진입점**이 있다(C# 1,408, Python 31). 기존 Roslyn·Python AST 기반 목록을 유지하고, 웹 제거·UI 분리·참가 알림·참가 파티 조회로 이동·추가한 함수의 역할·소스 위치를 대조했다. 메서드뿐 아니라 생성자·로컬 함수·계산 속성·인터페이스 선언을 포함한다.
+- 함수표에는 **1,443개 명명된 항목/진입점**이 있다(C# 1,412, Python 31). 기존 Roslyn·Python AST 기반 목록을 유지하고, 웹 제거·UI 분리·참가 알림·참가 파티 조회로 이동·추가한 함수의 역할·소스 위치를 대조했다. 메서드뿐 아니라 생성자·로컬 함수·계산 속성·인터페이스 선언을 포함한다.
 - 자동 생성 record 메서드와 단순 auto-property accessor는 별도 함수로 세지 않는다. 이름 없는 LINQ/콜백은 소유 함수에서 설명하고, 명명된 테스트 시나리오는 따로 연결했다.
-- 현재 관리형 회귀 실행은562건이고 Python 배포 검사는12건이다. 0.3.59의551건에 참가 파티 읽기 범위·읽기 전용 카드·알림·파티 전환 검사11건을 추가했다.
+- 현재 관리형 회귀 실행은570건이고 Python 배포 검사는12건이다. 0.3.60의562건에 표시 줄바꿈·실제 내용 불일치·원문 보존·진단 검사8건을 추가했다.
 
 현재 구현은 **본인/참가 파티의 모집글 조회와 AFK 명단 감시·자동 조회·알림, 본인 모집글의 수정·수동 갱신·선택형 주기 갱신**이다. AFK 모집 완료·선택형 파티원 참가 everyone 알림과 파티·받은 귓속말·연합파티 채팅 전달, Discord에서 파티·연합파티·명시 귓속말·최근 상대 답장 전송을 제공한다. 새 모집 시작과 콘텐츠/파티 유형 변경은 아직 구현하지 않았다. 루트의 `PartyViewKR.dll/json/deps.json`은 이전 수동 배포본이다. 빌드 기준은 `src/PartyViewKR.csproj`와 `src/PartyViewKR.json`, 설치 대상은 Releases ZIP이다.
 
@@ -65,6 +65,16 @@
 - 참가자 이름/서버 알림은 [TODO](ARCHITECTURE_PLAN.md#todo-참가-알림에-참가자-표시)만 기록했다. 관리형 표시에 CID·파티 키를 내보내지 않는다.
 
 관련 검사: [PartyMembershipTests](code-map/tests.md#file-tests-partymembershiptests-cs). 전체562건·Python12건, native1136/interop2 계약 차이0, Release 빌드 경고/오류0과 로컬 패키징을 확인했다. 실제 게임의 native 조회·알림 확인은 별도다.
+
+## 소개말 표시 차이와 조회 검증 (0.3.61)
+
+0.3.60 현장 로그는 node66자·UI 버퍼64자·native64자, `commentAgrees=False`였다. 길이만으로 두 글자의 종류나 버퍼/native 내용 일치를 단정할 수는 없다. 이 검증이 실패하면 작성자는Unknown, 슬롯은`detail_ui_mismatch`가 되며 조건도 확인 불가로 남는다. 화면에서 직접 읽는 모집자·임무·남은 시간·소개말만 보이는 이유다.
+
+`ListingDescription.Resolve`는 원문이 비어 있지 않고 별도 UI 버퍼와 native comment가 기존 `SameText` 기준으로 일치하며, 화면 node에는 원문 대비 LF만 추가된 경우 `DescriptionStringWrappedNode`로 허용한다. 표시/편집 원본에는 UI 버퍼 원문을 사용하여 게임의 표시용 줄바꿈을 제출하지 않는다. 원래 줄바꿈 삭제/이동, 단어·공백·기호 변경, 읽기 실패, 다른 버퍼 내용은 계속 거절한다. 전역 `ListingIdentity.SameText`와 빈 소개말 예외를 넓히지 않는다.
+
+`descriptionNodeNativeDifference`, `descriptionBufferNativeDifference`는 정규화 뒤 첫 불일치 index와 UTF-16 코드 단위를 기록한다. `same`, `unreadable`, `end`를 구분하며 세 소스의 줄바꿈 수도 기록한다. 소개말 전체를 진단에 넣지 않는다. 요청 대기 중 대상 CID/소개말/소속 검증에서 막힌 경우에는 `response_leader_mismatch`, `response_description_mismatch`, `response_party_unverified`로 남겨 응답을 아예 못 받은 `response_timeout`과 구분한다.
+
+소스는 [소개말 비교 함수](code-map/core.md#file-src-listingdescription-cs), [조회](code-map/core.md#file-src-listingreader-cs), 회귀는 [Program.cs](code-map/tests.md#file-tests-program-cs)다. 보고된 실제 소개말의 차이가 줄바꿈인지는 인게임에서 새 진단으로 확인해야 한다.
 
 ## 책임과 스레드 경계
 
@@ -200,6 +210,7 @@ PIN은 `ExtraCriteria`나 외부 snapshot에 넣지 않는다. 수정창 passwor
 | 서버 초월/연합에서 현재 파티 인원이 일부만 나옴 | `PartyReader.ReadCrossRealm` | 현재 local group만 읽는 경계. 전체 모집은 `ListingSlots.Read` |
 | AFK에서 다른 그룹의 가입/탈퇴가 감지되지 않음 | `PartyRosterReader.ReadCrossRealm/ReadRegular` | `afkRosterSource`, 전체 그룹 범위·CID 완전성·`afkRosterReason`. 기존 현재 직업 표시의 local group 읽기와 구분 |
 | AFK 재입장 또는 조회 실패 후 자동 조회가 멈춤 | `AfkListingMonitor.Update/Retry`, `AfkHost.CurrentListingMatches` | `Pending`, generation, 요청 revision, 설정된 주기/실패 대기, 새 상세/참가 CID 일치. A→B→A는 pending을 보존하며 관측 사이 재입장은 선택한 추가 조회로 보완 |
+| 소개말 불일치로 슬롯/조건 확인 불가 | `ListingDescription.Resolve`, `ListingDescription.CompareSources`, `ListingReader.Read` | buffer/native 일치, node의 추가 줄바꿈 여부와 첫 차이 코드 확인 |
 | 빈 소개말에서 Self 확인 실패 | `ListingDescription.Resolve`, `ListingIdentity.Resolve`, `ListingReader.Read` | UI ‘소개말 없음’과 native empty가 함께 맞는지 |
 | `initial_own_ready_timeout` | `ListingRefresh.WaitForOwn`, `ListingReader.HandleRequest`, `TryGetOwn` | 새 revision·조회 성공·visible/ready·리더 CID/이름/comment |
 | `stored_criteria_mismatch` / `roles` | `ValidateEditor`, `ListingRoleComparison.Describe`, `ListingEditorCriteria.Matches` | 실제 미등록과 친선 padding 구분, display/native 인덱스 |

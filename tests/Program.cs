@@ -213,6 +213,66 @@ Test("normal empty node and existing buffer fallback remain valid", () => {
     Check(fallback.NativeAgrees && fallback.Text == "내용", "buffer fallback broken");
     Check(!ListingDescription.Resolve(false, "", false, "", true, "").Readable, "failed UI reads treated as empty");
 });
+Test("rendered 66-character comment with two added line breaks keeps the authored 64 characters", () => {
+    var authored = new string('가', 24) + new string('나', 24) + new string('다', 16);
+    var rendered = authored[..24] + "\n" + authored[24..48] + "\n" + authored[48..];
+    Check(authored.Length == 64 && rendered.Length == 66, "fixture lengths");
+    var value = ListingDescription.Resolve(true, rendered, true, authored, true, authored);
+    Check(value.NativeAgrees && value.Text == authored && value.Source == "DescriptionStringWrappedNode" && !value.EmptyPlaceholder,
+        "rendered layout rejected or submitted as authored content");
+    Check(!ListingIdentity.SameText(rendered, authored), "global identity comparison weakened");
+});
+Test("display wrapping requires both readable source buffers to agree", () => {
+    foreach (var value in new[] {
+        ListingDescription.Resolve(true, "모집\n 내용", false, "모집 내용", true, "모집 내용"),
+        ListingDescription.Resolve(true, "모집\n 내용", true, "모집 내용", false, "모집 내용"),
+        ListingDescription.Resolve(true, "모집\n 내용", true, "다른 내용", true, "모집 내용"),
+        ListingDescription.Resolve(true, "모집\n 내용", true, "모집 내용", true, "다른 내용") })
+        Check(!value.NativeAgrees, "wrap inferred without corroborating buffers");
+});
+Test("display wrapping never accepts changed words punctuation or invisible decorations", () => {
+    foreach (var rendered in new[] { "모집\n 다른 내용", "모집\n 내용!", "모집\n내용", "모집\t 내용", "모집\u200b 내용", "\ue040모집 내용\ue041" })
+        Check(!ListingDescription.Resolve(true, rendered, true, "모집 내용", true, "모집 내용").NativeAgrees,
+            "non-layout mismatch bypassed through buffer");
+});
+Test("authored line breaks survive display wrapping and line ending conversion", () => {
+    var authored = "첫 줄\r\n둘째 줄과 설명";
+    var value = ListingDescription.Resolve(true, "첫\n 줄\n둘째 줄과\r\n 설명", true, authored, true, authored.Replace("\r\n", "\n"));
+    Check(value.NativeAgrees && value.Text == authored, "authored paragraph was changed");
+    foreach (var rendered in new[] { "첫 줄둘째\n 줄과 설명", "첫\n 줄둘째 줄과 설명" })
+        Check(!ListingDescription.Resolve(true, rendered, true, authored, true, authored).NativeAgrees, "authored break was removed or relocated");
+});
+Test("display wrapping does not bypass literal placeholder or empty-source checks", () => {
+    var authored = "소개말 없음";
+    var literal = ListingDescription.Resolve(true, "소개말\n 없음", true, authored, true, authored);
+    Check(literal.NativeAgrees && literal.Text == authored && !literal.EmptyPlaceholder, "literal placeholder became empty");
+    Check(!ListingDescription.Resolve(true, "소개말\n 없음", true, authored, true, "").NativeAgrees, "wrapped placeholder broadened empty exception");
+});
+Test("description diagnostics identify line break differences without dumping the comment", () => {
+    var diagnostic = ListingDescription.CompareSources(true, "가\n나", true, "가나", true, "가나");
+    Check(diagnostic.Contains("descriptionNodeNativeDifference=index:1,ui:0x000A,native:0xB098") &&
+        diagnostic.Contains("descriptionBufferNativeDifference=same") && diagnostic.Contains("descriptionNodeLineBreaks=1") &&
+        diagnostic.Contains("descriptionNativeLineBreaks=0"), "missing comparison evidence");
+    Check(!diagnostic.Contains("가") && !diagnostic.Contains("나"), "whole comment exposed");
+});
+Test("description diagnostics distinguish unreadable text exact agreement and end of text", () => {
+    var unavailable = ListingDescription.CompareSources(true, "같은 내용", true, "같은 내용", false, "같은 내용");
+    Check(unavailable.Contains("descriptionNodeNativeDifference=unreadable") && unavailable.Contains("descriptionBufferNativeDifference=unreadable"), "unreadable read marked as agreement");
+    var endings = ListingDescription.CompareSources(true, "가", true, "가\r\n나", true, "가\n나");
+    Check(endings.Contains("ui:end,native:0x000A") && endings.Contains("descriptionBufferNativeDifference=same"), "length or line ending comparison unclear");
+});
+Test("display-wrapped comment remains canonical through a single own refresh", () => {
+    var description = ListingDescription.Resolve(true, "모집\n 내용", true, "모집 내용", true, "모집 내용");
+    var h = new FakeHost { OwnVerified = description.NativeAgrees };
+    h.Target = h.Target with { Description = description.Text };
+    var flow = new ListingRefresh(h);
+    flow.Request(1000); flow.Update(1000); h.FinishQuery(); flow.Update(1500);
+    flow.Update(2000); flow.Update(3500);
+    var reread = ListingDescription.Resolve(true, "모집 내\n용", true, "모집 내용", true, "모집 내용");
+    h.Target = h.Target with { Description = reread.Text, RemainingSeconds = 3598 };
+    h.FinishQuery(); flow.Update(4000);
+    Check(flow.Stage == RefreshStage.Completed && h.SubmitCalls == 1 && h.SubmittedDescription == "모집 내용", "display wrapping mutated or blocked refresh");
+});
 Test("empty listing refreshes once without copying the placeholder into the editor", () => {
     var description = ListingDescription.Resolve(true, "소개말 없음", true, "소개말 없음", true, "");
     var h = new FakeHost { OwnVerified = description.NativeAgrees };

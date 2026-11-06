@@ -17,6 +17,7 @@ internal sealed class ListingReader
     private long requestRevision;
     private string requestNote = "";
     private string requestDiagnostic = "request=none";
+    private string responseMismatch = "";
     private ulong observedSelf;
     private bool ownOnly = true;
     private PartyRoster? requestedParty;
@@ -38,6 +39,7 @@ internal sealed class ListingReader
     {
         if (Busy) return;
         ownOnly = true; requestedParty = null; candidates = []; candidateIndex = 0; requestedLeader = 0;
+        responseMismatch = "";
         LastRequestSucceeded = false; userRequested = true; Interlocked.Increment(ref requestRevision);
     }
     internal bool RequestParty(PartyRoster roster)
@@ -89,7 +91,10 @@ internal sealed class ListingReader
         HandleRequest();
         if (waitingRevision.HasValue && Environment.TickCount64 - requestTick >= 7000)
         {
-            if (!NextCandidate()) FinishFailed("현재 파티의 모집글 응답을 확인하지 못했습니다. 모집이 종료되었을 수 있습니다.", "response_timeout");
+            if (!NextCandidate()) FinishFailed(responseMismatch.Length == 0
+                ? "현재 파티의 모집글 응답을 확인하지 못했습니다. 모집이 종료되었을 수 있습니다."
+                : "모집글 응답은 받았지만 화면과 내부 정보를 일치하는 모집글로 확인하지 못했습니다. 진단 정보를 확인해 주세요.",
+                responseMismatch.Length == 0 ? "response_timeout" : responseMismatch);
         }
         if (waitingRevision is { } expected && Interlocked.Read(ref detailRevision) <= expected)
             return previous with { Status = "모집글 응답 대기 중", IsLive = false, Note = "게임의 상세 조회 응답을 기다리고 있습니다.", Diagnostic = requestDiagnostic + "; detailRefreshSeen=false" };
@@ -173,6 +178,7 @@ internal sealed class ListingReader
                 $"leaderCidIsSelf={detail.LeaderContentId == Plugin.PlayerState.ContentId}; " +
                 $"leaderNameAgrees={nameAgrees}; commentAgrees={commentAgrees}; " +
                 $"nativeCommentReadable={nativeCommentRead}; nativeCommentChars={nativeComment.Length}; " +
+                ListingDescription.CompareSources(descriptionNodeRead, descriptionNode, descriptionBufferRead, descriptionBuffer, nativeCommentRead, nativeComment) + "; " +
                 $"nativeSlots={detail.SlotsFilled}/{detail.TotalSlots}; nativeTimeRaw={detail.TimeLeft}; listingCategoryRaw={(uint)detail.Category}; " +
                 $"listingCompletionRaw={(byte)detail.CompletionStatus}; listingCompletionReadable={completion.HasValue}; " +
                 $"listingDutyFlags={(byte)detail.DutyFinderSettingFlags}; listingDutyFlagsReadable={dutyFlags.HasValue}; listingLootRuleRaw={(byte)detail.LootRule}; listingLootRuleReadable={lootRule.HasValue}; " +
@@ -191,8 +197,11 @@ internal sealed class ListingReader
             $"uiDutyReadable={dutyRead}; uiTimeReadable={timeRead}\n{agentDiagnostic}\n{slots.Diagnostic}\n" +
             $"listingJobRowLookupError={rows.Error}\n{requestDiagnostic}";
         if (!description.Readable)
+        {
+            if (waitingRevision.HasValue) responseMismatch = "response_description_unreadable";
             return previous with { Status = "상세 창의 모집 문구를 읽지 못함", IsLive = false,
                 Note = "진단 정보와 게임 상세 창 화면을 확인해야 합니다.", Diagnostic = diagnostic };
+        }
 
         var note = requestNote;
         if (owner == ListingOwner.Unknown)
@@ -203,7 +212,11 @@ internal sealed class ListingReader
         if (waitingRevision.HasValue)
         {
             if (!ListingPartyScope.CanConfirm(requestedLeader, ownOnly, result, current))
+            {
+                responseMismatch = requestedLeader != leaderContentId ? "response_leader_mismatch" :
+                    !description.NativeAgrees ? "response_description_mismatch" : "response_party_unverified";
                 return previous with { IsLive = false, Status = "요청한 파티의 모집글을 확인하는 중", Diagnostic = diagnostic + "; responseTargetAgrees=false" };
+            }
             waitingRevision = null; LastRequestSucceeded = true; requestNote = "";
             if (!ownOnly) { confirmedPartyKey = current!.PartyKey; confirmedPartyLeader = requestedLeader; }
             requestDiagnostic += "; detailRefreshSeen=true; responseTargetAgrees=true";
@@ -250,6 +263,7 @@ internal sealed class ListingReader
     private bool NextCandidate()
     {
         if (ownOnly || candidateIndex + 1 >= candidates.Length) return false;
+        responseMismatch = "";
         candidateIndex++; waitingRevision = null; openingMain = true; requestTick = Environment.TickCount64;
         return true;
     }
@@ -278,6 +292,7 @@ internal sealed class ListingReader
         showIssued = false;
         requestNote = "";
         requestDiagnostic = "request=none";
+        responseMismatch = "";
         observedSelf = 0;
         viewedParty = null; partyChangedAtRevision = null;
         confirmedPartyKey = ""; confirmedPartyLeader = 0;
